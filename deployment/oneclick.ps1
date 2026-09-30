@@ -651,39 +651,77 @@ function Install-WorkshopDependencies {
     if ((Test-Path -LiteralPath $wheelRoot) -and
         ((Get-ChildItem -LiteralPath $wheelRoot -Filter "*.whl" -ErrorAction SilentlyContinue) )) {
         Write-Host "Bundled offline wheels found: $wheelRoot" -ForegroundColor DarkGray
-        $wheelArgs = @("--no-index", "--find-links", $wheelRoot)
+        $wheelArgs = @("--no-index", "--find-links", ('"{0}"' -f $wheelRoot))
     }
 
-    # Stream pip output live instead of capturing it: the "Collecting ... /
-    # Downloading ... (x.x MB)" lines are the visible heartbeat students need.
-    # pip progress bars use carriage returns, which PowerShell cannot
-    # redisplay nicely, so they remain disabled.
-    $previousPreference = $ErrorActionPreference
-    $ErrorActionPreference = "Continue"
+    # Live progress, not a silent wait: pip runs as a background process
+    # whose output lands in a temporary log, while this console keeps a
+    # PowerShell progress bar updated every second (elapsed time, number
+    # of wheels fetched, and the latest Collecting/Downloading action).
+    $logOut = Join-Path $DownloadRoot "pip-install.log"
+    $argList = @(
+        "-m", "pip", "install",
+        "--only-binary=:all:",
+        "--disable-pip-version-check",
+        "--progress-bar", "off"
+    ) + $wheelArgs + @("pandas", "matplotlib", "scikit-learn", "gradio")
 
-    try {
-        & $python -m pip install `
-            --only-binary=:all: `
-            --disable-pip-version-check `
-            --progress-bar off `
-            @wheelArgs `
-            pandas matplotlib scikit-learn gradio 2>&1 |
-            ForEach-Object {
-                $line = if ($_ -is [System.Management.Automation.ErrorRecord]) { $_.Exception.Message } else { $_.ToString() }
-                if ($line -and $line.Trim()) {
-                    Write-Host ("  " + $line.Trim()) -ForegroundColor DarkGray
+    $started = Get-Date
+    $pipProc = Start-Process `
+        -FilePath $python `
+        -ArgumentList $argList `
+        -WorkingDirectory $AppRoot `
+        -RedirectStandardOutput $logOut `
+        -RedirectStandardError (Join-Path $DownloadRoot "pip-install.err.log") `
+        -NoNewWindow `
+        -PassThru
+
+    $lastAction = "starting pip"
+    $downloadCount = 0
+    $installDone = $false
+
+    while (-not $pipProc.HasExited) {
+        Start-Sleep -Milliseconds 1200
+
+        # Feed the heartbeat from whatever pip wrote since the last tick.
+        try {
+            $lines = Get-Content -LiteralPath $logOut -ErrorAction SilentlyContinue
+            if ($lines) {
+                $downloads = @($lines | Where-Object { $_ -match "Downloading " })
+                $downloadCount = $downloads.Count
+                $latest = ($lines | Where-Object { $_.Trim() }) | Select-Object -Last 1
+                if ($latest) {
+                    $lastAction = $latest.Trim()
+                    if ($lastAction.Length -gt 58) { $lastAction = $lastAction.Substring(0, 58) + "..." }
+                }
+                if ($lines | Where-Object { $_ -match "Successfully installed" }) {
+                    $installDone = $true
                 }
             }
-    }
-    catch {
-        $ErrorActionPreference = $previousPreference
-        Write-Warn "Workshop package installation failed. Continuing, but scripts like 01_eda.py need pandas/gradio."
-        Write-Warn "Error: $($_.Exception.Message)"
-        return
+        }
+        catch {}
+
+        $span = (Get-Date) - $started
+        $elapsed = "{0}m {1:00}s" -f [int][Math]::Floor($span.TotalMinutes), $span.Seconds
+        Write-Progress `
+            -Activity "Installing workshop packages (pandas / matplotlib / scikit-learn / gradio)" `
+            -Status "$elapsed elapsed | $downloadCount wheels fetched | $lastAction" `
+            -PercentComplete ([Math]::Min(95, 10 + $downloadCount * 8))
     }
 
-    $pipExitCode = $LASTEXITCODE
-    $ErrorActionPreference = $previousPreference
+    Write-Progress -Activity "Installing workshop packages" -Completed
+
+    try {
+        $tail = Get-Content -LiteralPath $logOut -ErrorAction SilentlyContinue | Select-Object -Last 6
+        if ($tail) {
+            $tail | ForEach-Object {
+                if ($_ -and $_.Trim()) { Write-Host ("  " + $_.Trim()) -ForegroundColor DarkGray }
+            }
+        }
+    }
+    catch {}
+
+    $pipExitCode = $pipProc.ExitCode
 
     if ((Test-WorkshopPackages)) {
         try {
