@@ -12,35 +12,29 @@ THE STEP-BY-STEP EXPERIENCE
         2. runs `python 01_eda.py` in the terminal to prove it works,
         3. bumps STEPS_COMPLETED to that step's number -- nothing else.
 
-    Because the page is served with `gradio 04_classroom.py`, the saved
-    file hot-reloads and the page reveals the next magic sentence.
+    The workshop page (served by workshop_server.py) notices the saved
+    file within a second and reveals the next magic sentence.
 
     Students never type code. The AI assistant never types more than
     one checkpoint at a time (see AGENTS.md STOP-FIRST RULE).
 
 HOW TO RUN
-    python 01_eda.py        (terminal checklist view)
-    gradio 01_eda.py        (single-page web view)
+    python 01_eda.py          (terminal checklist view)
+    python serve_workshop.py  (the web page -- all three steps at once)
 """
 
 import os
 
-import matplotlib
-
-matplotlib.use("Agg")  # draw charts to files (no popup window)
-import matplotlib.pyplot as plt
 import pandas as pd
+
+# Shared gate helpers: workshop_steps.chart(...) draws interactive charts
+# on the page, workshop_steps.metric(...) shows headline numbers.
+import workshop_steps
 
 # ----------------------------------------------------------------------------
 # DATA PATH -- never change or move this file
 # ----------------------------------------------------------------------------
 DATA_PATH = os.path.join("data", "titanic.csv")
-
-# ----------------------------------------------------------------------------
-# OUTPUT FOLDER for charts
-# ----------------------------------------------------------------------------
-OUTPUT_DIR = "eda_output"
-os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 # ----------------------------------------------------------------------------
 # PROGRESS COUNTER -- the ONLY number the AI assistant bumps in class,
@@ -55,9 +49,12 @@ STEPS_COMPLETED = 0
 # Rules for the AI assistant:
 #   * Implement ONE gate per student request: fill the step function body
 #     below its `# === GATE n ===` marker, never earlier, never later.
-#   * Each function returns web-ready content: text, a DataFrame, a chart
-#     path, or a dict like {"text": ..., "dataframe": ..., "image": ...}.
-#   * Charts must be saved into OUTPUT_DIR (so the CLI keeps the history).
+#   * Each function returns web-ready content: text, a DataFrame (shown as
+#     a table), or a dict combining {"text": ..., "dataframe": ...,
+#     "chart": ..., "metric": ...}. Build charts with the shared helper:
+#         workshop_steps.chart(kind="bar", data=df, x="Sex", y="Count")
+#     Kinds: bar, pictorial (person icons), line, area, scatter, pie,
+#     donut, histogram, gauge, heatmap.
 #   * When python 01_eda.py runs cleanly, bump STEPS_COMPLETED to n.
 #   * NEVER touch a future gate. If the student asks, apply the workshop
 #     STOP-FIRST RULE instead of implementing.
@@ -70,6 +67,14 @@ def step_1_open_the_list():
 
     LOOK LIKE (web): a friendly sentence with the number of passengers and
     the details each row carries, plus a small preview table (head).
+
+    The page renders pandas DataFrames as tables automatically:
+
+        df = pd.read_csv(DATA_PATH)
+        return {
+            "text": f"The list holds {len(df)} passengers ...",
+            "dataframe": df.head(),
+        }
     """
     raise NotImplementedError("Gate 1 is not built yet")
 
@@ -91,38 +96,69 @@ def step_3_survival_overview():
     """Count survivors vs non-survivors and their shares.
 
     LOOK LIKE (web): a tiny table (Perished vs Survived, counts and %).
-    TIP: the student should GUESS the split out loud first.
+    TIP: the student should GUESS the split out loud first. A pie or
+    donut chart of the two shares is a fun extra.
     """
     raise NotImplementedError("Gate 3 is not built yet")
 
 
 # === GATE 4 -- "Survival by sex" ============================================
 def step_4_survival_by_sex():
-    """Bar chart: survival counts split by male/female.
+    """Chart of survival counts split by male/female.
 
-    LOOK LIKE (web): the chart image plus one friendly caption sentence.
-    MUST save the chart to OUTPUT_DIR/survival_chart.png exactly.
+    LOOK LIKE (web): an interactive chart plus one friendly caption
+    sentence. The page can draw eye-catching person-icon bars:
+
+        df = pd.read_csv(DATA_PATH)
+        by_sex = (
+            df.groupby(["Sex", "Survived"]).size()
+            .unstack(fill_value=0)
+            .rename(columns={0: "Perished", 1: "Survived"})
+            .reset_index()
+        )
+        return {
+            "text": "Women survived far more often ...",
+            "chart": workshop_steps.chart(
+                kind="pictorial", data=by_sex, x="Sex",
+                series=["Survived", "Perished"], stacked=True,
+                title="Survival by sex",
+            ),
+        }
+
+    (kind="bar" with the same data works too.)
     """
     raise NotImplementedError("Gate 4 is not built yet")
 
 
 # === GATE 5 -- "Survival by ticket class" ===================================
 def step_5_survival_by_class():
-    """Bar chart of survival counts split by Pclass 1/2/3.
+    """Chart of survival counts split by Pclass 1/2/3.
 
-    LOOK LIKE (web): another chart image plus a caption sentence.
-    MUST save the chart to OUTPUT_DIR/class_chart.png exactly.
+    LOOK LIKE (web): an interactive chart plus a caption sentence.
+    Group by ["Pclass", "Survived"], rename 0/1 to Perished/Survived,
+    and feed it to workshop_steps.chart(kind="bar", ..., stacked=True).
     """
     raise NotImplementedError("Gate 5 is not built yet")
 
 
 # === GATE 6 -- "The age story" ==============================================
 def step_6_age_patterns():
-    """Explore age as a survival pattern (e.g. survival by age group).
+    """Explore age as a survival pattern with one interactive chart.
 
     LOOK LIKE (web): one chart of your choice about age plus one
-    plain-English takeaway sentence the class can discuss.
-    Save the chart into OUTPUT_DIR/ with a clear file name you pick.
+    plain-English takeaway sentence the class can discuss. A zoomable
+    scatter is a great choice -- students can brush into the crowd:
+
+        df = pd.read_csv(DATA_PATH)
+        points = df[["Age", "Fare", "Survived"]].dropna()
+        points["Outcome"] = points["Survived"].map({0: "Perished", 1: "Survived"})
+        return {
+            "text": "One plain-English takeaway ...",
+            "chart": workshop_steps.chart(
+                kind="scatter", data=points, x="Age", y="Fare",
+                color="Outcome", title="Age vs fare, colored by survival",
+            ),
+        }
     """
     raise NotImplementedError("Gate 6 is not built yet")
 
@@ -183,9 +219,10 @@ STEPS = [
             "survive more often than male passengers?"
         ),
         "prompt": (
-            "Draw a bar chart comparing survival for female and male "
-            "passengers, save it as eda_output/survival_chart.png, and "
-            "describe the pattern in one friendly sentence."
+            "Draw a chart comparing survival for female and male "
+            "passengers -- make it fun to look at, the page can draw "
+            "person-icon bars -- and describe the pattern in one friendly "
+            "sentence."
         ),
         "fn": "step_4_survival_by_sex",
     },
@@ -197,9 +234,8 @@ STEPS = [
             "board. Did the deck you slept on decide your fate?"
         ),
         "prompt": (
-            "Draw a bar chart of survival by ticket class (1, 2, 3), save "
-            "it as eda_output/class_chart.png, and tell me what stands "
-            "out."
+            "Draw a chart of survival by ticket class (1, 2, 3) and tell "
+            "me what stands out."
         ),
         "fn": "step_5_survival_by_class",
     },
@@ -212,8 +248,8 @@ STEPS = [
         ),
         "prompt": (
             "Make one chart that shows whether age is connected to "
-            "survival (for example survival by age group), save it in "
-            "eda_output/, and give me one plain-English takeaway."
+            "survival (for example a zoomable scatter of age versus fare, "
+            "colored by survival) and give me one plain-English takeaway."
         ),
         "fn": "step_6_age_patterns",
     },
@@ -256,33 +292,21 @@ def analyze_data():
 if __name__ == "__main__":
     print(
         "Terminal mode: running the completed checkpoints in order.\n"
-        "For the step-by-step magic, serve with:  gradio 01_eda.py\n"
-        "Or serve every workshop step at once:    gradio 04_classroom.py"
+        "For the step-by-step web page:  python serve_workshop.py"
     )
     analyze_data()
 
 
 # ============================================================================
-# WEB INTERFACE -- pairs this script with a web page (Gradio).
-# The web layer imports after the data layer on purpose. Do not move it
-# above the CHECKPOINT GATES.
+# PAGE METADATA -- the tab title and intro the workshop page shows.
 # ============================================================================
-import gradio as gr  # noqa: E402
-import workshop_steps  # noqa: E402
+PAGE = {
+    "id": "eda",
+    "title": "1 - Meet the Data",
+    "intro": (
+        "You are holding the real passenger list of the Titanic. Work "
+        "through the checkpoints one prompt at a time with your AI "
+        "Teaching Assistant and watch the picture come into focus."
+    ),
+}
 
-
-def build_eda_app():
-    """Step 1 web page built entirely from the checkpoint scaffold."""
-    return workshop_steps.make_app(
-        title="1 - Meet the Data",
-        intro=(
-            "You are holding the real passenger list of the Titanic. Work "
-            "through the checkpoints one prompt at a time with your AI "
-            "Teaching Assistant and watch the picture come into focus."
-        ),
-        steps=STEPS,
-        module_globals=globals(),
-    )
-
-
-demo = build_eda_app()

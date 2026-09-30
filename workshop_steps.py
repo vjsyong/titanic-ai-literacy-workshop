@@ -12,107 +12,339 @@ HOW THE STEP-BY-STEP EXPERIENCE WORKS
     During class the student asks their AI Teaching Assistant to unlock
     ONE step at a time. The assistant implements the step function body
     (inside the step's gate markers) and bumps `STEPS_COMPLETED` by one.
-    Because Gradio hot-reloads when the file is saved, the web page
-    magically updates: the finished step becomes a visible result panel,
-    the next step's prompt hint is revealed, later steps stay locked.
+    `workshop_server.py` notices the saved file within a fraction of a
+    second, re-imports the script and pushes the new state to the open
+    page: the finished step becomes a result card and the NEXT prompt
+    hint appears. Repeat until all 18 checkpoints are done.
 
     Nobody types any code in class. The only trigger that moves the
     workshop forward is the student asking for intent, e.g.
     "Please show me which columns have holes in the data."
 
-    THIS FILE IS PART OF THE BOOTSTRAP, NOT THE LESSON:
+WHAT A GATE FUNCTION RETURNS (the payload vocabulary)
+    text only        ->  return "a friendly markdown sentence"
+    table            ->  return df                 (pandas DataFrame)
+    multiple parts   ->  return {"text": ..., "dataframe": df}
+
+    interactive chart -> return {
+                             "text": "one sentence about the pattern",
+                             "chart": workshop_steps.chart(
+                                 kind="bar", data=df, x="Sex",
+                                 y="Passengers", title="Survival by sex",
+                             ),
+                         }
+    headline number   -> return {"metric": workshop_steps.metric(0.81, "Test accuracy")}
+
+    Any combination of "text", "dataframe", "chart" and "metric" keys in
+    one dict renders together on the page, in that order.
+
+CHART KINDS
+    bar, pictorial (person icons), line, area, scatter (zoomable),
+    pie, donut, histogram, gauge, heatmap.
+
+    `data` may be a pandas DataFrame or a list of row dicts. Wide format:
+    one row per x value, one numeric column per series. Example:
+
+        df = titanic.groupby(["Sex", "Survived"]).size().unstack()
+        df = df.rename(columns={0: "Perished", 1: "Survived"}).reset_index()
+        workshop_steps.chart(
+            kind="pictorial", data=df, x="Sex",
+            series=["Survived", "Perished"], stacked=True,
+        )
+
+THIS FILE IS PART OF THE BOOTSTRAP, NOT THE LESSON:
     instructors may extend it; students never touch it.
 """
 
-import gradio as gr
+from __future__ import annotations
 
-DONE = "✅"
-NOW = "🔓"
-LOCK = "🔒"
+import datetime as _datetime
+import math
+
+import pandas as pd
+
+# How many table rows reach the browser per result block (keeps the page
+# snappy even if a gate returns a big DataFrame).
+MAX_TABLE_ROWS = 250
+
+# Every chart kind the web page can draw.
+CHART_KINDS = (
+    "bar",
+    "pictorial",
+    "line",
+    "area",
+    "scatter",
+    "pie",
+    "donut",
+    "histogram",
+    "gauge",
+    "heatmap",
+)
 
 
-def _progress_line(steps, completed):
-    total = len(steps)
-    dots = "".join("●" if i < completed else "○" for i in range(total))
-    return f"**Progress:** {dots} &nbsp; ({completed} of {total} checkpoints completed)"
+# ---------------------------------------------------------------------------
+# JSON-normalization helpers (numpy / NaN / dates -> plain JSON values)
+# ---------------------------------------------------------------------------
+
+def _json_value(value):
+    """Turn one pandas/numpy scalar into a plain JSON-friendly value."""
+    if value is None:
+        return None
+    if isinstance(value, float) and math.isnan(value):
+        return None
+
+    item = getattr(value, "item", None)  # numpy scalars expose .item()
+    if callable(item):
+        try:
+            value = value.item()
+        except (ValueError, TypeError):
+            pass
+    if value is None:
+        return None
+    if isinstance(value, float) and math.isnan(value):
+        return None
+    if isinstance(value, (_datetime.datetime, _datetime.date, pd.Timestamp)):
+        return value.isoformat()
+    if isinstance(value, (bool, int, float, str)):
+        return value
+    try:
+        if pd.isna(value):
+            return None
+    except (TypeError, ValueError):
+        pass
+    return str(value)
 
 
-def render_result(result):
-    """Renders whatever a completed step function returns.
+def json_ready(value):
+    """Recursively convert dicts/lists of numpy values into JSON-safe data."""
+    if isinstance(value, dict):
+        return {str(key): json_ready(item) for key, item in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [json_ready(item) for item in value]
+    return _json_value(value)
 
-    Steps may return:
-        - None                (silent step)
-        - str                 (text/markdown)
-        - pandas.DataFrame    (table)
-        - str path ending .png/.jpg (image)
-        - dict combining the above, e.g. {"text": ..., "dataframe": ..., "image": ...}
+
+# ---------------------------------------------------------------------------
+# Result serialization (what the server sends to the browser)
+# ---------------------------------------------------------------------------
+
+def _records(data):
+    """Rows as a list of dicts with JSON-friendly values."""
+    if data is None:
+        return []
+    if isinstance(data, pd.DataFrame):
+        frame = data.copy()
+        if not isinstance(frame.index, pd.RangeIndex):
+            frame = frame.reset_index()
+        columns = [str(column) for column in frame.columns]
+        return [
+            dict(zip(columns, (_json_value(value) for value in row)))
+            for row in frame.itertuples(index=False, name=None)
+        ]
+    records = []
+    for item in data:
+        if not isinstance(item, dict):
+            raise TypeError(
+                "chart data must be a pandas DataFrame or a list of row dicts"
+            )
+        records.append({str(key): json_ready(value) for key, value in item.items()})
+    return records
+
+
+def _table_payload(data):
+    if isinstance(data, pd.DataFrame):
+        frame = data
+    else:
+        frame = pd.DataFrame(_records(data))
+    if not isinstance(frame.index, pd.RangeIndex):
+        frame = frame.reset_index()
+
+    total_rows = len(frame)
+    truncated = total_rows > MAX_TABLE_ROWS
+    if truncated:
+        frame = frame.head(MAX_TABLE_ROWS)
+
+    columns = [str(column) for column in frame.columns]
+    rows = [
+        [_json_value(value) for value in row]
+        for row in frame.itertuples(index=False, name=None)
+    ]
+    return {
+        "type": "table",
+        "columns": columns,
+        "rows": rows,
+        "total_rows": total_rows,
+        "truncated": truncated,
+    }
+
+
+def _chart_payload(chart):
+    """Validate/normalize a chart payload built with workshop_steps.chart()."""
+    if not isinstance(chart, dict):
+        raise TypeError("chart must be a dict -- build it with workshop_steps.chart(...)")
+
+    kind = str(chart.get("kind", "")).lower()
+    if kind not in CHART_KINDS:
+        raise ValueError(
+            f"unknown chart kind {kind!r}; use one of: {', '.join(CHART_KINDS)}"
+        )
+
+    payload = {"kind": kind}
+    for key in ("title", "color", "size", "x_label", "y_label"):
+        if chart.get(key) is not None:
+            payload[key] = json_ready(chart[key])
+    for key in ("x",):
+        if chart.get(key) is not None:
+            payload["x"] = str(chart[key])
+    y = chart.get("y")
+    if y is not None:
+        payload["y"] = [str(item) for item in y] if isinstance(y, (list, tuple)) else str(y)
+    for key in ("stacked", "horizontal", "diverging"):
+        if chart.get(key):
+            payload[key] = True
+    if chart.get("series") is not None:
+        payload["series"] = [str(item) for item in chart["series"]]
+    if chart.get("palette") is not None:
+        payload["palette"] = [str(item) for item in chart["palette"]]
+    if chart.get("bins") is not None:
+        payload["bins"] = int(chart["bins"])
+
+    if kind == "gauge":
+        if chart.get("value") is None:
+            raise ValueError("gauge charts need value=...")
+        payload["value"] = json_ready(chart["value"])
+    else:
+        payload["data"] = _records(chart.get("data"))
+
+    return payload
+
+
+def _metric_block(metric):
+    if isinstance(metric, dict):
+        block = {"type": "metric"}
+        block.update({str(key): json_ready(value) for key, value in metric.items()})
+        return block
+    return {
+        "type": "metric",
+        "value": json_ready(metric),
+        "label": "",
+        "format": "number",
+    }
+
+
+def serialize_result(result):
+    """Turns whatever a gate function returned into JSON blocks for the page.
+
+    Supported returns:
+        - None                  (silent step)
+        - str                   (text/markdown)
+        - pandas.DataFrame      (table)
+        - dict with any of "text", "dataframe", "chart", "metric"
     """
     if result is None:
-        return
+        return None
+
+    blocks = []
     if isinstance(result, str):
-        gr.Markdown(result)
-        return
-    if isinstance(result, dict):
-        if "text" in result:
-            gr.Markdown(result["text"])
+        blocks.append({"type": "markdown", "text": result})
+    elif isinstance(result, pd.DataFrame):
+        blocks.append(_table_payload(result))
+    elif isinstance(result, dict):
+        if result.get("text"):
+            blocks.append({"type": "markdown", "text": str(result["text"])})
         if result.get("dataframe") is not None:
-            gr.Dataframe(result["dataframe"], interactive=False)
-        if result.get("image"):
-            gr.Image(result["image"], interactive=False)
-        return
-    gr.Markdown(f"`{result}`")
+            blocks.append(_table_payload(result["dataframe"]))
+        if result.get("chart"):
+            blocks.append({"type": "chart", "chart": _chart_payload(result["chart"])})
+        if result.get("metric"):
+            blocks.append(_metric_block(result["metric"]))
+    else:
+        blocks.append({"type": "markdown", "text": str(result)})
+
+    return {"blocks": blocks} if blocks else None
 
 
-def make_app(title, intro, steps, module_globals):
-    """Builds the progressive web page for one workshop script.
+# ---------------------------------------------------------------------------
+# Builders handed to gate functions
+# ---------------------------------------------------------------------------
 
-    steps: list of dicts -- number, title, story, prompt, fn (function NAME)
-    module_globals: the script module's globals(), used to find step functions
+def chart(
+    kind,
+    data=None,
+    *,
+    x=None,
+    y=None,
+    color=None,
+    size=None,
+    series=None,
+    title=None,
+    stacked=False,
+    horizontal=False,
+    diverging=False,
+    x_label=None,
+    y_label=None,
+    bins=10,
+    palette=None,
+    value=None,
+):
+    """Build an interactive chart payload for a gate's result dict.
+
+    kind: one of bar, pictorial, line, area, scatter, pie, donut,
+          histogram, gauge, heatmap.
+
+    data: pandas DataFrame or list of row dicts (wide format: one row per
+          x value, one numeric column per series). Not needed for "gauge".
+
+    x / y: column names. For multi-series charts pass `series=[...]`
+           (list of numeric column names) instead of y.
+    color / size: optional column names for scatter charts.
+    stacked / horizontal / diverging: bar chart styling switches.
+    value: the number (0-100) for "gauge" charts.
+    bins: histogram bin count (default 10).
     """
-    completed = int(module_globals.get("STEPS_COMPLETED", 0))
-    total = len(steps)
+    payload = {"kind": str(kind).lower()}
+    if payload["kind"] not in CHART_KINDS:
+        raise ValueError(
+            f"unknown chart kind {kind!r}; use one of: {', '.join(CHART_KINDS)}"
+        )
+    for key, item in (
+        ("data", data),
+        ("x", x),
+        ("y", y),
+        ("color", color),
+        ("size", size),
+        ("series", series),
+        ("title", title),
+        ("x_label", x_label),
+        ("y_label", y_label),
+        ("bins", bins),
+        ("palette", palette),
+        ("value", value),
+    ):
+        if item is not None:
+            payload[key] = item
+    if stacked:
+        payload["stacked"] = True
+    if horizontal:
+        payload["horizontal"] = True
+    if diverging:
+        payload["diverging"] = True
+    return payload
 
-    with gr.Blocks(title=title) as app:
-        gr.Markdown(f"## {title}\n\n{intro}")
-        gr.Markdown(_progress_line(steps, completed))
 
-        for step in steps:
-            number = step["number"]
-            header = (
-                f"#### {DONE} Step {number} of {total} -- {step['title']}"
-                if number <= completed
-                else (
-                    f"#### {NOW} Checkpoint {number} of {total} -- {step['title']}"
-                    if number == completed + 1
-                    else f"#### {LOCK} Step {number} -- locked"
-                )
-            )
+def metric(value, label, *, format="percent"):
+    """Build a headline-number block (rendered as an animated ring/number).
 
-            with gr.Group():
-                gr.Markdown(header)
+    format: "percent" (0.81 -> 81%), "number", or "probability".
+    """
+    return {"kind": "metric", "value": value, "label": label, "format": format}
 
-                if number <= completed:
-                    fn = module_globals.get(step["fn"])
-                    if fn is None:
-                        gr.Markdown("_No output yet._")
-                        continue
-                    try:
-                        render_result(fn())
-                    except NotImplementedError as exc:
-                        gr.Markdown(f"{LOCK} **not ready:** {exc}")
-                    except Exception as exc:  # surface the error so the AI can fix it inside the gate
-                        gr.Markdown(
-                            f"⚠️ **Step {number} hit an error:** "
-                            f"`{type(exc).__name__}: {exc}`\n\n"
-                            f"*Ask your AI Teaching Assistant to fix it strictly inside Gate {number}.*"
-                        )
-                elif number == completed + 1:
-                    gr.Markdown(
-                        f"{step['story']}\n\n"
-                        f"**What to ask your AI Teaching Assistant now:**\n\n"
-                        f"> {step['prompt']}"
-                    )
-                else:
-                    gr.Markdown("_Locked -- finish the checkpoint above first._")
 
-    return app
+def verdict(text, probability=None, band=None):
+    """Build the structured result for a Step 3 prediction.
+
+    Gate 3 stores a callable in ARTIFACTS["predict"] that returns this
+    dict: the page shows `text`, an animated survival gauge from
+    `probability` (0.0-1.0) and a small chip with `band` (e.g. "likely").
+    """
+    return {"text": str(text), "probability": probability, "band": band}

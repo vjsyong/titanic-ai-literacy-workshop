@@ -33,7 +33,7 @@ $ProgressPreference = "SilentlyContinue"
 #   and referenced through OpenCode's {file:~...} substitution.
 # ============================================================
 
-$BootstrapVersion = "2026.09.30.12"
+$BootstrapVersion = "2026.09.30.13"
 
 # ----------------------------
 # Pinned classroom runtimes
@@ -48,6 +48,11 @@ $NodeVersion = "24.21.0"
 # Stay on the latest OpenCode V2 build without crossing to a
 # future major release.
 $OpenCodePackage = "@opencode/cli@2.0.20"
+
+# The classroom Python packages the workshop scripts need. The list is
+# stored in the package-cache state file, so changing it here forces a
+# fresh install check on machines that already ran an older launcher.
+$WorkshopPackageSignature = "pandas,scikit-learn,fastapi,uvicorn"
 
 # ----------------------------
 # Tencent configuration
@@ -579,15 +584,16 @@ function Test-WorkshopPackages {
         -FilePath $python `
         -Arguments @(
             "-c",
-            "import pandas,matplotlib,sklearn,gradio; import pandas as p; print('ok', p.__version__)"
+            "import pandas,sklearn,fastapi,uvicorn; import pandas as p; print('ok', p.__version__)"
         )
 
     return ($result.ExitCode -eq 0)
 }
 
-# A cold "import gradio" costs 10-20 seconds, and this check runs on every
-# launch. Once a classroom venv has proven healthy we remember that and
-# re-answer instantly; a changed key file (recreated venv) invalidates it.
+# A cold "import fastapi/uvicorn" is quick, but this check also proves
+# the workshop scripts' pandas/scikit-learn stack is healthy. Once a
+# classroom venv has proven healthy we remember that and re-answer
+# instantly; a changed package list or recreated venv invalidates it.
 function Test-WorkshopPackagesFast {
     $stateFile = Join-Path $StateRoot "workshop-packages-ok.json"
 
@@ -601,7 +607,7 @@ function Test-WorkshopPackagesFast {
         }
     }
 
-    if ($state -and ($state.venv -eq $PythonVenvRoot) -and ($state.ok -eq $true)) {
+    if ($state -and ($state.venv -eq $PythonVenvRoot) -and ($state.ok -eq $true) -and ($state.packages -eq $WorkshopPackageSignature)) {
         return $true
     }
 
@@ -610,6 +616,7 @@ function Test-WorkshopPackagesFast {
             [ordered]@{
                 ok   = $true
                 venv = $PythonVenvRoot
+                packages = $WorkshopPackageSignature
                 checkedAt = (Get-Date).ToString("o")
             } |
                 ConvertTo-Json |
@@ -627,7 +634,7 @@ function Install-WorkshopDependencies {
     Write-Section "Preparing workshop Python packages"
 
     if (Test-WorkshopPackagesFast) {
-        Write-OK "Workshop packages already present (pandas / matplotlib / scikit-learn / gradio)"
+        Write-OK "Workshop packages already present (pandas / scikit-learn / fastapi / uvicorn)"
         return
     }
 
@@ -636,7 +643,7 @@ function Install-WorkshopDependencies {
     $env:PIP_CACHE_DIR = Join-Path $AppRoot "pip-cache"
 
     Write-Host ""
-    Write-Host "First run only: installing pandas / matplotlib / scikit-learn / gradio."
+    Write-Host "First run only: installing pandas / scikit-learn / fastapi / uvicorn."
     Write-Host "Target (isolated classroom venv): $PythonVenvRoot" -ForegroundColor Cyan
     Write-Host "This can take a few minutes on classroom Wi-Fi (several hundred MB of wheels)." -ForegroundColor Yellow
     Write-Host "Progress appears below when each package is collected/downloaded, so the window is NOT hung:" -ForegroundColor Yellow
@@ -666,7 +673,7 @@ function Install-WorkshopDependencies {
         "--only-binary=:all:",
         "--disable-pip-version-check",
         "--progress-bar", "off"
-    ) + $wheelArgs + @("pandas", "matplotlib", "scikit-learn", "gradio")
+    ) + $wheelArgs + @("pandas", "scikit-learn", "fastapi", "uvicorn")
 
     $started = Get-Date
     $pipProc = Start-Process `
@@ -706,7 +713,7 @@ function Install-WorkshopDependencies {
         $span = (Get-Date) - $started
         $elapsed = "{0}m {1:00}s" -f [int][Math]::Floor($span.TotalMinutes), $span.Seconds
         Write-Progress `
-            -Activity "Installing workshop packages (pandas / matplotlib / scikit-learn / gradio)" `
+            -Activity "Installing workshop packages (pandas / scikit-learn / fastapi / uvicorn)" `
             -Status "$elapsed elapsed | $downloadCount wheels fetched | $lastAction" `
             -PercentComplete ([Math]::Min(95, 10 + $downloadCount * 8))
     }
@@ -730,6 +737,7 @@ function Install-WorkshopDependencies {
             [ordered]@{
                 ok   = $true
                 venv = $PythonVenvRoot
+                packages = $WorkshopPackageSignature
                 checkedAt = (Get-Date).ToString("o")
             } |
                 ConvertTo-Json |
@@ -746,7 +754,7 @@ function Install-WorkshopDependencies {
         # blocked network, keep setup alive so the OpenCode console still
         # opens on the project root and the instructor is pointed at the
         # fix instead of a silent dead dashboard later.
-        Write-Warn "pip exit code was $pipExitCode. Continuing, but scripts like 01_eda.py need pandas/gradio."
+        Write-Warn "pip exit code was $pipExitCode. Continuing, but scripts like 01_eda.py need pandas/scikit-learn."
     }
 }
 
@@ -1726,54 +1734,52 @@ function Start-ClassOpenCodeService {
         -WorkingDirectory $ClassroomProjectRoot
 }
 
-# The workshop browser page (04_classroom.py served by the gradio CLI
-# runner) is a SECOND classroom service on its own port (default 4097).
-# Serving it here means students get both tabs automatically:
+# The workshop browser page (workshop_server.py + the React UI in web/dist)
+# is a SECOND classroom service on its own port (default 4097). Serving it
+# here means students get everything automatically:
 #     OpenCode chat  : http://127.0.0.1:4096
 #     Workshop page  : http://127.0.0.1:<workshop port>
-# The gradio runner also watches the workshop files, so every gate the
-# AI assistant unlocks hot-reloads the already-open page.
-function Start-WorkshopGradioPage {
+# serve_workshop.py starts the server in the background, waits until the
+# page really answers and returns; the server then auto-refreshes the open
+# page whenever the AI assistant saves a gate.
+function Start-WorkshopPage {
     param(
-        [string]$Gradio,
-        [string]$PythonVenvScripts,
+        [string]$Python,
         [string]$ProjectRoot,
         [int]$Port
     )
 
-    $classroom = Join-Path $ProjectRoot "04_classroom.py"
+    $serve = Join-Path $ProjectRoot "serve_workshop.py"
+    $server = Join-Path $ProjectRoot "workshop_server.py"
 
-    if (-not (Test-Path -LiteralPath $classroom)) {
-        Write-Warn "04_classroom.py was not found in: $ProjectRoot"
-        Write-Host "The workshop web page must be served manually:  gradio 04_classroom.py" -ForegroundColor Yellow
+    if ((-not (Test-Path -LiteralPath $serve)) -or (-not (Test-Path -LiteralPath $server))) {
+        Write-Warn "serve_workshop.py / workshop_server.py were not found in: $ProjectRoot"
+        Write-Host "Servers to run manually:  python serve_workshop.py" -ForegroundColor Yellow
         return $null
     }
 
-    # Prefer the packaged CLI (Scripts\gradio.exe); fall back to
-    # `python -m gradio` which runs the same runner.
-    if (-not (Test-Path -LiteralPath $Gradio)) {
-        $Gradio = $PythonVenvScripts
-        $classroomArg = @("-m", "gradio", ('"{0}"' -f $classroom))
+    Write-Host "Starting the workshop page on port $Port..." -ForegroundColor DarkGray
+
+    Push-Location -LiteralPath $ProjectRoot
+    try {
+        & $Python $serve --port $Port --no-browser
+        $serveExit = $LASTEXITCODE
     }
-    else {
-        $classroomArg = @(('"{0}"' -f $classroom))
+    finally {
+        Pop-Location
     }
 
-    $env:GRADIO_SERVER_PORT = "$Port"
+    if ($serveExit -ne 0) {
+        Write-Warn "serve_workshop.py exited with code $serveExit."
+        Write-Host "Start it manually once:  python serve_workshop.py  (leave that terminal open)" -ForegroundColor Yellow
+        return $null
+    }
 
-    Start-Process `
-        -FilePath $Gradio `
-        -ArgumentList $classroomArg `
-        -WorkingDirectory $ProjectRoot `
-        -WindowStyle Minimized
-
-    Write-Host "Waiting for the workshop page on port $Port..." -ForegroundColor DarkGray
-
-    for ($attempt = 0; $attempt -lt 30; $attempt++) {
-        Start-Sleep -Seconds 2
+    # serve_workshop.py already waited for readiness; double-check quickly.
+    for ($attempt = 0; $attempt -lt 10; $attempt++) {
         try {
             $pageResponse = Invoke-WebRequest `
-                -Uri ("http://127.0.0.1:{0}" -f $Port) `
+                -Uri ("http://127.0.0.1:{0}/api/health" -f $Port) `
                 -UseBasicParsing `
                 -TimeoutSec 5
             if ($pageResponse.StatusCode -ge 200 -and $pageResponse.StatusCode -lt 500) {
@@ -1782,10 +1788,11 @@ function Start-WorkshopGradioPage {
             }
         }
         catch {}
+        Start-Sleep -Seconds 1
     }
 
-    Write-Warn "Workshop page did not come up on port $Port within 60s."
-    Write-Host "Start it manually once:  gradio 04_classroom.py  (leave that terminal open)" -ForegroundColor Yellow
+    Write-Warn "Workshop page did not answer on port $Port."
+    Write-Host "Start it manually once:  python serve_workshop.py  (leave that terminal open)" -ForegroundColor Yellow
     return $null
 }
 
@@ -1799,8 +1806,8 @@ function Start-ClassWatchdog {
         [string]$OpenCode,
         [int]$Port,
         [string]$WatchdogLog,
-        [string]$Gradio,
-        [int]$GradioPort,
+        [string]$Python,
+        [int]$PagePort,
         [string]$ProjectRoot
     )
 
@@ -1812,16 +1819,16 @@ param(
     [int]$Port,
     [string]$Log,
     [string]$ProjectRoot,
-    [string]$Gradio,
-    [int]$GradioPort
+    [string]$Python,
+    [int]$PagePort
 )
 
 $ErrorActionPreference = "Continue"
 $deadline = (Get-Date).AddHours(8)
 $failures = 0
-$gradioFailures = 0
+$pageFailures = 0
 $baseUrl = "http://127.0.0.1:{0}" -f $Port
-$gradioUrl = "http://127.0.0.1:{0}" -f $GradioPort
+$pageUrl = "http://127.0.0.1:{0}" -f $PagePort
 
 while ((Get-Date) -lt $deadline) {
     Start-Sleep -Seconds 10
@@ -1857,28 +1864,27 @@ while ((Get-Date) -lt $deadline) {
         }
     }
 
-    # --- workshop page (gradio) ---
-    $gradioAlive = $false
+    # --- workshop page (workshop_server.py + React UI) ---
+    $pageAlive = $false
     try {
-        $gradioResponse = Invoke-WebRequest -Uri $gradioUrl -UseBasicParsing -TimeoutSec 8
-        if ($gradioResponse.StatusCode -ge 200 -and $gradioResponse.StatusCode -lt 500) {
-            $gradioAlive = $true
+        $pageResponse = Invoke-WebRequest -Uri $pageUrl -UseBasicParsing -TimeoutSec 8
+        if ($pageResponse.StatusCode -ge 200 -and $pageResponse.StatusCode -lt 500) {
+            $pageAlive = $true
         }
     }
     catch {}
 
-    if ($gradioAlive) {
-        $gradioFailures = 0
+    if ($pageAlive) {
+        $pageFailures = 0
     }
     else {
-        $gradioFailures = $gradioFailures + 1
-        if ($gradioFailures -ge 3) {
+        $pageFailures = $pageFailures + 1
+        if ($pageFailures -ge 3) {
             try {
-                $env:GRADIO_SERVER_PORT = "$GradioPort"
-                $classroom = Join-Path $ProjectRoot "04_classroom.py"
-                $null = Start-Process -FilePath $Gradio -ArgumentList ('"{0}"' -f $classroom) -WorkingDirectory $ProjectRoot -WindowStyle Minimized
-                $gradioFailures = 0
-                Add-Content -LiteralPath $Log -Value ((Get-Date -Format o) + " watchdog restarted the workshop page (gradio) on port " + $GradioPort + ".")
+                $serve = Join-Path $ProjectRoot "serve_workshop.py"
+                $null = Start-Process -FilePath $Python -ArgumentList @(('"{0}"' -f $serve), "--port", "$PagePort", "--no-browser") -WorkingDirectory $ProjectRoot -WindowStyle Minimized
+                $pageFailures = 0
+                Add-Content -LiteralPath $Log -Value ((Get-Date -Format o) + " watchdog restarted the workshop page (workshop server) on port " + $PagePort + ".")
             }
             catch {
                 Add-Content -LiteralPath $Log -Value ((Get-Date -Format o) + " watchdog failed to restart the workshop page: " + $_.Exception.Message)
@@ -1901,8 +1907,8 @@ while ((Get-Date) -lt $deadline) {
             "-Port", "$Port",
             "-Log", ('"{0}"' -f $WatchdogLog),
             "-ProjectRoot", ('"{0}"' -f $ClassroomProjectRoot),
-            "-Gradio", ('"{0}"' -f (Join-Path $PythonVenvRoot "Scripts\gradio.exe")),
-            "-GradioPort", "$WorkshopPagePort"
+            "-Python", ('"{0}"' -f $Python),
+            "-PagePort", "$WorkshopPagePort"
         )
 }
 
@@ -2313,7 +2319,7 @@ try {
     $PythonVersionText = (& $ClassPython --version 2>&1 | Out-String).Trim()
     Write-OK "$PythonVersionText + pip"
 
-    # Workshop packages (pandas / matplotlib / scikit-learn / gradio) for
+    # Workshop packages (pandas / scikit-learn / fastapi / uvicorn) for
     # the Titanic scripts (01_eda.py, 02_train.py, 03_dashboard.py).
     Install-WorkshopDependencies
 
@@ -2515,15 +2521,14 @@ try {
         $ClassroomConfigJson
 
     # ========================================================
-    # Workshop page (gradio, separate service)
+    # Workshop page (React UI + workshop server, separate service)
     # ========================================================
     $WorkshopPagePort = Find-FreePort $PreferredWorkshopPort $LastWorkshopPort
 
-    Write-Section "Starting the workshop web page (gradio)"
+    Write-Section "Starting the workshop web page (React UI + workshop server)"
 
-    $WorkshopPage = Start-WorkshopGradioPage `
-        -Gradio (Join-Path $PythonVenvRoot "Scripts\gradio.exe") `
-        -PythonVenvScripts (Join-Path $PythonVenvRoot "Scripts\python.exe") `
+    $WorkshopPage = Start-WorkshopPage `
+        -Python $ClassPython `
         -ProjectRoot $ClassroomProjectRoot `
         -Port $WorkshopPagePort
 
@@ -2575,8 +2580,8 @@ try {
                 -OpenCode $OpenCode `
                 -Port $Server.Port `
                 -WatchdogLog $LatestLog `
-                -Gradio (Join-Path $PythonVenvRoot "Scripts\gradio.exe") `
-                -GradioPort $WorkshopPagePort `
+                -Python $ClassPython `
+                -PagePort $WorkshopPagePort `
                 -ProjectRoot $ClassroomProjectRoot
             Write-OK "Watchdog running (keeps both classroom pages alive for the next 8 hours)"
         }

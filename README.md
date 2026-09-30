@@ -2,8 +2,8 @@
 
 A 75-minute Year 1 AI workshop for students with zero programming experience,
 bundled with a one-click OpenCode classroom environment. **Everything happens
-in the browser**: the workshop scripts are paired with Gradio web interfaces,
-combined into one classroom page.
+in the browser**: the workshop scripts feed a custom React UI (Vite + ECharts)
+served by a small FastAPI process, in one classroom page.
 
 ## What's in this repo
 
@@ -12,9 +12,10 @@ combined into one classroom page.
 | `01_eda.py` | Step 1 - Meet the Data: **6 checkpoint gates** (list, holes, survival, sex/class charts, age) |
 | `02_train.py` | Step 2 - Train the Model: **7 checkpoint gates** (encode -> save model) |
 | `03_dashboard.py` | Step 3 - Survival Explorer: **5 checkpoint gates**, live form appears at gate 3 |
-| `04_classroom.py` | Instructor-managed one-page launcher: all three steps as browser tabs |
-| `serve_workshop.py` | Instructor-managed helper that starts/reopens the workshop page (free port, browser, background) |
-| `workshop_steps.py` | Instructor-managed shared checkpoint machinery (progress bar, locked steps, prompt hints) |
+| `workshop_server.py` | Instructor-managed FastAPI server: checkpoint state, SSE auto-refresh, prediction endpoint, serves `web/dist` |
+| `serve_workshop.py` | Instructor-managed launcher: free port, background server, browser, reuse of a running page |
+| `workshop_steps.py` | Instructor-managed shared machinery: result serialization + `chart()` / `metric()` / `verdict()` helpers |
+| `web/` | The React + TypeScript + Tailwind UI (ECharts charts); `web/dist` is committed so students never need Node |
 | `data/titanic.csv` | The cleaned 1912 passenger list students use |
 | `AGENTS.md` | Persistent system prompt for the students' AI Teaching Assistant |
 | `deployment/` | One-click OpenCode classroom environment (OpenCode 2.0.20, Tencent glm-5.3-flash only) |
@@ -24,27 +25,37 @@ combined into one classroom page.
 1. **Once**: the launcher serves the workshop page automatically
    (`deployment/START VIBE CODING.bat` starts it on port 4097 and a hidden
    watchdog keeps it alive). To (re)start it by hand:
-   `python serve_workshop.py` or `gradio 04_classroom.py`.
+   `python serve_workshop.py`.
    Students see one page, three tabs; each tab shows its next checkpoint as a
    prompt-hint card, locked steps stay greyed out.
-2. **Loop (the magic)**: a student writes their intent (or copies the hint
-   shown on the page, e.g. *"Check data/titanic.csv for missing values and
+2. **Loop (the magic)**: a student writes their intent (or clicks *Copy prompt*
+   on the hint card, e.g. *"Check data/titanic.csv for missing values and
    show me a table of how many holes each column has"*). The AI Teaching
    Assistant implements **exactly one gate**, verifies it in the terminal,
-   bumps the script's `STEPS_COMPLETED`, saves the file. Gradio hot-reloads:
-   the page refreshes itself, the finished checkpoint becomes a result card,
-   and the NEXT prompt hint appears. Repeat until all 18 checkpoints are done.
+   bumps the script's `STEPS_COMPLETED`, saves the file. The server notices
+   within a second: the open page refreshes itself, the finished checkpoint
+   becomes an animated result card (tables, interactive charts, gauges), and
+   the NEXT prompt hint appears. Repeat until all 18 checkpoints are done.
 
-Instructor testing without OpenCode (must have Python packages installed):
+## Instructor development
+
+Backend and UI are separate for a fast dev loop:
+
+```
+python workshop_server.py          # API + state on 127.0.0.1:4097
+cd web && npm install && npm run dev   # Vite on :5173 with HMR, proxies /api
+```
+
+Production-like run (serves the built UI from `web/dist`):
 
 ```
 python serve_workshop.py --no-browser
 ```
 
-(or run the hot-reload server in the foreground: `gradio 04_classroom.py`)
+**After changing the UI, rebuild the committed bundle:** `cd web && npm run build`.
 
-The `demo` branch holds the full reference implementation (all gates
-implemented end to end) matching the `main` scaffold's contracts.
+The `demo` branch holds the full reference implementation (all 18 gates
+implemented with the fancy payloads) matching the student scaffolds.
 
 ## Instructor testing / student quick start (Windows)
 
@@ -55,7 +66,7 @@ implemented end to end) matching the `main` scaffold's contracts.
    ```
    First run only: private Python 3.12 + Node.js + OpenCode 2.0.20 are
    installed under `%LOCALAPPDATA%\VibeCoding` and workshop packages
-   (pandas / matplotlib / scikit-learn / gradio) are pip-installed.
+   (pandas / scikit-learn / fastapi / uvicorn) are pip-installed.
 3. The browser opens the OpenCode Web UI pointed at the workshop folder,
    and the workshop web page itself (http://127.0.0.1:4097).
 4. Simply talk to the AI Teaching Assistant and watch the page evolve.
@@ -84,10 +95,11 @@ Other launchers:
    - The launcher refuses to run with the placeholder still in place.
    - When distributing a ZIP, include `key.txt` — it is inside the zip,
      never in the git history.
-2. Optional: pre-bake big downloads into `deployment/payload/`
+2. Build the UI once (`cd web && npm run build`) so `web/dist` is current.
+3. Optional: pre-bake big downloads into `deployment/payload/`
    (python-3.12.10 installer, node-v24.21.0 zip, SHASUMS256.txt) to reduce
    classroom Wi-Fi traffic — see `deployment/README-FIRST.txt`.
-3. Keep the deployment folder next to the workshop files when zipping.
+4. Keep the deployment folder next to the workshop files when zipping.
 
 ## Updating launcher files
 

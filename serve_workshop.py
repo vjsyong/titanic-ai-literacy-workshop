@@ -1,20 +1,20 @@
 #!/usr/bin/env python3
-"""serve_workshop.py -- Start (or reopen) the workshop's Gradio web page.
+"""serve_workshop.py -- Start (or reopen) the workshop's web page.
 
 WHAT IT DOES
     1. Finds a Python interpreter that has the workshop packages
-       (gradio) available.
+       (fastapi/uvicorn) available.
     2. Reuses an already-running workshop page if one is answering.
-    3. Otherwise starts `gradio 04_classroom.py` on the first free port
-       in the classroom range (4097-4197).
+    3. Otherwise starts `workshop_server.py` on the first free port in
+       the classroom range (4097-4197).
     4. Waits until the page really answers, opens the browser, and
        exits. The server keeps running in the background.
 
-WHY THE `gradio` CLI
-    `gradio 04_classroom.py` runs the page with hot reload: every time
-    the AI Teaching Assistant saves a workshop file, the already-open
-    page refreshes by itself. That is the classroom magic -- never
-    replace it with a plain `python 04_classroom.py` in the launcher.
+WHY NOT JUST workshop_server.py
+    This launcher adds the classroom conveniences: interpreter
+    discovery, free-port picking, reuse of an already-open page,
+    browser opening and background mode. The server itself stays a
+    plain foreground process (instructor/dev friendly).
 
 USAGE
     python serve_workshop.py [--port N] [--no-browser] [--foreground]
@@ -41,22 +41,22 @@ import webbrowser
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
-CLASSROOM = HERE / "04_classroom.py"
-LOG_DIR = HERE / ".gradio"
-LOG_FILE = LOG_DIR / "workshop-page.log"
+SERVER = HERE / "workshop_server.py"
+LOG_DIR = HERE / ".workshop"
+LOG_FILE = LOG_DIR / "page.log"
 
 # The classroom deployment reserves this range for the workshop page
 # (the OpenCode Web UI uses 4096).
 PREFERRED_PORT = 4097
 LAST_PORT = 4197
 
-# A cold start imports pandas + matplotlib + scikit-learn + gradio,
-# which can be slow on classroom machines.
+# A cold start imports pandas + scikit-learn + fastapi, which can be
+# slow on classroom machines.
 READY_TIMEOUT = 120.0
 READY_POLL = 1.0
 
-# A live workshop page always contains this in its root HTML.
-PAGE_MARKER = "gradio"
+# Marker the health endpoint returns for THIS app.
+HEALTH_MARKER = "titanic-workshop"
 
 # Proxy-free opener: a campus proxy must never intercept localhost.
 _OPENER = urllib.request.build_opener(urllib.request.ProxyHandler({}))
@@ -107,12 +107,13 @@ def _port_is_free(port):
 
 
 def _page_is_live(port, timeout=1.5):
+    """True when our workshop server answers on this port."""
     try:
-        with _OPENER.open(f"http://127.0.0.1:{port}/", timeout=timeout) as response:
+        with _OPENER.open(f"http://127.0.0.1:{port}/api/health", timeout=timeout) as response:
             if response.status != 200:
                 return False
-            body = response.read(65536).decode("utf-8", "replace").lower()
-            return PAGE_MARKER in body
+            body = response.read(65536).decode("utf-8", "replace")
+            return HEALTH_MARKER in body
     except OSError:
         return False
 
@@ -141,21 +142,18 @@ def _log_tail(line_count=15):
 
 def _server_environment(port):
     environment = os.environ.copy()
-    environment["GRADIO_SERVER_PORT"] = str(port)
-    environment["GRADIO_SERVER_NAME"] = "127.0.0.1"
-    environment["GRADIO_ANALYTICS_ENABLED"] = "False"
     environment["PYTHONUNBUFFERED"] = "1"
     _ensure_loopback_no_proxy(environment)
     return environment
 
 
-def _server_command(python):
-    return [str(python), "-m", "gradio", str(CLASSROOM)]
+def _server_command(python, port):
+    return [str(python), str(SERVER), "--port", str(port)]
 
 
 def _start_server(python, port):
     environment = _server_environment(port)
-    command = _server_command(python)
+    command = _server_command(python, port)
 
     LOG_DIR.mkdir(exist_ok=True)
     log_handle = open(LOG_FILE, "a", encoding="utf-8", errors="replace")
@@ -186,7 +184,7 @@ def _start_server(python, port):
 
 def _run_foreground(python, port, open_browser):
     environment = _server_environment(port)
-    command = _server_command(python)
+    command = _server_command(python, port)
     _say(f"Running (Ctrl+C stops the page): {' '.join(command)}")
 
     process = subprocess.Popen(command, cwd=str(HERE), env=environment)
@@ -270,7 +268,7 @@ def _choose_port(requested):
 
 def _parse_args(argv):
     parser = argparse.ArgumentParser(
-        description="Start (or reopen) the workshop's Gradio web page."
+        description="Start (or reopen) the workshop's web page."
     )
     parser.add_argument("--port", type=int, help="port for the page (default 4097)")
     parser.add_argument(
@@ -291,14 +289,14 @@ def _parse_args(argv):
 def main(argv=None):
     args = _parse_args(argv)
 
-    if not CLASSROOM.exists():
-        _say(f"ERROR: {CLASSROOM.name} was not found next to this script.")
+    if not SERVER.exists():
+        _say(f"ERROR: {SERVER.name} was not found next to this script.")
         _say("Run this script from inside the workshop folder.")
         return 1
 
     requested_port = args.port
     if requested_port is None:
-        environment_port = os.environ.get("GRADIO_SERVER_PORT", "").strip()
+        environment_port = os.environ.get("WORKSHOP_PORT", "").strip()
         if environment_port:
             try:
                 requested_port = int(environment_port)

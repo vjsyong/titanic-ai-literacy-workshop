@@ -13,15 +13,22 @@ THE STEP-BY-STEP EXPERIENCE
     dict below (the classroom plumbing around the gates, not the gates
     themselves), so later gates and the Step 3 dashboard can use them.
 
+    The workshop page (served by workshop_server.py) notices the saved
+    file within a second and reveals the next checkpoint.
+
 HOW TO RUN
-    python 02_train.py       (terminal checklist view)
-    gradio 02_train.py       (single-page web view)
+    python 02_train.py        (terminal checklist view)
+    python serve_workshop.py  (the web page -- all three steps at once)
 """
 
 import os
 import pickle
 
 import pandas as pd
+
+# Shared gate helpers: workshop_steps.chart(...) draws interactive charts
+# on the page, workshop_steps.metric(...) shows headline numbers.
+import workshop_steps
 
 # ----------------------------------------------------------------------------
 # PATHS -- never change or move these
@@ -46,7 +53,10 @@ STEPS_COMPLETED = 0
 # ============================================================================
 # Rules for the AI assistant:
 #   * Implement ONE gate per student request, strictly inside the gate.
-#   * Return web-ready content (text / DataFrame / dict {"text", "dataframe"}).
+#   * Return web-ready content: text, a DataFrame (table), or a dict
+#     {"text": ..., "dataframe": ..., "chart": ..., "metric": ...}.
+#     Charts: workshop_steps.chart(kind=..., data=..., x=..., y=...).
+#     Headline numbers: workshop_steps.metric(value, "Test accuracy").
 #   * Store anything later gates need in ARTIFACTS (e.g. ARTIFACTS["model"]).
 #   * When python 02_train.py runs cleanly, bump STEPS_COMPLETED to n.
 #   * NEVER touch a future gate (STOP-FIRST RULE applies).
@@ -106,9 +116,17 @@ def step_4_scale_features():
 def step_5_train():
     """Train LogisticRegression(max_iter=1000) on the scaled train set.
 
-    LOOK LIKE (web): the headline the class earned: Test accuracy: X.X%,
-    with one line reminding accuracy is out-of-sample.
-    Store: ARTIFACTS["model"].
+    LOOK LIKE (web): the headline the class earned, rendered as an
+    animated ring with workshop_steps.metric:
+
+        accuracy = ARTIFACTS["model"].score(
+            ARTIFACTS["x_test_scaled"], ARTIFACTS["y_test"])
+        return {
+            "text": "The model judges passengers it has never seen ...",
+            "metric": workshop_steps.metric(accuracy, "Test accuracy"),
+        }
+
+    Store: ARTIFACTS["model"] (and ARTIFACTS["test_accuracy"] if handy).
     """
     raise NotImplementedError("Gate 5 is not built yet")
 
@@ -117,9 +135,18 @@ def step_5_train():
 def step_6_explain_model():
     """Rank feature importance via LogisticRegression coefficients.
 
-    LOOK LIKE (web): a table number-per-feature; explain in plain words
-    (e.g. 'Sex' row pushes women toward surviving; 'Pclass' row pushes
-    cheaper classes toward perishing). No jargon like log-odds.
+    LOOK LIKE (web): a table of feature -> coefficient, PLUS a
+    horizontal diverging bar chart (positive values color one way,
+    negative the other) made with:
+
+        workshop_steps.chart(
+            kind="bar", data=coefs, x="Feature", y="Coefficient",
+            diverging=True, horizontal=True,
+        )
+
+    Explain in plain words (e.g. 'Sex' pushes women toward surviving;
+    'Pclass' pushes cheaper classes toward perishing). No jargon like
+    log-odds.
     """
     raise NotImplementedError("Gate 6 is not built yet")
 
@@ -129,8 +156,14 @@ def step_7_save_model():
     """Pickle the trained model, its scaler, and feature_columns together.
 
     LOOK LIKE (web): a friendly confirmation that titanic_model.pkl is
-    ready for Step 3, plus ONE sample passenger verdict (e.g. first-class
-    woman) as proof the brain works.
+    ready for Step 3, plus ONE sample passenger verdict shown as an
+    animated gauge:
+
+        workshop_steps.chart(
+            kind="gauge", value=probability * 100,
+            title="First-class woman, 30: survival chance",
+        )
+
     MUST pickle a dict {"model": ..., "scaler": ..., "feature_columns": ...}
     to MODEL_PATH -- the Step 3 dashboard (03_dashboard.py) expects exactly
     that structure (this is the cross-script contract).
@@ -222,8 +255,9 @@ STEPS = [
         "prompt": (
             "Step 2, checkpoint 5: train a Logistic Regression model on "
             "the scaled training data (this is a fine first model -- keep "
-            "it simple and explainable). Then tell me how accurate its "
-            "guesses were on the test set it never saw."
+            "it simple and explainable). Then show me how accurate its "
+            "guesses were on the test set -- display the score as a big "
+            "animated number/ring so the class can cheer."
         ),
         "fn": "step_5_train",
     },
@@ -238,8 +272,9 @@ STEPS = [
         "prompt": (
             "Step 2, checkpoint 6: rank the features by how much the model "
             "used them (for a Logistic Regression, the coefficient sizes "
-            "tell us that). Explain each row in plain English -- no "
-            "statistics jargon."
+            "tell us that) and draw it as a colored bar chart where "
+            "positive and negative pull in different directions. Explain "
+            "each row in plain English -- no statistics jargon."
         ),
         "fn": "step_6_explain_model",
     },
@@ -256,7 +291,8 @@ STEPS = [
             "predictions to titanic_model.pkl (model, scaler, and the "
             "feature list in that order/shape). Prove it works by "
             "predicting one fresh passenger, e.g. a 30-year-old woman in "
-            "1st class. Make the message friendly and clear."
+            "1st class, and show me the survival chance as a gauge. Make "
+            "the message friendly and clear."
         ),
         "fn": "step_7_save_model",
     },
@@ -294,8 +330,7 @@ def train_model():
 if __name__ == "__main__":
     print(
         "Terminal mode: running the completed checkpoints in order.\n"
-        "For the step-by-step magic, serve with:  gradio 02_train.py\n"
-        "Or serve every workshop step at once:    gradio 04_classroom.py"
+        "For the step-by-step web page:  python serve_workshop.py"
     )
     # Graceful hint when the student runs ahead of the gates. (Keep this
     # run guard exactly as-is; the AI assistant also gets terminal access
@@ -304,24 +339,14 @@ if __name__ == "__main__":
 
 
 # ============================================================================
-# WEB INTERFACE -- pairs this script with a web page (Gradio).
+# PAGE METADATA -- the tab title and intro the workshop page shows.
 # ============================================================================
-import gradio as gr  # noqa: E402  (web layer after data layer by design)
-import workshop_steps  # noqa: E402
-
-
-def build_training_app():
-    """Step 2 web page built entirely from the checkpoint scaffold."""
-    return workshop_steps.make_app(
-        title="2 - Train the Model",
-        intro=(
-            "Let's turn the Titanic patterns into a model that guesses by "
-            "itself. Unlock the checkpoints one at a time -- your assistant "
-            "does the typing, you supply the intent."
-        ),
-        steps=STEPS,
-        module_globals=globals(),
-    )
-
-
-demo = build_training_app()
+PAGE = {
+    "id": "train",
+    "title": "2 - Train the Model",
+    "intro": (
+        "Let's turn the Titanic patterns into a model that guesses by "
+        "itself. Unlock the checkpoints one at a time -- your assistant "
+        "does the typing, you supply the intent."
+    ),
+}

@@ -14,15 +14,21 @@ THE STEP-BY-STEP EXPERIENCE
         Gate 4  -> kinder verdict wording
         Gate 5  -> black-box test bench + graduation message
 
+    The workshop page (served by workshop_server.py) notices the saved
+    file within a second and reveals the next checkpoint.
+
 HOW TO RUN
-    gradio 03_dashboard.py       (single-page web view)
-    gradio 04_classroom.py       (all steps at once, recommended)
+    python 03_dashboard.py    (terminal checklist view)
+    python serve_workshop.py  (the web page -- all three steps at once)
 """
 
 import os
 import pickle
 
-import gradio as gr
+import pandas as pd
+
+# Shared gate helpers (charts, metrics, structured verdicts).
+import workshop_steps
 
 # ----------------------------------------------------------------------------
 # PATH -- never change or move this
@@ -55,15 +61,19 @@ DEFAULT_INPUT_SPEC = [
 # Rules for the AI assistant:
 #   * Implement ONE gate per student request, strictly inside the gate.
 #   * Gate 3 must expose the prediction function as:
-#         ARTIFACTS["predict"](values_dict) -> str verdict (one line or paragraph)
-#     where values_dict maps each form label -> its chosen value.
+#         ARTIFACTS["predict"](values_dict) -> dict
+#     where values_dict maps each form label -> its chosen value, and the
+#     returned dict is built with:
+#         workshop_steps.verdict(text, probability, band)
+#     "probability" is 0.0-1.0 (drives the animated gauge) and "band" is
+#     the kinder wording label (e.g. "likely", "close call", "unlikely").
 #   * Gate 2 must store the form definition as ARTIFACTS["input_spec"] =
 #     a list of dicts like DEFAULT_INPUT_SPEC above.
 #   * If a gate needs a missing prerequisite (e.g. no titanic_model.pkl),
 #     its function may return a friendly text card telling the student
 #     which earlier step to finish -- do NOT raise on missing files.
-#   * Bump STEPS_COMPLETED (one at a time) after python/gradio reload
-#     shows the gate working on the web page.
+#   * Bump STEPS_COMPLETED (one at a time) after the web page shows the
+#     gate working.
 # ============================================================================
 
 
@@ -92,15 +102,19 @@ def step_2_design_the_form():
 
 # === GATE 3 -- "Wire the prediction" =========================================
 def step_3_wire_prediction():
-    """Make the form actually predict: ARTIFACTS["predict"](values_dict) -> verdict.
+    """Make the form actually predict.
 
     MUST (per the gate contract):
       * read and use ARTIFACTS["input_spec"] labels,
       * encode 'Sex' back to numbers exactly like the model was trained
         (word plain-fare floats are NOT welcome here),
       * scale the numbers with the stored scaler BEFORE predicting,
-      * return a human sentence with the probability,
-      * confirm with one live example on REAL model output (not mock text).
+      * store `ARTIFACTS["predict"] = my_predict_function`, where the
+        function takes values_dict and returns
+        workshop_steps.verdict(text, probability, band) -- the page then
+        draws the animated survival gauge and the kinder wording itself,
+      * confirm with one live example on REAL model output (not mock
+        text); a text sentence plus a gauge is perfect.
     """
     raise NotImplementedError("Gate 3 is not built yet")
 
@@ -112,6 +126,7 @@ def step_4_kind_verdicts():
     LOOK LIKE: a small table bands -> wording tone. Re-place
     ARTIFACTS["predict"] with a version that uses the kinder wording,
     then re-run one example on the real model to show the new text.
+    The gauge color follows the band, so label them clearly.
     """
     raise NotImplementedError("Gate 4 is not built yet")
 
@@ -121,9 +136,9 @@ def step_5_black_box_tests():
     """Probe the model with imaginary passengers and discuss unfairness.
 
     LOOK LIKE: a table of at least 6 imaginary passengers, each with the
-    live verdict (e.g. 15-year-old girl in 1st class vs. 60-year-old man
-    in 3rd class), plus 2-3 plain-English questions for class discussion
-    (is any pattern unfair? what does the model NOT see?).
+    live verdict, PLUS an interactive bar chart comparing their survival
+    probabilities (0-100), plus 2-3 plain-English questions for class
+    discussion (is any pattern unfair? what does the model NOT see?).
     """
     raise NotImplementedError("Gate 5 is not built yet")
 
@@ -168,16 +183,16 @@ STEPS = [
         "title": "Wire the prediction",
         "story": (
             "Time to connect the form to the brain: press predict, and "
-            "the model's guess appears. Remember the model was trained on "
-            "numbers, so 'female' must turn back into its coded digit "
-            "before reaching the model."
+            "the model's guess appears as an animated gauge. Remember the "
+            "model was trained on numbers, so 'female' must turn back into "
+            "its coded digit before reaching the model."
         ),
         "prompt": (
             "Step 3, checkpoint 3: connect the form to the model so the "
             "prediction button works. Encode the Sex choices back to "
             "numbers exactly like Step 2 did, use the stored scaler, and "
-            "reply with the survival probability in a human sentence. "
-            "Show me one live example straight from the model."
+            "show the survival probability as a gauge with a human "
+            "sentence. Show me one live example straight from the model."
         ),
         "fn": "step_3_wire_prediction",
     },
@@ -208,9 +223,9 @@ STEPS = [
         "prompt": (
             "Step 3, checkpoint 5 (final!): test the live model with at "
             "least six imaginary passengers (young/old, women/men, 1st/3rd "
-            "class), show their verdicts in a table, and give me two or "
-            "three discussion questions about fairness and what the data "
-            "cannot tell us."
+            "class), show their verdicts in a table AND as a bar chart of "
+            "their survival chances, and give me two or three discussion "
+            "questions about fairness and what the data cannot tell us."
         ),
         "fn": "step_5_black_box_tests",
     },
@@ -221,105 +236,43 @@ STEPS = [
 # ORCHESTRATION -- function name and behavior contract (do not rename).
 # ============================================================================
 def launch_dashboard():
-    """Builds and returns the Step 3 web app (progressive by design).
+    """Runs every completed checkpoint in order (terminal-friendly view).
 
-    The object must be returned as the module-level `demo` so that
-    `gradio 04_classroom.py` can serve it with hot reloading.
+    The web page renders the checkpoints itself; this function exists so
+    `python 03_dashboard.py` can prove the gates work in a terminal.
     """
-    completed = int(STEPS_COMPLETED)
-    with gr.Blocks(title="3 - Survival Explorer") as dashboard:
-        gr.Markdown(
-            "## 3 - Survival Explorer\n\n"
-            "The trained brain from Step 2 is loaded here. Build the form "
-            "checkpoint by checkpoint with your AI Teaching Assistant."
-        )
-        gr.Markdown(f"**Progress:** {completed} of {len(STEPS)} checkpoints unlocked")
-
-        # --- checkpoint result cards (same style as Steps 1 & 2) ---------
-        for step in STEPS:
-            if step["number"] > completed:
-                if step["number"] == completed + 1:
-                    with gr.Group():
-                        gr.Markdown(
-                            f"#### 🔓 Checkpoint {step['number']} of {len(STEPS)} -- {step['title']}\n"
-                            f"{step['story']}\n\n"
-                            f"**What to ask your AI Teaching Assistant now:**\n\n"
-                            f"> {step['prompt']}"
-                        )
-                else:
-                    gr.Markdown(f"#### 🔒 Step {step['number']} -- locked")
-                continue
-
-            with gr.Group():
-                gr.Markdown(f"#### ✅ Completed checkpoint {step['number']} -- {step['title']}")
-                fn = globals().get(step["fn"])
-                if fn is not None:
-                    try:
-                        workshop_steps.render_result(fn())
-                    except Exception as exc:
-                        gr.Markdown(
-                            f"⚠️ Checkpoint {step['number']} hit an error: "
-                            f"`{type(exc).__name__}: {exc}`"
-                        )
-
-        # --- the LIVE interactive form appears from checkpoint 3 on ------
-        if completed < 3:
-            gr.Markdown("🔒 *The live prediction form appears after checkpoint 3.*")
-        else:
-            input_spec = ARTIFACTS.get("input_spec", DEFAULT_INPUT_SPEC)
-            components = []
-            with gr.Group():
-                gr.Markdown("### Try your own imaginary passenger")
-                for item in input_spec:
-                    if item["kind"] == "radio":
-                        components.append(gr.Radio(choices=item["choices"], value=item["value"], label=item["label"]))
-                    else:
-                        components.append(
-                            gr.Slider(
-                                minimum=item["min"],
-                                maximum=item["max"],
-                                step=item.get("step", 1),
-                                value=item["value"],
-                                label=item["label"],
-                            )
-                        )
-            verdict = gr.Textbox(label="What the model says", lines=4, interactive=False)
-            predict_button = gr.Button("Predict survival", variant="primary")
-
-            def _on_predict(*values):
-                values_dict = {item["label"]: value for item, value in zip(input_spec, values)}
-                predict = ARTIFACTS.get("predict")
-                if predict is None:
-                    return "⚠️ The brain is not wired yet -- checkpoint 3 needed."
-                try:
-                    return str(predict(values_dict))
-                except Exception as exc:
-                    return f"⚠️ The brain stumbled: {type(exc).__name__}: {exc}"
-
-            def _bind(button):
-                button.click(fn=_on_predict, inputs=components, outputs=[verdict])
-
-            _bind(predict_button)
-
-        if STEPS_COMPLETED is not None and int(STEPS_COMPLETED) >= len(STEPS):
-            gr.Markdown(
-                "🎉 **Workshop complete!** You explored the data, trained a "
-                "model, and interrogated it. Go build something of your own!"
-            )
-    return dashboard
+    for step in STEPS:
+        if step["number"] > STEPS_COMPLETED:
+            break
+        fn = globals().get(step["fn"])
+        if fn is None:
+            continue
+        try:
+            result = fn()
+        except Exception as exc:
+            print(f"Gate {step['number']} hit a problem: {exc}")
+            raise
+        print(f"Gate {step['number']} OK -- {step['title']}")
+    return ARTIFACTS
 
 
 if __name__ == "__main__":
     print(
-        "Serve this step with:                gradio 03_dashboard.py\n"
-        "Or serve every workshop step at once: gradio 04_classroom.py\n"
-        "(The web app object is the variable `demo` below.)"
+        "Terminal mode: running the completed checkpoints in order.\n"
+        "For the step-by-step web page:  python serve_workshop.py"
     )
+    launch_dashboard()
 
 
 # ============================================================================
-# WEB LAYER -- workshop_steps provides the shared checkpoint machinery.
+# PAGE METADATA -- the tab title and intro the workshop page shows.
 # ============================================================================
-import workshop_steps  # noqa: E402
-
-demo = launch_dashboard()
+PAGE = {
+    "id": "dashboard",
+    "title": "3 - Survival Explorer",
+    "intro": (
+        "The trained brain from Step 2 is loaded here. Build the form "
+        "checkpoint by checkpoint with your AI Teaching Assistant, then "
+        "test it with imaginary passengers."
+    ),
+}
