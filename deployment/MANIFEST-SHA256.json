@@ -6,8 +6,8 @@
   },
   {
     "file": "REPAIR VIBE CODING.bat",
-    "sha256": "86be4d35732e8d4fde8559da9ee08fd8e964bcfbb9ccd0363621035734d28dde",
-    "bytes": 1064
+    "sha256": "37efe6c37fd1a760de6cb10a9e727e23650b79798f642b80d501a384134c6b54",
+    "bytes": 1202
   },
   {
     "file": "RESET VIBE CODING.bat",
@@ -16,8 +16,8 @@
   },
   {
     "file": "START VIBE CODING.bat",
-    "sha256": "3a17f35b966c363260eaacec6b463f3e2a1a39c0d3216b2639a2fdbaca1f7d00",
-    "bytes": 2026
+    "sha256": "02cf2e31a5032111945f2f44fb1fafb916740f9c7ef20813a87b5f04ffa3c146",
+    "bytes": 2086
   },
   {
     "file": "KEY.txt.TEMPLATE",
@@ -26,7 +26,7 @@
   },
   {
     "file": "oneclick.ps1",
-    "sha256": "140e12b55ec5f3054cae95909b8dd6682db98db0c98d58a2ea1d903fa54b1f85",
+    "sha256": "a8e68f69b9eab7cb105480ad29e7b6007a473275b99d812a31e3ed61aadfd57e",
     "bytes": 74490
   },
   {

@@ -33,7 +33,7 @@ $ProgressPreference = "SilentlyContinue"
 #   and referenced through OpenCode's {file:~...} substitution.
 # ============================================================
 
-$BootstrapVersion = "2026.09.30.10"
+$BootstrapVersion = "2026.09.30.11"
 
 # ----------------------------
 # Pinned classroom runtimes
