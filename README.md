@@ -9,15 +9,38 @@ combined into one classroom page.
 
 | Path | Purpose |
 |---|---|
-| `01_eda.py` | Step 1 - Meet the Data: charts + summary (CLI and web both work) |
-| `02_train.py` | Step 2: train the survival model, report test accuracy (CLI and web) |
-| `03_dashboard.py` | Step 3: Gradio survival web app (Gradio hot reload) |
+| `01_eda.py` | Step 1 - Meet the Data: **6 checkpoint gates** (list, holes, survival, sex/class charts, age) |
+| `02_train.py` | Step 2 - Train the Model: **7 checkpoint gates** (encode -> save model) |
+| `03_dashboard.py` | Step 3 - Survival Explorer: **5 checkpoint gates**, live form appears at gate 3 |
 | `04_classroom.py` | Instructor-managed one-page launcher: all three steps as browser tabs |
+| `workshop_steps.py` | Instructor-managed shared checkpoint machinery (progress bar, locked steps, prompt hints) |
 | `data/titanic.csv` | The cleaned 1912 passenger list students use |
 | `AGENTS.md` | Persistent system prompt for the students' AI Teaching Assistant |
-| `deployment/` | Launcher scripts + hardened bootstrap for the OpenCode Web UI environment (OpenCode 2.0.20 pinned, Tencent glm-5.3-flash as the only provider) |
+| `deployment/` | One-click OpenCode classroom environment (OpenCode 2.0.20, Tencent glm-5.3-flash only) |
 
-## Student quick start (Windows)
+## How the class works (checkpoint flow)
+
+1. **Once**: the instructor serves the workshop page (`gradio 04_classroom.py`).
+   Students see one page, three tabs; each tab shows its next checkpoint as a
+   prompt-hint card, locked steps stay greyed out.
+2. **Loop (the magic)**: a student writes their intent (or copies the hint
+   shown on the page, e.g. *"Check data/titanic.csv for missing values and
+   show me a table of how many holes each column has"*). The AI Teaching
+   Assistant implements **exactly one gate**, verifies it in the terminal,
+   bumps the script's `STEPS_COMPLETED`, saves the file. Gradio hot-reloads:
+   the page refreshes itself, the finished checkpoint becomes a result card,
+   and the NEXT prompt hint appears. Repeat until all 18 checkpoints are done.
+
+Instructor testing without OpenCode (must have Python packages installed):
+
+```
+gradio 04_classroom.py
+```
+
+The `demo` branch holds the full reference implementation (all gates
+implemented end to end) matching the `main` scaffold's contracts.
+
+## Instructor testing / student quick start (Windows)
 
 1. Get the workshop folder (ZIP from the instructor).
 2. Double-click:
@@ -28,19 +51,12 @@ combined into one classroom page.
    installed under `%LOCALAPPDATA%\VibeCoding` and workshop packages
    (pandas / matplotlib / scikit-learn / gradio) are pip-installed.
 3. The browser opens the OpenCode Web UI pointed at the workshop folder.
-4. Ask the AI Teaching Assistant to run the workshop web page:
+4. Ask the AI Teaching Assistant to serve the workshop web page:
    ```
    gradio 04_classroom.py
    ```
    (or a single step: `gradio 01_eda.py`)
-   The Teaching Assistent opens the link in your browser; the class then
-   works tab by tab: explore -> train -> predict.
-
-Instructor testing without OpenCode (must have Python packages installed):
-
-```
-gradio 04_classroom.py
-```
+   Then simply talk to your assistant and watch the page evolve.
 
 If the Web UI ever shows no project, use File -> Open Project and pick the
 extracted workshop folder once.

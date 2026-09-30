@@ -1,18 +1,26 @@
-"""01_eda.py -- Exploratory Data Analysis (First-year AI Literacy Workshop)
+"""01_eda.py -- Step 1 "Meet the Data" (First-year AI Literacy Workshop)
 
-WHAT THIS SCRIPT DOES
-    Loads the cleaned Titanic passenger list, prints a friendly summary of the
-    numbers, and draws charts that help us spot patterns by eye.
+THE STEP-BY-STEP EXPERIENCE
+    This script is a scaffold of six progressive checkpoints (gates).
+    The class starts with STEPS_COMPLETED = 0: on the web page, students
+    see the intro, the NEXT checkpoint's prompt hint, and locked slots
+    for the rest. Each time a student asks their AI Teaching Assistant
+    to unlock one step, the assistant:
 
-WHAT YOU (THE STUDENT) DO
-    Everything in the workshop happens inside the block marked:
-        # TODO: PROMPT HERE  >>> BEGIN STUDENT EDIT ZONE
-        ...
-        # TODO: PROMPT HERE  <<< END STUDENT EDIT ZONE
-    That is the ONLY part of the file you (or your AI assistant) should change.
+        1. fills the step function's body -- ONLY inside that step's
+           `# === GATE n ===` markers,
+        2. runs `python 01_eda.py` in the terminal to prove it works,
+        3. bumps STEPS_COMPLETED to that step's number -- nothing else.
+
+    Because the page is served with `gradio 04_classroom.py`, the saved
+    file hot-reloads and the page reveals the next magic sentence.
+
+    Students never type code. The AI assistant never types more than
+    one checkpoint at a time (see AGENTS.md STOP-FIRST RULE).
 
 HOW TO RUN
-    python 01_eda.py
+    python 01_eda.py        (terminal checklist view)
+    gradio 01_eda.py        (single-page web view)
 """
 
 import os
@@ -34,152 +42,247 @@ DATA_PATH = os.path.join("data", "titanic.csv")
 OUTPUT_DIR = "eda_output"
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
+# ----------------------------------------------------------------------------
+# PROGRESS COUNTER -- the ONLY number the AI assistant bumps in class,
+# strictly one step at a time, AFTER it proved the step works.
+# ----------------------------------------------------------------------------
+STEPS_COMPLETED = 0
 
-def analyze_data():
-    """Load the Titanic data, explore it, and save chart images.
 
-    This function runs when you type:  python 01_eda.py
+# ============================================================================
+# CHECKPOINT GATES -- student + AI edit zone
+# ============================================================================
+# Rules for the AI assistant:
+#   * Implement ONE gate per student request: fill the step function body
+#     below its `# === GATE n ===` marker, never earlier, never later.
+#   * Each function returns web-ready content: text, a DataFrame, a chart
+#     path, or a dict like {"text": ..., "dataframe": ..., "image": ...}.
+#   * Charts must be saved into OUTPUT_DIR (so the CLI keeps the history).
+#   * When python 01_eda.py runs cleanly, bump STEPS_COMPLETED to n.
+#   * NEVER touch a future gate. If the student asks, apply the workshop
+#     STOP-FIRST RULE instead of implementing.
+# ============================================================================
+
+
+# === GATE 1 -- "Open the passenger list" ====================================
+def step_1_open_the_list():
+    """Load data/titanic.csv with pandas, count and peek.
+
+    LOOK LIKE (web): a friendly sentence with the number of passengers and
+    the details each row carries, plus a small preview table (head).
     """
-    titanic = pd.read_csv(DATA_PATH)
+    raise NotImplementedError("Gate 1 is not built yet")
 
-    # ------------------------------------------------------------------
-    # A first look at the data -- these lines run automatically.
-    # ------------------------------------------------------------------
-    print("\n=== First look at the data ===")
-    print(f"Rows (passengers): {len(titanic)}")
-    print(f"Columns: {len(titanic.columns)} -> {', '.join(titanic.columns)}")
-    print("\nMissing values per column:")
-    missing = titanic.isna().sum()
-    print(missing.to_string() if missing.any() else "  none -- the data is clean!")
 
-    # ==================================================================
-    # TODO: PROMPT HERE  >>> BEGIN STUDENT EDIT ZONE
-    # ==================================================================
-    #
-    #  Your AI Teaching Assistant will write code here when you ask for
-    #  things like: "show me the survival chart" or "compare fares".
-    #
-    #  Starter content (placeholder): a simple overview table and the
-    #  classic survival chart so the workflow is demonstrated end-to-end.
-    #
-    #  Students: feel free to ask your AI assistant to replace this!
-    #
-    print("\n=== Survival overview ===")
-    group = titanic.groupby("Survived").size()
-    survivors = int(group.get(1, 0))
-    victims = int(group.get(0, 0))
-    print(f"Survivors : {survivors} ({survivors / len(titanic):.1%})")
-    print(f"Perished  : {victims} ({victims / len(titanic):.1%})")
+# === GATE 2 -- "Where are the holes?" =======================================
+def step_2_find_missing_values():
+    """Show how many missing values each column has.
 
-    # --- Chart 1: survival by sex -----------------------------------
-    chart_path = os.path.join(OUTPUT_DIR, "survival_chart.png")
-    by_sex = titanic.groupby(["Sex", "Survived"]).size().unstack("Survived")
-    ax = by_sex.plot(kind="bar", figsize=(7, 4.5))
-    ax.set_title("Did female passengers survive more often than male passengers?")
-    ax.set_xlabel("Sex of passenger")
-    ax.set_ylabel("Number of passengers")
-    ax.legend(["Perished", "Survived"], title=None)
-    ax.set_xticklabels(by_sex.index, rotation=0)
-    fig = ax.get_figure()
-    fig.tight_layout()
-    fig.savefig(chart_path, dpi=150)
-    plt.close(fig)
-    print(f"\nSaved chart -> {chart_path}")
+    LOOK LIKE (web): a small table of column -> number of holes.
+    NOTE for the classroom: data/titanic.csv is pre-cleaned on purpose,
+    so a nice discussion question is: 'if there are no holes, who filled
+    them and why does that matter for a model?'
+    """
+    raise NotImplementedError("Gate 2 is not built yet")
 
-    # --- Chart 2: survival by ticket class --------------------------
-    chart_path = os.path.join(OUTPUT_DIR, "class_chart.png")
-    by_class = titanic.groupby(["Pclass", "Survived"]).size().unstack("Survived")
-    ax = by_class.plot(kind="bar", figsize=(7, 4.5))
-    ax.set_title("Was ticket class linked to survival?")
-    ax.set_xlabel("Ticket class (1 = most expensive, 3 = cheapest)")
-    ax.set_ylabel("Number of passengers")
-    ax.legend(["Perished", "Survived"], title=None)
-    ax.set_xticklabels(by_class.index, rotation=0)
-    fig = ax.get_figure()
-    fig.tight_layout()
-    fig.savefig(chart_path, dpi=150)
-    plt.close(fig)
-    print(f"Saved chart -> {chart_path}")
-    #
-    # ==================================================================
-    # TODO: PROMPT HERE  <<< END STUDENT EDIT ZONE
-    # ==================================================================
 
+# === GATE 3 -- "Did you survive?" ===========================================
+def step_3_survival_overview():
+    """Count survivors vs non-survivors and their shares.
+
+    LOOK LIKE (web): a tiny table (Perished vs Survived, counts and %).
+    TIP: the student should GUESS the split out loud first.
+    """
+    raise NotImplementedError("Gate 3 is not built yet")
+
+
+# === GATE 4 -- "Survival by sex" ============================================
+def step_4_survival_by_sex():
+    """Bar chart: survival counts split by male/female.
+
+    LOOK LIKE (web): the chart image plus one friendly caption sentence.
+    MUST save the chart to OUTPUT_DIR/survival_chart.png exactly.
+    """
+    raise NotImplementedError("Gate 4 is not built yet")
+
+
+# === GATE 5 -- "Survival by ticket class" ===================================
+def step_5_survival_by_class():
+    """Bar chart of survival counts split by Pclass 1/2/3.
+
+    LOOK LIKE (web): another chart image plus a caption sentence.
+    MUST save the chart to OUTPUT_DIR/class_chart.png exactly.
+    """
+    raise NotImplementedError("Gate 5 is not built yet")
+
+
+# === GATE 6 -- "The age story" ==============================================
+def step_6_age_patterns():
+    """Explore age as a survival pattern (e.g. survival by age group).
+
+    LOOK LIKE (web): one chart of your choice about age plus one
+    plain-English takeaway sentence the class can discuss.
+    Save the chart into OUTPUT_DIR/ with a clear file name you pick.
+    """
+    raise NotImplementedError("Gate 6 is not built yet")
+
+
+# ============================================================================
+# STEP DESCRIPTIONS -- the web page reads this list. Keep the wording
+# friendly and classroom-facing.
+# ============================================================================
+STEPS = [
+    {
+        "number": 1,
+        "title": "Open the passenger list",
+        "story": (
+            "Every row is a real person from 1912: their ticket class, sex, "
+            "age, family aboard, fare, and where they embarked. Meet the "
+            "data before you judge it!"
+        ),
+        "prompt": (
+            "Please open the Titanic passenger list (data/titanic.csv), "
+            "tell me how many passengers it holds and what details we know "
+            "about each person, and show me the first few rows as a table."
+        ),
+        "fn": "step_1_open_the_list",
+    },
+    {
+        "number": 2,
+        "title": "Where are the holes?",
+        "story": (
+            "Real-world data is messy. If a table has holes (missing "
+            "values), a learning model can stumble -- or worse, silently "
+            "guess."
+        ),
+        "prompt": (
+            "Check data/titanic.csv for missing values in every column and "
+            "show me a table of how many holes each column has."
+        ),
+        "fn": "step_2_find_missing_values",
+    },
+    {
+        "number": 3,
+        "title": "Did you survive?",
+        "story": (
+            "One column decides everything: Survived (1 = made it, 0 = did "
+            "not). Before seeing the answer, make a guess: did MORE or "
+            "FEWER than half of the passengers survive?"
+        ),
+        "prompt": (
+            "Count how many passengers perished and how many survived, and "
+            "show me both numbers with their percentages."
+        ),
+        "fn": "step_3_survival_overview",
+    },
+    {
+        "number": 4,
+        "title": "Survival by sex",
+        "story": (
+            "Now we look for our FIRST pattern: did female passengers "
+            "survive more often than male passengers?"
+        ),
+        "prompt": (
+            "Draw a bar chart comparing survival for female and male "
+            "passengers, save it as eda_output/survival_chart.png, and "
+            "describe the pattern in one friendly sentence."
+        ),
+        "fn": "step_4_survival_by_sex",
+    },
+    {
+        "number": 5,
+        "title": "Survival by ticket class",
+        "story": (
+            "Ticket class was a proxy for wealth and cabin location on "
+            "board. Did the deck you slept on decide your fate?"
+        ),
+        "prompt": (
+            "Draw a bar chart of survival by ticket class (1, 2, 3), save "
+            "it as eda_output/class_chart.png, and tell me what stands "
+            "out."
+        ),
+        "fn": "step_5_survival_by_class",
+    },
+    {
+        "number": 6,
+        "title": "The age story",
+        "story": (
+            "Kids first? Older folks last? Build one more picture about "
+            "AGE -- this is the pattern the Step 2 model will learn from."
+        ),
+        "prompt": (
+            "Make one chart that shows whether age is connected to "
+            "survival (for example survival by age group), save it in "
+            "eda_output/, and give me one plain-English takeaway."
+        ),
+        "fn": "step_6_age_patterns",
+    },
+]
+
+
+# ============================================================================
+# ORCHESTRATION -- function name and behavior contract (do not rename).
+# ============================================================================
+def analyze_data():
+    """Runs every completed checkpoint in order (terminal-friendly view).
+
+    Returns the loaded DataFrame, or None until Gate 1 exists.
+    """
+    titanic = None
+
+    for step in STEPS:
+        if step["number"] > STEPS_COMPLETED:
+            break
+        fn = globals().get(step["fn"])
+        if fn is None:
+            continue
+        try:
+            result = fn()
+        except Exception as exc:
+            print(f"Gate {step['number']} hit a problem: {exc}")
+            raise
+        print(f"Gate {step['number']} OK -- {step['title']}")
+        if isinstance(result, dict) and result.get("dataframe") is not None:
+            titanic = result["dataframe"]  # handy for later gates
+
+    if titanic is None:
+        try:
+            titanic = pd.read_csv(DATA_PATH)
+        except (FileNotFoundError, NameError):
+            return None
     return titanic
 
 
-# ============================================================================
-# WEB INTERFACE -- pair this script with a web page (Gradio)
-#
-# The classroom experience is browser-only: students press one button and
-# see the analysis results. The chart logic still lives in analyze_data(),
-# so everything the students (or their AI assistant) build inside the
-# TODO block automatically appears on the web page too.
-#
-# HOW TO SERVE JUST THIS PAGE
-#     gradio 01_eda.py
-#
-# HOW TO SERVE ALL SCRIPTS TOGETHER
-#     gradio 04_classroom.py
-# ============================================================================
-
-import gradio as gr
-
-
-def run_eda_and_collect():
-    """Runs the same analysis as the terminal version and collects web-ready results."""
-    titanic = analyze_data()
-
-    # A tiny overview table for the web page.
-    group = titanic.groupby("Survived").size()
-    summary = pd.DataFrame(
-        {
-            "Outcome": ["Perished", "Survived"],
-            "Number of passengers": [
-                int(group.get(0, 0)),
-                int(group.get(1, 0)),
-            ],
-        }
-    )
-    share = summary["Number of passengers"] / summary["Number of passengers"].sum()
-    summary["Share of passengers"] = share.map("{:.1%}".format)
-
-    survival_chart = os.path.join(OUTPUT_DIR, "survival_chart.png")
-    class_chart = os.path.join(OUTPUT_DIR, "class_chart.png")
-    if not (os.path.exists(survival_chart) and os.path.exists(class_chart)):
-        return summary, None, None
-    return summary, survival_chart, class_chart
-
-
-def build_eda_app():
-    """Build the web interface for the data exploration steps."""
-    with gr.Blocks(title="1 - Meet the Data") as eda:
-        gr.Markdown(
-            "## Step 1 - Meet the Data\n"
-            "Press the button to look at the Titanic passenger list: how "
-            "many passengers there were, who survived, and whether you can "
-            "spot any patterns by eye."
-        )
-        run_button = gr.Button("Run the analysis", variant="primary")
-        overview = gr.Dataframe(label="Survival overview", interactive=False)
-        with gr.Row():
-            image_survival = gr.Image(label="Survival by sex", interactive=False)
-            image_class = gr.Image(label="Survival by ticket class", interactive=False)
-        run_button.click(
-            fn=run_eda_and_collect,
-            inputs=None,
-            outputs=[overview, image_survival, image_class],
-        )
-    return eda
-
-
-demo = build_eda_app()
-
 if __name__ == "__main__":
     print(
-        "Terminal mode: running the analysis once.\n"
-        "For the web version, serve this file with:  gradio 01_eda.py\n"
-        "Or serve every workshop step at once:       gradio 04_classroom.py"
+        "Terminal mode: running the completed checkpoints in order.\n"
+        "For the step-by-step magic, serve with:  gradio 01_eda.py\n"
+        "Or serve every workshop step at once:    gradio 04_classroom.py"
     )
     analyze_data()
 
+
+# ============================================================================
+# WEB INTERFACE -- pairs this script with a web page (Gradio).
+# The web layer imports after the data layer on purpose. Do not move it
+# above the CHECKPOINT GATES.
+# ============================================================================
+import gradio as gr  # noqa: E402
+import workshop_steps  # noqa: E402
+
+
+def build_eda_app():
+    """Step 1 web page built entirely from the checkpoint scaffold."""
+    return workshop_steps.make_app(
+        title="1 - Meet the Data",
+        intro=(
+            "You are holding the real passenger list of the Titanic. Work "
+            "through the checkpoints one prompt at a time with your AI "
+            "Teaching Assistant and watch the picture come into focus."
+        ),
+        steps=STEPS,
+        module_globals=globals(),
+    )
+
+
+demo = build_eda_app()
