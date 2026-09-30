@@ -17,8 +17,12 @@ WHO MAY EDIT THIS FILE
     their AI assistant must leave it alone too.
 
 HOW TO RUN
-    gradio 04_classroom.py
-    (or a single step, e.g.:  gradio 01_eda.py)
+    python 04_classroom.py         plain server (opens nothing by itself)
+    gradio 04_classroom.py         server + auto hot-reload whenever a
+                                   workshop file is saved (classroom magic)
+    python serve_workshop.py       classroom launcher: picks a free port,
+                                   starts the server, opens the browser
+    deployment/START WORKSHOP PAGE.bat   the same, for students
 """
 
 import os
@@ -63,3 +67,12 @@ def build_classroom_app():
 
 
 demo = build_classroom_app()
+
+
+# Only launch when this file is the served app (python 04_classroom.py or
+# gradio 04_classroom.py). Importing this module never starts a server.
+# During Gradio hot reload the file is re-executed inside the reload
+# thread; launch() detects that and returns without starting a second
+# server, so the already-open page just gets the new blocks.
+if __name__ == "__main__":
+    demo.launch()

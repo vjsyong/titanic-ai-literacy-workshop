@@ -33,7 +33,7 @@ $ProgressPreference = "SilentlyContinue"
 #   and referenced through OpenCode's {file:~...} substitution.
 # ============================================================
 
-$BootstrapVersion = "2026.09.30.11"
+$BootstrapVersion = "2026.09.30.12"
 
 # ----------------------------
 # Pinned classroom runtimes
@@ -1875,7 +1875,8 @@ while ((Get-Date) -lt $deadline) {
         if ($gradioFailures -ge 3) {
             try {
                 $env:GRADIO_SERVER_PORT = "$GradioPort"
-                $null = Start-Process -FilePath $Gradio -WorkingDirectory $ProjectRoot -WindowStyle Minimized
+                $classroom = Join-Path $ProjectRoot "04_classroom.py"
+                $null = Start-Process -FilePath $Gradio -ArgumentList ('"{0}"' -f $classroom) -WorkingDirectory $ProjectRoot -WindowStyle Minimized
                 $gradioFailures = 0
                 Add-Content -LiteralPath $Log -Value ((Get-Date -Format o) + " watchdog restarted the workshop page (gradio) on port " + $GradioPort + ".")
             }

@@ -14,7 +14,11 @@ WHAT THE STUDENT DOES
    02_train.py, 03_dashboard.py, AGENTS.md).
 2. Double-click:
         START VIBE CODING.bat
-3. The browser opens OpenCode pointed at the workshop folder.
+3. The browser opens OpenCode pointed at the workshop folder, and the
+   workshop web page comes up automatically at http://127.0.0.1:4097.
+   If the workshop page ever stops, double-click:
+        START WORKSHOP PAGE.bat
+   (it reopens a page that is already running, otherwise it starts one).
 
 INSTRUCTOR CHECKLIST BEFORE DISTRIBUTION
 ----------------------------------------
@@ -52,6 +56,10 @@ launcher file as integrated into this repository:
   (pandas / matplotlib / scikit-learn / gradio) into the isolated
   classroom Python environment.
 - key.txt is gitignored; KEY.txt.TEMPLATE carries the placeholder.
+- START WORKSHOP PAGE.bat is the student-facing "start/reopen the workshop
+  web page" launcher; it calls the repository-level serve_workshop.py.
+- oneclick.ps1's watchdog now passes 04_classroom.py when it restarts the
+  Gradio page (the Gradio CLI requires the app path).
 
 If you change any of these files later, regenerate the manifest before
 distributing a classroom ZIP.

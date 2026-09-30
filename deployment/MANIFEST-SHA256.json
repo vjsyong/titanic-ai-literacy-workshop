@@ -1,8 +1,8 @@
 [
   {
     "file": "README-FIRST.txt",
-    "sha256": "f65e4f853964b0c10241db7ef1779c03fbecb2d1487b45882dcf74b6d38a017b",
-    "bytes": 2531
+    "sha256": "832b8201e8602f9d2fbc4dd2ee3b94738e30b4b9b7f408c315cae8d7289a06f5",
+    "bytes": 3038
   },
   {
     "file": "REPAIR VIBE CODING.bat",
@@ -20,14 +20,19 @@
     "bytes": 2086
   },
   {
+    "file": "START WORKSHOP PAGE.bat",
+    "sha256": "7659e684ad7d5b9e7f0ae17f67052443a09569a6e25fdfd8b68ffc80c33775ac",
+    "bytes": 1670
+  },
+  {
     "file": "KEY.txt.TEMPLATE",
     "sha256": "a5a401010547f496928dedfef4a000501452581ebe45c93a2e24c187ad12b609",
     "bytes": 22
   },
   {
     "file": "oneclick.ps1",
-    "sha256": "cd23bb2bf62834763c0be825595cda787d84d4664fd47335b310af711b85148c",
-    "bytes": 79566
+    "sha256": "2c1bdefd7d5efec9c3261646f94603a65797248bb61b5c01226a7a474015a97e",
+    "bytes": 79674
   },
   {
     "file": "payload/README.txt",

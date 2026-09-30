@@ -13,6 +13,7 @@ combined into one classroom page.
 | `02_train.py` | Step 2 - Train the Model: **7 checkpoint gates** (encode -> save model) |
 | `03_dashboard.py` | Step 3 - Survival Explorer: **5 checkpoint gates**, live form appears at gate 3 |
 | `04_classroom.py` | Instructor-managed one-page launcher: all three steps as browser tabs |
+| `serve_workshop.py` | Instructor-managed helper that starts/reopens the workshop page (free port, browser, background) |
 | `workshop_steps.py` | Instructor-managed shared checkpoint machinery (progress bar, locked steps, prompt hints) |
 | `data/titanic.csv` | The cleaned 1912 passenger list students use |
 | `AGENTS.md` | Persistent system prompt for the students' AI Teaching Assistant |
@@ -20,7 +21,10 @@ combined into one classroom page.
 
 ## How the class works (checkpoint flow)
 
-1. **Once**: the instructor serves the workshop page (`gradio 04_classroom.py`).
+1. **Once**: the launcher serves the workshop page automatically
+   (`deployment/START VIBE CODING.bat` starts it on port 4097 and a hidden
+   watchdog keeps it alive). To (re)start it by hand:
+   `python serve_workshop.py` or `gradio 04_classroom.py`.
    Students see one page, three tabs; each tab shows its next checkpoint as a
    prompt-hint card, locked steps stay greyed out.
 2. **Loop (the magic)**: a student writes their intent (or copies the hint
@@ -34,8 +38,10 @@ combined into one classroom page.
 Instructor testing without OpenCode (must have Python packages installed):
 
 ```
-gradio 04_classroom.py
+python serve_workshop.py --no-browser
 ```
+
+(or run the hot-reload server in the foreground: `gradio 04_classroom.py`)
 
 The `demo` branch holds the full reference implementation (all gates
 implemented end to end) matching the `main` scaffold's contracts.
@@ -50,19 +56,21 @@ implemented end to end) matching the `main` scaffold's contracts.
    First run only: private Python 3.12 + Node.js + OpenCode 2.0.20 are
    installed under `%LOCALAPPDATA%\VibeCoding` and workshop packages
    (pandas / matplotlib / scikit-learn / gradio) are pip-installed.
-3. The browser opens the OpenCode Web UI pointed at the workshop folder.
-4. Ask the AI Teaching Assistant to serve the workshop web page:
+3. The browser opens the OpenCode Web UI pointed at the workshop folder,
+   and the workshop web page itself (http://127.0.0.1:4097).
+4. Simply talk to the AI Teaching Assistant and watch the page evolve.
+   If the workshop page ever stops, double-click:
    ```
-   gradio 04_classroom.py
+   deployment/START WORKSHOP PAGE.bat
    ```
-   (or a single step: `gradio 01_eda.py`)
-   Then simply talk to your assistant and watch the page evolve.
 
 If the Web UI ever shows no project, use File -> Open Project and pick the
 extracted workshop folder once.
 
 Other launchers:
 
+- `START WORKSHOP PAGE.bat` — (re)starts the workshop web page and opens it
+  in the browser. Safe to run any time; it reuses a page that is already up.
 - `REPAIR VIBE CODING.bat` — revalidates/rebuilds the classroom runtimes
   without touching student project files.
 - `RESET VIBE CODING.bat` — removes only `%LOCALAPPDATA%\VibeCoding`
