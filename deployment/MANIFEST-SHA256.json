@@ -26,8 +26,8 @@
   },
   {
     "file": "oneclick.ps1",
-    "sha256": "a8e68f69b9eab7cb105480ad29e7b6007a473275b99d812a31e3ed61aadfd57e",
-    "bytes": 74490
+    "sha256": "cd23bb2bf62834763c0be825595cda787d84d4664fd47335b310af711b85148c",
+    "bytes": 79566
   },
   {
     "file": "payload/README.txt",

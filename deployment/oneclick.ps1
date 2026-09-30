@@ -63,6 +63,8 @@ $TencentModelRef = "$TencentProviderId/$TencentModelId"
 # ----------------------------
 $PreferredPort = 4096
 $LastPort = 4196
+$PreferredWorkshopPort = 4097
+$LastWorkshopPort = 4197
 $OpenCodeUsername = "opencode"
 
 # ----------------------------
@@ -1724,15 +1726,82 @@ function Start-ClassOpenCodeService {
         -WorkingDirectory $ClassroomProjectRoot
 }
 
-# A tiny detached watchdog: keeps polling the workshop web page every 10
-# seconds for up to 6 hours, and cleanly restarts the classroom service if
-# it stops answering (e.g. students report "the page loads and loads" after
+# The workshop browser page (04_classroom.py served by the gradio CLI
+# runner) is a SECOND classroom service on its own port (default 4097).
+# Serving it here means students get both tabs automatically:
+#     OpenCode chat  : http://127.0.0.1:4096
+#     Workshop page  : http://127.0.0.1:<workshop port>
+# The gradio runner also watches the workshop files, so every gate the
+# AI assistant unlocks hot-reloads the already-open page.
+function Start-WorkshopGradioPage {
+    param(
+        [string]$Gradio,
+        [string]$PythonVenvScripts,
+        [string]$ProjectRoot,
+        [int]$Port
+    )
+
+    $classroom = Join-Path $ProjectRoot "04_classroom.py"
+
+    if (-not (Test-Path -LiteralPath $classroom)) {
+        Write-Warn "04_classroom.py was not found in: $ProjectRoot"
+        Write-Host "The workshop web page must be served manually:  gradio 04_classroom.py" -ForegroundColor Yellow
+        return $null
+    }
+
+    # Prefer the packaged CLI (Scripts\gradio.exe); fall back to
+    # `python -m gradio` which runs the same runner.
+    if (-not (Test-Path -LiteralPath $Gradio)) {
+        $Gradio = $PythonVenvScripts
+        $classroomArg = @("-m", "gradio", ('"{0}"' -f $classroom))
+    }
+    else {
+        $classroomArg = @(('"{0}"' -f $classroom))
+    }
+
+    $env:GRADIO_SERVER_PORT = "$Port"
+
+    Start-Process `
+        -FilePath $Gradio `
+        -ArgumentList $classroomArg `
+        -WorkingDirectory $ProjectRoot `
+        -WindowStyle Minimized
+
+    Write-Host "Waiting for the workshop page on port $Port..." -ForegroundColor DarkGray
+
+    for ($attempt = 0; $attempt -lt 30; $attempt++) {
+        Start-Sleep -Seconds 2
+        try {
+            $pageResponse = Invoke-WebRequest `
+                -Uri ("http://127.0.0.1:{0}" -f $Port) `
+                -UseBasicParsing `
+                -TimeoutSec 5
+            if ($pageResponse.StatusCode -ge 200 -and $pageResponse.StatusCode -lt 500) {
+                Write-OK "Workshop page ready at http://127.0.0.1:$Port"
+                return [PSCustomObject]@{ Port = $Port; Ok = $true }
+            }
+        }
+        catch {}
+    }
+
+    Write-Warn "Workshop page did not come up on port $Port within 60s."
+    Write-Host "Start it manually once:  gradio 04_classroom.py  (leave that terminal open)" -ForegroundColor Yellow
+    return $null
+}
+
+
+# A tiny detached watchdog: keeps polling the classroom web pages every 10
+# seconds for up to 8 hours, and cleanly restarts the classroom services if
+# they stop answering (e.g. students report "the page loads and loads" after
 # the launcher window closes). Restart writes a line into the watchdog log.
 function Start-ClassWatchdog {
     param(
         [string]$OpenCode,
         [int]$Port,
-        [string]$WatchdogLog
+        [string]$WatchdogLog,
+        [string]$Gradio,
+        [int]$GradioPort,
+        [string]$ProjectRoot
     )
 
     $watchdogScript = Join-Path $AppRoot "watchdog.ps1"
@@ -1742,17 +1811,22 @@ param(
     [string]$OpenCode,
     [int]$Port,
     [string]$Log,
-    [string]$ProjectRoot
+    [string]$ProjectRoot,
+    [string]$Gradio,
+    [int]$GradioPort
 )
 
 $ErrorActionPreference = "Continue"
 $deadline = (Get-Date).AddHours(8)
 $failures = 0
+$gradioFailures = 0
 $baseUrl = "http://127.0.0.1:{0}" -f $Port
+$gradioUrl = "http://127.0.0.1:{0}" -f $GradioPort
 
 while ((Get-Date) -lt $deadline) {
     Start-Sleep -Seconds 10
 
+    # --- workshop page (OpenCode) ---
     $alive = $false
     try {
         $response = Invoke-WebRequest -Uri $baseUrl -UseBasicParsing -TimeoutSec 8
@@ -1763,26 +1837,51 @@ while ((Get-Date) -lt $deadline) {
     catch {}
 
     if ($alive) {
-        if ($failures -gt 0) {
-            $failures = 0
+        $failures = 0
+    }
+    else {
+        $failures = $failures + 1
+        if ($failures -ge 3) {
+            Push-Location -LiteralPath $ProjectRoot
+            try {
+                $null = & $OpenCode service restart 2>&1
+                $failures = 0
+                Add-Content -LiteralPath $Log -Value ((Get-Date -Format o) + " watchdog restarted the classroom service (page was not answering).")
+            }
+            catch {
+                Add-Content -LiteralPath $Log -Value ((Get-Date -Format o) + " watchdog failed to restart: " + $_.Exception.Message)
+            }
+            finally {
+                Pop-Location
+            }
         }
-        continue
     }
 
-    $failures = $failures + 1
+    # --- workshop page (gradio) ---
+    $gradioAlive = $false
+    try {
+        $gradioResponse = Invoke-WebRequest -Uri $gradioUrl -UseBasicParsing -TimeoutSec 8
+        if ($gradioResponse.StatusCode -ge 200 -and $gradioResponse.StatusCode -lt 500) {
+            $gradioAlive = $true
+        }
+    }
+    catch {}
 
-    if ($failures -ge 3) {
-        Push-Location -LiteralPath $ProjectRoot
-        try {
-            $null = & $OpenCode service restart 2>&1
-            $failures = 0
-            Add-Content -LiteralPath $Log -Value ((Get-Date -Format o) + " watchdog restarted the classroom service (page was not answering).")
-        }
-        catch {
-            Add-Content -LiteralPath $Log -Value ((Get-Date -Format o) + " watchdog failed to restart: " + $_.Exception.Message)
-        }
-        finally {
-            Pop-Location
+    if ($gradioAlive) {
+        $gradioFailures = 0
+    }
+    else {
+        $gradioFailures = $gradioFailures + 1
+        if ($gradioFailures -ge 3) {
+            try {
+                $env:GRADIO_SERVER_PORT = "$GradioPort"
+                $null = Start-Process -FilePath $Gradio -WorkingDirectory $ProjectRoot -WindowStyle Minimized
+                $gradioFailures = 0
+                Add-Content -LiteralPath $Log -Value ((Get-Date -Format o) + " watchdog restarted the workshop page (gradio) on port " + $GradioPort + ".")
+            }
+            catch {
+                Add-Content -LiteralPath $Log -Value ((Get-Date -Format o) + " watchdog failed to restart the workshop page: " + $_.Exception.Message)
+            }
         }
     }
 }
@@ -1800,7 +1899,9 @@ while ((Get-Date) -lt $deadline) {
             "-OpenCode", ('"{0}"' -f $OpenCode),
             "-Port", "$Port",
             "-Log", ('"{0}"' -f $WatchdogLog),
-            "-ProjectRoot", ('"{0}"' -f $ClassroomProjectRoot)
+            "-ProjectRoot", ('"{0}"' -f $ClassroomProjectRoot),
+            "-Gradio", ('"{0}"' -f (Join-Path $PythonVenvRoot "Scripts\gradio.exe")),
+            "-GradioPort", "$WorkshopPagePort"
         )
 }
 
@@ -2413,6 +2514,23 @@ try {
         $ClassroomConfigJson
 
     # ========================================================
+    # Workshop page (gradio, separate service)
+    # ========================================================
+    $WorkshopPagePort = Find-FreePort $PreferredWorkshopPort $LastWorkshopPort
+
+    Write-Section "Starting the workshop web page (gradio)"
+
+    $WorkshopPage = Start-WorkshopGradioPage `
+        -Gradio (Join-Path $PythonVenvRoot "Scripts\gradio.exe") `
+        -PythonVenvScripts (Join-Path $PythonVenvRoot "Scripts\python.exe") `
+        -ProjectRoot $ClassroomProjectRoot `
+        -Port $WorkshopPagePort
+
+    if ($WorkshopPage -and $WorkshopPage.Ok) {
+        [void](Open-Browser ("http://127.0.0.1:{0}" -f $WorkshopPage.Port))
+    }
+
+    # ========================================================
     # Success
     # ========================================================
     Write-Host ""
@@ -2420,10 +2538,13 @@ try {
     Write-Host "              READY TO VIBE CODE              " -ForegroundColor Green
     Write-Host "==============================================" -ForegroundColor Green
     Write-Host ""
-    Write-Host "OpenCode: $($Server.Url)"
-    Write-Host "Model:    $TencentModelRef"
-    Write-Host "Python:   $PythonVersionText"
-    Write-Host "Node:     $NodeVersionText"
+    Write-Host "OpenCode:     $($Server.Url)"
+    if ($WorkshopPage -and $WorkshopPage.Ok) {
+        Write-Host "Workshop page: http://127.0.0.1:$($WorkshopPage.Port)"
+    }
+    Write-Host "Model:        $TencentModelRef"
+    Write-Host "Python:       $PythonVersionText"
+    Write-Host "Node:         $NodeVersionText"
     Write-Host ""
 
         if ($Server.Paired) {
@@ -2438,16 +2559,25 @@ try {
 
         # Always show the manual recovery route (never assume the browser staged itself).
         Write-Host ""
-        Write-Host "If the page keeps loading:"
+        Write-Host "If a page keeps loading:"
         Write-Host "  1. Refresh the browser (F5), or open manually: $($Server.Url)"
+        if ($WorkshopPage -and $WorkshopPage.Ok) {
+            Write-Host "     workshop page: http://127.0.0.1:$($WorkshopPage.Port)"
+        }
         Write-Host "  2. Username: $($Credentials.username)   Password: $($Credentials.password)"
-        Write-Host "  3. A hidden watchdog restarts the server automatically if it stops answering."
+        Write-Host "  3. A hidden watchdog restarts both servers automatically if they stop answering."
 
-        # A detached watchdog keeps the classroom server healthy even after
-        # this window closes (auto-restarts it for up to 8 hours if it hangs).
+        # A detached watchdog keeps both classroom services healthy even
+        # after this window closes (auto-restarts for up to 8 hours).
         try {
-            Start-ClassWatchdog $OpenCode $Server.Port $LatestLog
-            Write-OK "Watchdog running (keeps the web page alive for the next 8 hours)"
+            Start-ClassWatchdog `
+                -OpenCode $OpenCode `
+                -Port $Server.Port `
+                -WatchdogLog $LatestLog `
+                -Gradio (Join-Path $PythonVenvRoot "Scripts\gradio.exe") `
+                -GradioPort $WorkshopPagePort `
+                -ProjectRoot $ClassroomProjectRoot
+            Write-OK "Watchdog running (keeps both classroom pages alive for the next 8 hours)"
         }
         catch {
             Write-Warn "Watchdog could not start: $($_.Exception.Message)"
