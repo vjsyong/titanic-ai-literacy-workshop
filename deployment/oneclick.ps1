@@ -1957,6 +1957,47 @@ $($startResult.Output)
     $baseUrl = "http://127.0.0.1:$Port"
     $pairOutput = ""
 
+    # FAST PATH: if the browser session already exists (auth persisted on
+    # this machine from a previous run), reuse it and open the plain URL.
+    # Pairing on every launch produced a hanging /auth/connect page: a
+    # one-time token that is already consumed just spins in the browser.
+    $alreadyAuthed = $false
+
+    try {
+        $authHeader = "Basic " + [Convert]::ToBase64String(
+            [Text.Encoding]::ASCII.GetBytes("$($Credentials.username):$($Credentials.password)")
+        )
+        $authResponse = Invoke-WebRequest `
+            -Uri "$baseUrl/api/session" `
+            -UseBasicParsing `
+            -Headers @{ Authorization = $authHeader } `
+            -TimeoutSec 8
+
+        if ($authResponse.StatusCode -eq 200) {
+            $alreadyAuthed = $true
+        }
+    }
+    catch {}
+
+    if ($alreadyAuthed) {
+        Write-OK "Existing classroom web session recognized -- opening the workshop page directly."
+        $loginUrl = $baseUrl
+
+        if (-not (Open-Browser $loginUrl)) {
+            Write-Warn "Could not launch the default browser."
+            Write-Host "Open manually: $loginUrl"
+        }
+
+        return [PSCustomObject]@{
+            Url = $baseUrl
+            Port = $Port
+            Paired = $false
+            PageOk = $true
+        }
+    }
+
+    $pairOutput = ""
+
     try {
         $pairResult = Invoke-NativeCapture `
             -FilePath $OpenCode `
