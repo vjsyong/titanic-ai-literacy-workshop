@@ -1724,6 +1724,86 @@ function Start-ClassOpenCodeService {
         -WorkingDirectory $ClassroomProjectRoot
 }
 
+# A tiny detached watchdog: keeps polling the workshop web page every 10
+# seconds for up to 6 hours, and cleanly restarts the classroom service if
+# it stops answering (e.g. students report "the page loads and loads" after
+# the launcher window closes). Restart writes a line into the watchdog log.
+function Start-ClassWatchdog {
+    param(
+        [string]$OpenCode,
+        [int]$Port,
+        [string]$WatchdogLog
+    )
+
+    $watchdogScript = Join-Path $AppRoot "watchdog.ps1"
+
+    $watchdogBody = @'
+param(
+    [string]$OpenCode,
+    [int]$Port,
+    [string]$Log,
+    [string]$ProjectRoot
+)
+
+$ErrorActionPreference = "Continue"
+$deadline = (Get-Date).AddHours(8)
+$failures = 0
+$baseUrl = "http://127.0.0.1:{0}" -f $Port
+
+while ((Get-Date) -lt $deadline) {
+    Start-Sleep -Seconds 10
+
+    $alive = $false
+    try {
+        $response = Invoke-WebRequest -Uri $baseUrl -UseBasicParsing -TimeoutSec 8
+        if ($response.StatusCode -ge 200 -and $response.StatusCode -lt 500) {
+            $alive = $true
+        }
+    }
+    catch {}
+
+    if ($alive) {
+        if ($failures -gt 0) {
+            $failures = 0
+        }
+        continue
+    }
+
+    $failures = $failures + 1
+
+    if ($failures -ge 3) {
+        Push-Location -LiteralPath $ProjectRoot
+        try {
+            $null = & $OpenCode service restart 2>&1
+            $failures = 0
+            Add-Content -LiteralPath $Log -Value ((Get-Date -Format o) + " watchdog restarted the classroom service (page was not answering).")
+        }
+        catch {
+            Add-Content -LiteralPath $Log -Value ((Get-Date -Format o) + " watchdog failed to restart: " + $_.Exception.Message)
+        }
+        finally {
+            Pop-Location
+        }
+    }
+}
+'@
+
+    Set-Content -LiteralPath $watchdogScript -Value $watchdogBody -Encoding UTF8
+
+    Start-Process `
+        -FilePath "powershell.exe" `
+        -WindowStyle Hidden `
+        -ArgumentList @(
+            "-NoProfile",
+            "-ExecutionPolicy", "Bypass",
+            "-File", ('"{0}"' -f $watchdogScript),
+            "-OpenCode", ('"{0}"' -f $OpenCode),
+            "-Port", "$Port",
+            "-Log", ('"{0}"' -f $WatchdogLog),
+            "-ProjectRoot", ('"{0}"' -f $ClassroomProjectRoot)
+        )
+}
+
 function Start-OpenCodeService {
     param(
         [string]$OpenCode,
@@ -1914,14 +1994,33 @@ $($startResult.Output)
     if (-not (Open-Browser $loginUrl)) {
         Write-Warn "Could not launch the default browser."
         Write-Host "Open manually: $loginUrl"
-        Write-Host "Username: $($Credentials.username)"
-        Write-Host "Password: $($Credentials.password)"
+    }
+
+    # Browser-side smoke test: the API health check above proves the
+    # backend answers, but a student seeing an endlessly spinning page is
+    # the same kind of outage. Ask the local HTTP server directly.
+    $pageOk = $false
+    try {
+        $pageResponse = Invoke-WebRequest -Uri $baseUrl -UseBasicParsing -TimeoutSec 10
+        if ($pageResponse.StatusCode -ge 200 -and $pageResponse.StatusCode -lt 500) {
+            $pageOk = $true
+        }
+    }
+    catch {}
+
+    if ($pageOk) {
+        Write-OK "Workshop web page answers at $baseUrl"
+    }
+    else {
+        Write-Warn "The workshop web page did not answer an HTTP request."
+        Write-Host "A hidden watchdog will keep retrying and restart the service if needed." -ForegroundColor Yellow
     }
 
     return [PSCustomObject]@{
         Url = $baseUrl
         Port = $Port
         Paired = ($loginUrl -ne $baseUrl)
+        PageOk = $pageOk
     }
 }
 
@@ -2286,22 +2385,41 @@ try {
     Write-Host "Node:     $NodeVersionText"
     Write-Host ""
 
-    if ($Server.Paired) {
-        Write-Host "The browser should already be signed in." -ForegroundColor Green
-    }
-    else {
-        Write-Host "Browser pairing could not be automated." -ForegroundColor Yellow
-        Write-Host "Username: $($Credentials.username)"
-        Write-Host "Password: $($Credentials.password)"
-    }
+        if ($Server.Paired) {
+            Write-Host "The browser should already be signed in." -ForegroundColor Green
+        }
+        else {
+            Write-Host "Browser pairing could not be automated." -ForegroundColor Yellow
+            Write-Host "Sign in with:" -ForegroundColor Yellow
+            Write-Host "  Username: $($Credentials.username)"
+            Write-Host "  Password: $($Credentials.password)"
+        }
 
-    Write-Host ""
-    Write-Host "Support log:" -ForegroundColor DarkGray
-    Write-Host "  $LogFile" -ForegroundColor DarkGray
-    Write-Host ""
-    Write-Host "It is safe to close this window."
+        # Always show the manual recovery route (never assume the browser staged itself).
+        Write-Host ""
+        Write-Host "If the page keeps loading:"
+        Write-Host "  1. Refresh the browser (F5), or open manually: $($Server.Url)"
+        Write-Host "  2. Username: $($Credentials.username)   Password: $($Credentials.password)"
+        Write-Host "  3. A hidden watchdog restarts the server automatically if it stops answering."
 
-    Start-Sleep -Seconds 3
+        # A detached watchdog keeps the classroom server healthy even after
+        # this window closes (auto-restarts it for up to 8 hours if it hangs).
+        try {
+            Start-ClassWatchdog $OpenCode $Server.Port $LatestLog
+            Write-OK "Watchdog running (keeps the web page alive for the next 8 hours)"
+        }
+        catch {
+            Write-Warn "Watchdog could not start: $($_.Exception.Message)"
+        }
+
+        Write-Host ""
+        Write-Host "Support log:" -ForegroundColor DarkGray
+        Write-Host "  $LogFile" -ForegroundColor DarkGray
+        Write-Host ""
+        Write-Host "It is safe to close this window." -ForegroundColor DarkGray
+        Write-Host ""
+        Write-Host "Press ENTER to close this window (read the notes above first)." -ForegroundColor Green
+        [void](Read-Host)
 }
 catch {
     $ExitCode = 1
