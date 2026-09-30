@@ -583,22 +583,76 @@ function Test-WorkshopPackages {
     return ($result.ExitCode -eq 0)
 }
 
+# A cold "import gradio" costs 10-20 seconds, and this check runs on every
+# launch. Once a classroom venv has proven healthy we remember that and
+# re-answer instantly; a changed key file (recreated venv) invalidates it.
+function Test-WorkshopPackagesFast {
+    $stateFile = Join-Path $StateRoot "workshop-packages-ok.json"
+
+    $state = $null
+    if (Test-Path -LiteralPath $stateFile) {
+        try {
+            $state = Get-Content -LiteralPath $stateFile -Raw | ConvertFrom-Json
+        }
+        catch {
+            $state = $null
+        }
+    }
+
+    if ($state -and ($state.venv -eq $PythonVenvRoot) -and ($state.ok -eq $true)) {
+        return $true
+    }
+
+    if (Test-WorkshopPackages) {
+        try {
+            [ordered]@{
+                ok   = $true
+                venv = $PythonVenvRoot
+                checkedAt = (Get-Date).ToString("o")
+            } |
+                ConvertTo-Json |
+                Set-Content -LiteralPath $stateFile -Encoding UTF8
+        }
+        catch {}
+
+        return $true
+    }
+
+    return $false
+}
+
 function Install-WorkshopDependencies {
     Write-Section "Preparing workshop Python packages"
 
-    if (Test-WorkshopPackages) {
+    if (Test-WorkshopPackagesFast) {
         Write-OK "Workshop packages already present (pandas / matplotlib / scikit-learn / gradio)"
         return
     }
 
+    # Keep downloaded wheels between runs/hostel resets in the classroom
+    # profile instead of the user's global pip cache.
+    $env:PIP_CACHE_DIR = Join-Path $AppRoot "pip-cache"
+
     Write-Host ""
     Write-Host "First run only: installing pandas / matplotlib / scikit-learn / gradio."
     Write-Host "Target (isolated classroom venv): $PythonVenvRoot" -ForegroundColor Cyan
-    Write-Host "This can take a few minutes on classroom Wi-Fi. Progress appears below" -ForegroundColor Yellow
-    Write-Host "when each package is collected/downloaded, so the window is NOT hung:" -ForegroundColor Yellow
+    Write-Host "This can take a few minutes on classroom Wi-Fi (several hundred MB of wheels)." -ForegroundColor Yellow
+    Write-Host "Progress appears below when each package is collected/downloaded, so the window is NOT hung:" -ForegroundColor Yellow
     Write-Host ""
 
     $python = Join-Path $PythonVenvRoot "Scripts\python.exe"
+
+    $wheelRoot = Join-Path $PayloadRoot "wheels"
+    $wheelArgs = @()
+
+    # Optional offline shortcut: the instructor may pre-download all wheels
+    # into deployment/payload/wheels (see README-FIRST.txt). Then no Wi-Fi
+    # is needed at all.
+    if ((Test-Path -LiteralPath $wheelRoot) -and
+        ((Get-ChildItem -LiteralPath $wheelRoot -Filter "*.whl" -ErrorAction SilentlyContinue) )) {
+        Write-Host "Bundled offline wheels found: $wheelRoot" -ForegroundColor DarkGray
+        $wheelArgs = @("--no-index", "--find-links", $wheelRoot)
+    }
 
     # Stream pip output live instead of capturing it: the "Collecting ... /
     # Downloading ... (x.x MB)" lines are the visible heartbeat students need.
@@ -612,6 +666,7 @@ function Install-WorkshopDependencies {
             --only-binary=:all: `
             --disable-pip-version-check `
             --progress-bar off `
+            @wheelArgs `
             pandas matplotlib scikit-learn gradio 2>&1 |
             ForEach-Object {
                 $line = if ($_ -is [System.Management.Automation.ErrorRecord]) { $_.Exception.Message } else { $_.ToString() }
@@ -630,18 +685,29 @@ function Install-WorkshopDependencies {
     $pipExitCode = $LASTEXITCODE
     $ErrorActionPreference = $previousPreference
 
-    if ($pipExitCode -ne 0) {
+    if ((Test-WorkshopPackages)) {
+        try {
+            [ordered]@{
+                ok   = $true
+                venv = $PythonVenvRoot
+                checkedAt = (Get-Date).ToString("o")
+            } |
+                ConvertTo-Json |
+                Set-Content -LiteralPath (Join-Path $StateRoot "workshop-packages-ok.json") -Encoding UTF8
+        }
+        catch {}
+
+        Write-Host ""
+        Write-OK "Workshop packages installed"
+    }
+    else {
         # The classroom machines are expected to have internet access
         # (npm and PyPI must be reachable); if this install fails in a
         # blocked network, keep setup alive so the OpenCode console still
         # opens on the project root and the instructor is pointed at the
         # fix instead of a silent dead dashboard later.
         Write-Warn "pip exit code was $pipExitCode. Continuing, but scripts like 01_eda.py need pandas/gradio."
-        return
     }
-
-    Write-Host ""
-    Write-OK "Workshop packages installed"
 }
 
 # ============================================================

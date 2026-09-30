@@ -25,8 +25,18 @@ INSTRUCTOR CHECKLIST BEFORE DISTRIBUTION
    key.txt is inside it before zipping; the placeholder is deliberately
    refused by the launcher.
 2. Optional: put python-3.12.10 / node-v24.21.0 installers into
-   payload\ to pre-bake the big downloads. See README-FIRST.txt in the
-   original bundle.
+   payload\ to pre-bake the big downloads (see below), and optionally
+   pre-download the workshop wheels so classroom machines need no PyPI:
+
+       python -m pip download --only-binary=:all: ^
+           -d deployment\payload\wheels ^
+           pandas matplotlib scikit-learn gradio
+
+   The launcher detects payload\wheels\*.whl and installs with
+   --no-index --find-links, skipping classroom Wi-Fi entirely.
+   Large packages: pandas/numpy/scipy/sklearn + gradio's web stack are
+   several hundred MB -- that is why the first-run install takes a few
+   minutes on slow links (progress streams live in the console).
 3. The launcher pins OpenCode 2.0.20 and provides glm-5.3-flash by
    Tencent Cloud MaaS - that is the default and only permitted provider.
 
