@@ -1,0 +1,37 @@
+[
+  {
+    "file": "README-FIRST.txt",
+    "sha256": "75b2abfe6dbd58b985a0b949881b00cd0c13f31231e7a56398cc64977f4004bc",
+    "bytes": 2002
+  },
+  {
+    "file": "REPAIR VIBE CODING.bat",
+    "sha256": "86be4d35732e8d4fde8559da9ee08fd8e964bcfbb9ccd0363621035734d28dde",
+    "bytes": 1064
+  },
+  {
+    "file": "RESET VIBE CODING.bat",
+    "sha256": "12b742a60fa630fd79a9623cc7087ecf7726c9ddc8a38ddceaa01c43f6b06dc7",
+    "bytes": 1523
+  },
+  {
+    "file": "START VIBE CODING.bat",
+    "sha256": "3a17f35b966c363260eaacec6b463f3e2a1a39c0d3216b2639a2fdbaca1f7d00",
+    "bytes": 2026
+  },
+  {
+    "file": "KEY.txt.TEMPLATE",
+    "sha256": "a5a401010547f496928dedfef4a000501452581ebe45c93a2e24c187ad12b609",
+    "bytes": 22
+  },
+  {
+    "file": "oneclick.ps1",
+    "sha256": "d1f54335c61599742f915a96aa392747952bbba3056e8e4f37482fa68db8d652",
+    "bytes": 64296
+  },
+  {
+    "file": "payload/README.txt",
+    "sha256": "b955c32e45d97b11d5fa50853797c1ada607b6fc18f6d0f1c7732cd48e97b50c",
+    "bytes": 268
+  }
+]
