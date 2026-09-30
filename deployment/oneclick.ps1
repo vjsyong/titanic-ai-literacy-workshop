@@ -591,34 +591,56 @@ function Install-WorkshopDependencies {
         return
     }
 
-    Write-Host "Installing pandas / matplotlib / scikit-learn / gradio (first run only)..." -ForegroundColor DarkGray
+    Write-Host ""
+    Write-Host "First run only: installing pandas / matplotlib / scikit-learn / gradio."
+    Write-Host "Target (isolated classroom venv): $PythonVenvRoot" -ForegroundColor Cyan
+    Write-Host "This can take a few minutes on classroom Wi-Fi. Progress appears below" -ForegroundColor Yellow
+    Write-Host "when each package is collected/downloaded, so the window is NOT hung:" -ForegroundColor Yellow
+    Write-Host ""
 
     $python = Join-Path $PythonVenvRoot "Scripts\python.exe"
 
-    $result = Invoke-NativeCapture `
-        -FilePath $python `
-        -Arguments @(
-            "-m", "pip", "install",
-            "--only-binary=:all:",
-            "--disable-pip-version-check",
-            "pandas", "matplotlib", "scikit-learn", "gradio"
-        )
+    # Stream pip output live instead of capturing it: the "Collecting ... /
+    # Downloading ... (x.x MB)" lines are the visible heartbeat students need.
+    # pip progress bars use carriage returns, which PowerShell cannot
+    # redisplay nicely, so they remain disabled.
+    $previousPreference = $ErrorActionPreference
+    $ErrorActionPreference = "Continue"
 
-    if ($result.ExitCode -ne 0) {
+    try {
+        & $python -m pip install `
+            --only-binary=:all: `
+            --disable-pip-version-check `
+            --progress-bar off `
+            pandas matplotlib scikit-learn gradio 2>&1 |
+            ForEach-Object {
+                $line = if ($_ -is [System.Management.Automation.ErrorRecord]) { $_.Exception.Message } else { $_.ToString() }
+                if ($line -and $line.Trim()) {
+                    Write-Host ("  " + $line.Trim()) -ForegroundColor DarkGray
+                }
+            }
+    }
+    catch {
+        $ErrorActionPreference = $previousPreference
+        Write-Warn "Workshop package installation failed. Continuing, but scripts like 01_eda.py need pandas/gradio."
+        Write-Warn "Error: $($_.Exception.Message)"
+        return
+    }
+
+    $pipExitCode = $LASTEXITCODE
+    $ErrorActionPreference = $previousPreference
+
+    if ($pipExitCode -ne 0) {
         # The classroom machines are expected to have internet access
         # (npm and PyPI must be reachable); if this install fails in a
         # blocked network, keep setup alive so the OpenCode console still
         # opens on the project root and the instructor is pointed at the
         # fix instead of a silent dead dashboard later.
-        Write-Warn "Workshop package installation failed. Continuing, but scripts like 01_eda.py need pandas/gradio."
-
-        if (-not [string]::IsNullOrWhiteSpace($result.Output)) {
-            Write-Host $result.Output -ForegroundColor DarkGray
-        }
-
+        Write-Warn "pip exit code was $pipExitCode. Continuing, but scripts like 01_eda.py need pandas/gradio."
         return
     }
 
+    Write-Host ""
     Write-OK "Workshop packages installed"
 }
 
