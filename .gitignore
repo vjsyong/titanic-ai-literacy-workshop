@@ -7,11 +7,13 @@ __pycache__/
 deployment/key.txt
 
 # Workshop generated artifacts
-eda_output/
 titanic_model.pkl
 
-# Gradio
-.gradio/
+# Workshop server logs
+.workshop/
+
+# Node
+web/node_modules/
 
 # OS
 .DS_Store

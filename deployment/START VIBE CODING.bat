@@ -69,23 +69,27 @@ powershell.exe ^
 
 set "RESULT=%errorlevel%"
 
+echo.
+echo ==============================================
+echo Launcher exit code: %RESULT%
+echo ==============================================
+echo.
+
 if not "%RESULT%"=="0" (
-    echo.
-    echo ==============================================
     echo              SETUP DID NOT FINISH
-    echo ==============================================
     echo.
     echo Please take a screenshot of this window.
-    echo.
-    echo A detailed support log should be in:
-    echo   %LOCALAPPDATA%\VibeCoding\logs
-    echo.
     echo You can safely run this launcher again.
     echo If it repeatedly fails, run:
     echo   REPAIR VIBE CODING.bat
     echo.
-    pause
 )
 
+echo Detailed support log folder:
+echo   %LOCALAPPDATA%\VibeCoding\logs
+echo.
+echo Send the instructor: this screenshot + latest.log
+echo.
+pause
 popd
 exit /b %RESULT%

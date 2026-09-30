@@ -39,14 +39,18 @@ powershell.exe ^
 
 set "RESULT=%errorlevel%"
 
+echo.
+echo ==============================================
+echo Repair exit code: %RESULT%
+echo ==============================================
+echo.
+
 if not "%RESULT%"=="0" (
-    echo.
     echo Repair did not complete.
     echo Please send the instructor:
     echo   %LOCALAPPDATA%\VibeCoding\logs\latest.log
     echo.
-    pause
 )
-
+pause
 popd
 exit /b %RESULT%

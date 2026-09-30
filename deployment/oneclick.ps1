@@ -33,7 +33,7 @@ $ProgressPreference = "SilentlyContinue"
 #   and referenced through OpenCode's {file:~...} substitution.
 # ============================================================
 
-$BootstrapVersion = "2026.09.30.10"
+$BootstrapVersion = "2026.09.30.13"
 
 # ----------------------------
 # Pinned classroom runtimes
@@ -49,6 +49,11 @@ $NodeVersion = "24.21.0"
 # future major release.
 $OpenCodePackage = "@opencode/cli@2.0.20"
 
+# The classroom Python packages the workshop scripts need. The list is
+# stored in the package-cache state file, so changing it here forces a
+# fresh install check on machines that already ran an older launcher.
+$WorkshopPackageSignature = "pandas,scikit-learn,fastapi,uvicorn"
+
 # ----------------------------
 # Tencent configuration
 # ----------------------------
@@ -63,6 +68,8 @@ $TencentModelRef = "$TencentProviderId/$TencentModelId"
 # ----------------------------
 $PreferredPort = 4096
 $LastPort = 4196
+$PreferredWorkshopPort = 4097
+$LastWorkshopPort = 4197
 $OpenCodeUsername = "opencode"
 
 # ----------------------------
@@ -577,49 +584,178 @@ function Test-WorkshopPackages {
         -FilePath $python `
         -Arguments @(
             "-c",
-            "import pandas,matplotlib,sklearn,gradio; import pandas as p; print('ok', p.__version__)"
+            "import pandas,sklearn,fastapi,uvicorn; import pandas as p; print('ok', p.__version__)"
         )
 
     return ($result.ExitCode -eq 0)
 }
 
+# A cold "import fastapi/uvicorn" is quick, but this check also proves
+# the workshop scripts' pandas/scikit-learn stack is healthy. Once a
+# classroom venv has proven healthy we remember that and re-answer
+# instantly; a changed package list or recreated venv invalidates it.
+function Test-WorkshopPackagesFast {
+    $stateFile = Join-Path $StateRoot "workshop-packages-ok.json"
+
+    $state = $null
+    if (Test-Path -LiteralPath $stateFile) {
+        try {
+            $state = Get-Content -LiteralPath $stateFile -Raw | ConvertFrom-Json
+        }
+        catch {
+            $state = $null
+        }
+    }
+
+    if ($state -and ($state.venv -eq $PythonVenvRoot) -and ($state.ok -eq $true) -and ($state.packages -eq $WorkshopPackageSignature)) {
+        return $true
+    }
+
+    if (Test-WorkshopPackages) {
+        try {
+            [ordered]@{
+                ok   = $true
+                venv = $PythonVenvRoot
+                packages = $WorkshopPackageSignature
+                checkedAt = (Get-Date).ToString("o")
+            } |
+                ConvertTo-Json |
+                Set-Content -LiteralPath $stateFile -Encoding UTF8
+        }
+        catch {}
+
+        return $true
+    }
+
+    return $false
+}
+
 function Install-WorkshopDependencies {
     Write-Section "Preparing workshop Python packages"
 
-    if (Test-WorkshopPackages) {
-        Write-OK "Workshop packages already present (pandas / matplotlib / scikit-learn / gradio)"
+    if (Test-WorkshopPackagesFast) {
+        Write-OK "Workshop packages already present (pandas / scikit-learn / fastapi / uvicorn)"
         return
     }
 
-    Write-Host "Installing pandas / matplotlib / scikit-learn / gradio (first run only)..." -ForegroundColor DarkGray
+    # Keep downloaded wheels between runs/hostel resets in the classroom
+    # profile instead of the user's global pip cache.
+    $env:PIP_CACHE_DIR = Join-Path $AppRoot "pip-cache"
+
+    Write-Host ""
+    Write-Host "First run only: installing pandas / scikit-learn / fastapi / uvicorn."
+    Write-Host "Target (isolated classroom venv): $PythonVenvRoot" -ForegroundColor Cyan
+    Write-Host "This can take a few minutes on classroom Wi-Fi (several hundred MB of wheels)." -ForegroundColor Yellow
+    Write-Host "Progress appears below when each package is collected/downloaded, so the window is NOT hung:" -ForegroundColor Yellow
+    Write-Host ""
 
     $python = Join-Path $PythonVenvRoot "Scripts\python.exe"
 
-    $result = Invoke-NativeCapture `
-        -FilePath $python `
-        -Arguments @(
-            "-m", "pip", "install",
-            "--only-binary=:all:",
-            "--disable-pip-version-check",
-            "pandas", "matplotlib", "scikit-learn", "gradio"
-        )
+    $wheelRoot = Join-Path $PayloadRoot "wheels"
+    $wheelArgs = @()
 
-    if ($result.ExitCode -ne 0) {
+    # Optional offline shortcut: the instructor may pre-download all wheels
+    # into deployment/payload/wheels (see README-FIRST.txt). Then no Wi-Fi
+    # is needed at all.
+    if ((Test-Path -LiteralPath $wheelRoot) -and
+        ((Get-ChildItem -LiteralPath $wheelRoot -Filter "*.whl" -ErrorAction SilentlyContinue) )) {
+        Write-Host "Bundled offline wheels found: $wheelRoot" -ForegroundColor DarkGray
+        $wheelArgs = @("--no-index", "--find-links", ('"{0}"' -f $wheelRoot))
+    }
+
+    # Live progress, not a silent wait: pip runs as a background process
+    # whose output lands in a temporary log, while this console keeps a
+    # PowerShell progress bar updated every second (elapsed time, number
+    # of wheels fetched, and the latest Collecting/Downloading action).
+    $logOut = Join-Path $DownloadRoot "pip-install.log"
+    $argList = @(
+        "-m", "pip", "install",
+        "--only-binary=:all:",
+        "--disable-pip-version-check",
+        "--progress-bar", "off"
+    ) + $wheelArgs + @("pandas", "scikit-learn", "fastapi", "uvicorn")
+
+    $started = Get-Date
+    $pipProc = Start-Process `
+        -FilePath $python `
+        -ArgumentList $argList `
+        -WorkingDirectory $AppRoot `
+        -RedirectStandardOutput $logOut `
+        -RedirectStandardError (Join-Path $DownloadRoot "pip-install.err.log") `
+        -NoNewWindow `
+        -PassThru
+
+    $lastAction = "starting pip"
+    $downloadCount = 0
+    $installDone = $false
+
+    while (-not $pipProc.HasExited) {
+        Start-Sleep -Milliseconds 1200
+
+        # Feed the heartbeat from whatever pip wrote since the last tick.
+        try {
+            $lines = Get-Content -LiteralPath $logOut -ErrorAction SilentlyContinue
+            if ($lines) {
+                $downloads = @($lines | Where-Object { $_ -match "Downloading " })
+                $downloadCount = $downloads.Count
+                $latest = ($lines | Where-Object { $_.Trim() }) | Select-Object -Last 1
+                if ($latest) {
+                    $lastAction = $latest.Trim()
+                    if ($lastAction.Length -gt 58) { $lastAction = $lastAction.Substring(0, 58) + "..." }
+                }
+                if ($lines | Where-Object { $_ -match "Successfully installed" }) {
+                    $installDone = $true
+                }
+            }
+        }
+        catch {}
+
+        $span = (Get-Date) - $started
+        $elapsed = "{0}m {1:00}s" -f [int][Math]::Floor($span.TotalMinutes), $span.Seconds
+        Write-Progress `
+            -Activity "Installing workshop packages (pandas / scikit-learn / fastapi / uvicorn)" `
+            -Status "$elapsed elapsed | $downloadCount wheels fetched | $lastAction" `
+            -PercentComplete ([Math]::Min(95, 10 + $downloadCount * 8))
+    }
+
+    Write-Progress -Activity "Installing workshop packages" -Completed
+
+    try {
+        $tail = Get-Content -LiteralPath $logOut -ErrorAction SilentlyContinue | Select-Object -Last 6
+        if ($tail) {
+            $tail | ForEach-Object {
+                if ($_ -and $_.Trim()) { Write-Host ("  " + $_.Trim()) -ForegroundColor DarkGray }
+            }
+        }
+    }
+    catch {}
+
+    $pipExitCode = $pipProc.ExitCode
+
+    if ((Test-WorkshopPackages)) {
+        try {
+            [ordered]@{
+                ok   = $true
+                venv = $PythonVenvRoot
+                packages = $WorkshopPackageSignature
+                checkedAt = (Get-Date).ToString("o")
+            } |
+                ConvertTo-Json |
+                Set-Content -LiteralPath (Join-Path $StateRoot "workshop-packages-ok.json") -Encoding UTF8
+        }
+        catch {}
+
+        Write-Host ""
+        Write-OK "Workshop packages installed"
+    }
+    else {
         # The classroom machines are expected to have internet access
         # (npm and PyPI must be reachable); if this install fails in a
         # blocked network, keep setup alive so the OpenCode console still
         # opens on the project root and the instructor is pointed at the
         # fix instead of a silent dead dashboard later.
-        Write-Warn "Workshop package installation failed. Continuing, but scripts like 01_eda.py need pandas/gradio."
-
-        if (-not [string]::IsNullOrWhiteSpace($result.Output)) {
-            Write-Host $result.Output -ForegroundColor DarkGray
-        }
-
-        return
+        Write-Warn "pip exit code was $pipExitCode. Continuing, but scripts like 01_eda.py need pandas/scikit-learn."
     }
-
-    Write-OK "Workshop packages installed"
 }
 
 # ============================================================
@@ -1598,6 +1734,184 @@ function Start-ClassOpenCodeService {
         -WorkingDirectory $ClassroomProjectRoot
 }
 
+# The workshop browser page (workshop_server.py + the React UI in web/dist)
+# is a SECOND classroom service on its own port (default 4097). Serving it
+# here means students get everything automatically:
+#     OpenCode chat  : http://127.0.0.1:4096
+#     Workshop page  : http://127.0.0.1:<workshop port>
+# serve_workshop.py starts the server in the background, waits until the
+# page really answers and returns; the server then auto-refreshes the open
+# page whenever the AI assistant saves a gate.
+function Start-WorkshopPage {
+    param(
+        [string]$Python,
+        [string]$ProjectRoot,
+        [int]$Port
+    )
+
+    $serve = Join-Path $ProjectRoot "serve_workshop.py"
+    $server = Join-Path $ProjectRoot "workshop_server.py"
+
+    if ((-not (Test-Path -LiteralPath $serve)) -or (-not (Test-Path -LiteralPath $server))) {
+        Write-Warn "serve_workshop.py / workshop_server.py were not found in: $ProjectRoot"
+        Write-Host "Servers to run manually:  python serve_workshop.py" -ForegroundColor Yellow
+        return $null
+    }
+
+    Write-Host "Starting the workshop page on port $Port..." -ForegroundColor DarkGray
+
+    Push-Location -LiteralPath $ProjectRoot
+    try {
+        & $Python $serve --port $Port --no-browser
+        $serveExit = $LASTEXITCODE
+    }
+    finally {
+        Pop-Location
+    }
+
+    if ($serveExit -ne 0) {
+        Write-Warn "serve_workshop.py exited with code $serveExit."
+        Write-Host "Start it manually once:  python serve_workshop.py  (leave that terminal open)" -ForegroundColor Yellow
+        return $null
+    }
+
+    # serve_workshop.py already waited for readiness; double-check quickly.
+    for ($attempt = 0; $attempt -lt 10; $attempt++) {
+        try {
+            $pageResponse = Invoke-WebRequest `
+                -Uri ("http://127.0.0.1:{0}/api/health" -f $Port) `
+                -UseBasicParsing `
+                -TimeoutSec 5
+            if ($pageResponse.StatusCode -ge 200 -and $pageResponse.StatusCode -lt 500) {
+                Write-OK "Workshop page ready at http://127.0.0.1:$Port"
+                return [PSCustomObject]@{ Port = $Port; Ok = $true }
+            }
+        }
+        catch {}
+        Start-Sleep -Seconds 1
+    }
+
+    Write-Warn "Workshop page did not answer on port $Port."
+    Write-Host "Start it manually once:  python serve_workshop.py  (leave that terminal open)" -ForegroundColor Yellow
+    return $null
+}
+
+
+# A tiny detached watchdog: keeps polling the classroom web pages every 10
+# seconds for up to 8 hours, and cleanly restarts the classroom services if
+# they stop answering (e.g. students report "the page loads and loads" after
+# the launcher window closes). Restart writes a line into the watchdog log.
+function Start-ClassWatchdog {
+    param(
+        [string]$OpenCode,
+        [int]$Port,
+        [string]$WatchdogLog,
+        [string]$Python,
+        [int]$PagePort,
+        [string]$ProjectRoot
+    )
+
+    $watchdogScript = Join-Path $AppRoot "watchdog.ps1"
+
+    $watchdogBody = @'
+param(
+    [string]$OpenCode,
+    [int]$Port,
+    [string]$Log,
+    [string]$ProjectRoot,
+    [string]$Python,
+    [int]$PagePort
+)
+
+$ErrorActionPreference = "Continue"
+$deadline = (Get-Date).AddHours(8)
+$failures = 0
+$pageFailures = 0
+$baseUrl = "http://127.0.0.1:{0}" -f $Port
+$pageUrl = "http://127.0.0.1:{0}" -f $PagePort
+
+while ((Get-Date) -lt $deadline) {
+    Start-Sleep -Seconds 10
+
+    # --- workshop page (OpenCode) ---
+    $alive = $false
+    try {
+        $response = Invoke-WebRequest -Uri $baseUrl -UseBasicParsing -TimeoutSec 8
+        if ($response.StatusCode -ge 200 -and $response.StatusCode -lt 500) {
+            $alive = $true
+        }
+    }
+    catch {}
+
+    if ($alive) {
+        $failures = 0
+    }
+    else {
+        $failures = $failures + 1
+        if ($failures -ge 3) {
+            Push-Location -LiteralPath $ProjectRoot
+            try {
+                $null = & $OpenCode service restart 2>&1
+                $failures = 0
+                Add-Content -LiteralPath $Log -Value ((Get-Date -Format o) + " watchdog restarted the classroom service (page was not answering).")
+            }
+            catch {
+                Add-Content -LiteralPath $Log -Value ((Get-Date -Format o) + " watchdog failed to restart: " + $_.Exception.Message)
+            }
+            finally {
+                Pop-Location
+            }
+        }
+    }
+
+    # --- workshop page (workshop_server.py + React UI) ---
+    $pageAlive = $false
+    try {
+        $pageResponse = Invoke-WebRequest -Uri $pageUrl -UseBasicParsing -TimeoutSec 8
+        if ($pageResponse.StatusCode -ge 200 -and $pageResponse.StatusCode -lt 500) {
+            $pageAlive = $true
+        }
+    }
+    catch {}
+
+    if ($pageAlive) {
+        $pageFailures = 0
+    }
+    else {
+        $pageFailures = $pageFailures + 1
+        if ($pageFailures -ge 3) {
+            try {
+                $serve = Join-Path $ProjectRoot "serve_workshop.py"
+                $null = Start-Process -FilePath $Python -ArgumentList @(('"{0}"' -f $serve), "--port", "$PagePort", "--no-browser") -WorkingDirectory $ProjectRoot -WindowStyle Minimized
+                $pageFailures = 0
+                Add-Content -LiteralPath $Log -Value ((Get-Date -Format o) + " watchdog restarted the workshop page (workshop server) on port " + $PagePort + ".")
+            }
+            catch {
+                Add-Content -LiteralPath $Log -Value ((Get-Date -Format o) + " watchdog failed to restart the workshop page: " + $_.Exception.Message)
+            }
+        }
+    }
+}
+'@
+
+    Set-Content -LiteralPath $watchdogScript -Value $watchdogBody -Encoding UTF8
+
+    Start-Process `
+        -FilePath "powershell.exe" `
+        -WindowStyle Hidden `
+        -ArgumentList @(
+            "-NoProfile",
+            "-ExecutionPolicy", "Bypass",
+            "-File", ('"{0}"' -f $watchdogScript),
+            "-OpenCode", ('"{0}"' -f $OpenCode),
+            "-Port", "$Port",
+            "-Log", ('"{0}"' -f $WatchdogLog),
+            "-ProjectRoot", ('"{0}"' -f $ClassroomProjectRoot),
+            "-Python", ('"{0}"' -f $Python),
+            "-PagePort", "$WorkshopPagePort"
+        )
+}
+
 function Start-OpenCodeService {
     param(
         [string]$OpenCode,
@@ -1751,6 +2065,47 @@ $($startResult.Output)
     $baseUrl = "http://127.0.0.1:$Port"
     $pairOutput = ""
 
+    # FAST PATH: if the browser session already exists (auth persisted on
+    # this machine from a previous run), reuse it and open the plain URL.
+    # Pairing on every launch produced a hanging /auth/connect page: a
+    # one-time token that is already consumed just spins in the browser.
+    $alreadyAuthed = $false
+
+    try {
+        $authHeader = "Basic " + [Convert]::ToBase64String(
+            [Text.Encoding]::ASCII.GetBytes("$($Credentials.username):$($Credentials.password)")
+        )
+        $authResponse = Invoke-WebRequest `
+            -Uri "$baseUrl/api/session" `
+            -UseBasicParsing `
+            -Headers @{ Authorization = $authHeader } `
+            -TimeoutSec 8
+
+        if ($authResponse.StatusCode -eq 200) {
+            $alreadyAuthed = $true
+        }
+    }
+    catch {}
+
+    if ($alreadyAuthed) {
+        Write-OK "Existing classroom web session recognized -- opening the workshop page directly."
+        $loginUrl = $baseUrl
+
+        if (-not (Open-Browser $loginUrl)) {
+            Write-Warn "Could not launch the default browser."
+            Write-Host "Open manually: $loginUrl"
+        }
+
+        return [PSCustomObject]@{
+            Url = $baseUrl
+            Port = $Port
+            Paired = $false
+            PageOk = $true
+        }
+    }
+
+    $pairOutput = ""
+
     try {
         $pairResult = Invoke-NativeCapture `
             -FilePath $OpenCode `
@@ -1788,14 +2143,33 @@ $($startResult.Output)
     if (-not (Open-Browser $loginUrl)) {
         Write-Warn "Could not launch the default browser."
         Write-Host "Open manually: $loginUrl"
-        Write-Host "Username: $($Credentials.username)"
-        Write-Host "Password: $($Credentials.password)"
+    }
+
+    # Browser-side smoke test: the API health check above proves the
+    # backend answers, but a student seeing an endlessly spinning page is
+    # the same kind of outage. Ask the local HTTP server directly.
+    $pageOk = $false
+    try {
+        $pageResponse = Invoke-WebRequest -Uri $baseUrl -UseBasicParsing -TimeoutSec 10
+        if ($pageResponse.StatusCode -ge 200 -and $pageResponse.StatusCode -lt 500) {
+            $pageOk = $true
+        }
+    }
+    catch {}
+
+    if ($pageOk) {
+        Write-OK "Workshop web page answers at $baseUrl"
+    }
+    else {
+        Write-Warn "The workshop web page did not answer an HTTP request."
+        Write-Host "A hidden watchdog will keep retrying and restart the service if needed." -ForegroundColor Yellow
     }
 
     return [PSCustomObject]@{
         Url = $baseUrl
         Port = $Port
         Paired = ($loginUrl -ne $baseUrl)
+        PageOk = $pageOk
     }
 }
 
@@ -1945,7 +2319,7 @@ try {
     $PythonVersionText = (& $ClassPython --version 2>&1 | Out-String).Trim()
     Write-OK "$PythonVersionText + pip"
 
-    # Workshop packages (pandas / matplotlib / scikit-learn / gradio) for
+    # Workshop packages (pandas / scikit-learn / fastapi / uvicorn) for
     # the Titanic scripts (01_eda.py, 02_train.py, 03_dashboard.py).
     Install-WorkshopDependencies
 
@@ -2147,6 +2521,22 @@ try {
         $ClassroomConfigJson
 
     # ========================================================
+    # Workshop page (React UI + workshop server, separate service)
+    # ========================================================
+    $WorkshopPagePort = Find-FreePort $PreferredWorkshopPort $LastWorkshopPort
+
+    Write-Section "Starting the workshop web page (React UI + workshop server)"
+
+    $WorkshopPage = Start-WorkshopPage `
+        -Python $ClassPython `
+        -ProjectRoot $ClassroomProjectRoot `
+        -Port $WorkshopPagePort
+
+    if ($WorkshopPage -and $WorkshopPage.Ok) {
+        [void](Open-Browser ("http://127.0.0.1:{0}" -f $WorkshopPage.Port))
+    }
+
+    # ========================================================
     # Success
     # ========================================================
     Write-Host ""
@@ -2154,28 +2544,59 @@ try {
     Write-Host "              READY TO VIBE CODE              " -ForegroundColor Green
     Write-Host "==============================================" -ForegroundColor Green
     Write-Host ""
-    Write-Host "OpenCode: $($Server.Url)"
-    Write-Host "Model:    $TencentModelRef"
-    Write-Host "Python:   $PythonVersionText"
-    Write-Host "Node:     $NodeVersionText"
-    Write-Host ""
-
-    if ($Server.Paired) {
-        Write-Host "The browser should already be signed in." -ForegroundColor Green
+    Write-Host "OpenCode:     $($Server.Url)"
+    if ($WorkshopPage -and $WorkshopPage.Ok) {
+        Write-Host "Workshop page: http://127.0.0.1:$($WorkshopPage.Port)"
     }
-    else {
-        Write-Host "Browser pairing could not be automated." -ForegroundColor Yellow
-        Write-Host "Username: $($Credentials.username)"
-        Write-Host "Password: $($Credentials.password)"
-    }
-
+    Write-Host "Model:        $TencentModelRef"
+    Write-Host "Python:       $PythonVersionText"
+    Write-Host "Node:         $NodeVersionText"
     Write-Host ""
-    Write-Host "Support log:" -ForegroundColor DarkGray
-    Write-Host "  $LogFile" -ForegroundColor DarkGray
-    Write-Host ""
-    Write-Host "It is safe to close this window."
 
-    Start-Sleep -Seconds 3
+        if ($Server.Paired) {
+            Write-Host "The browser should already be signed in." -ForegroundColor Green
+        }
+        else {
+            Write-Host "Browser pairing could not be automated." -ForegroundColor Yellow
+            Write-Host "Sign in with:" -ForegroundColor Yellow
+            Write-Host "  Username: $($Credentials.username)"
+            Write-Host "  Password: $($Credentials.password)"
+        }
+
+        # Always show the manual recovery route (never assume the browser staged itself).
+        Write-Host ""
+        Write-Host "If a page keeps loading:"
+        Write-Host "  1. Refresh the browser (F5), or open manually: $($Server.Url)"
+        if ($WorkshopPage -and $WorkshopPage.Ok) {
+            Write-Host "     workshop page: http://127.0.0.1:$($WorkshopPage.Port)"
+        }
+        Write-Host "  2. Username: $($Credentials.username)   Password: $($Credentials.password)"
+        Write-Host "  3. A hidden watchdog restarts both servers automatically if they stop answering."
+
+        # A detached watchdog keeps both classroom services healthy even
+        # after this window closes (auto-restarts for up to 8 hours).
+        try {
+            Start-ClassWatchdog `
+                -OpenCode $OpenCode `
+                -Port $Server.Port `
+                -WatchdogLog $LatestLog `
+                -Python $ClassPython `
+                -PagePort $WorkshopPagePort `
+                -ProjectRoot $ClassroomProjectRoot
+            Write-OK "Watchdog running (keeps both classroom pages alive for the next 8 hours)"
+        }
+        catch {
+            Write-Warn "Watchdog could not start: $($_.Exception.Message)"
+        }
+
+        Write-Host ""
+        Write-Host "Support log:" -ForegroundColor DarkGray
+        Write-Host "  $LogFile" -ForegroundColor DarkGray
+        Write-Host ""
+        Write-Host "It is safe to close this window." -ForegroundColor DarkGray
+        Write-Host ""
+        Write-Host "Press ENTER to close this window (read the notes above first)." -ForegroundColor Green
+        [void](Read-Host)
 }
 catch {
     $ExitCode = 1

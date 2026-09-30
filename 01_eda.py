@@ -1,27 +1,35 @@
-"""01_eda.py -- Exploratory Data Analysis (First-year AI Literacy Workshop)
+"""01_eda.py -- Step 1 "Meet the Data" (First-year AI Literacy Workshop)
 
-WHAT THIS SCRIPT DOES
-    Loads the cleaned Titanic passenger list, prints a friendly summary of the
-    numbers, and draws charts that help us spot patterns by eye.
+THE STEP-BY-STEP EXPERIENCE
+    This script is a scaffold of six progressive checkpoints (gates).
+    The class starts with STEPS_COMPLETED = 0: on the web page, students
+    see the intro, the NEXT checkpoint's prompt hint, and locked slots
+    for the rest. Each time a student asks their AI Teaching Assistant
+    to unlock one step, the assistant:
 
-WHAT YOU (THE STUDENT) DO
-    Everything in the workshop happens inside the block marked:
-        # TODO: PROMPT HERE  >>> BEGIN STUDENT EDIT ZONE
-        ...
-        # TODO: PROMPT HERE  <<< END STUDENT EDIT ZONE
-    That is the ONLY part of the file you (or your AI assistant) should change.
+        1. fills the step function's body -- ONLY inside that step's
+           `# === GATE n ===` markers,
+        2. runs `python 01_eda.py` in the terminal to prove it works,
+        3. bumps STEPS_COMPLETED to that step's number -- nothing else.
+
+    The workshop page (served by workshop_server.py) notices the saved
+    file within a second and reveals the next magic sentence.
+
+    Students never type code. The AI assistant never types more than
+    one checkpoint at a time (see AGENTS.md STOP-FIRST RULE).
 
 HOW TO RUN
-    python 01_eda.py
+    python 01_eda.py          (terminal checklist view)
+    python serve_workshop.py  (the web page -- all three steps at once)
 """
 
 import os
 
-import matplotlib
-
-matplotlib.use("Agg")  # draw charts to files (no popup window)
-import matplotlib.pyplot as plt
 import pandas as pd
+
+# Shared gate helpers: workshop_steps.chart(...) draws interactive charts
+# on the page, workshop_steps.metric(...) shows headline numbers.
+import workshop_steps
 
 # ----------------------------------------------------------------------------
 # DATA PATH -- never change or move this file
@@ -29,84 +37,375 @@ import pandas as pd
 DATA_PATH = os.path.join("data", "titanic.csv")
 
 # ----------------------------------------------------------------------------
-# OUTPUT FOLDER for charts
+# PROGRESS COUNTER -- the ONLY number the AI assistant bumps in class,
+# strictly one step at a time, AFTER it proved the step works.
 # ----------------------------------------------------------------------------
-OUTPUT_DIR = "eda_output"
-os.makedirs(OUTPUT_DIR, exist_ok=True)
+STEPS_COMPLETED = 6
 
 
-def analyze_data():
-    """Load the Titanic data, explore it, and save chart images.
+# ============================================================================
+# CHECKPOINT GATES -- student + AI edit zone
+# ============================================================================
+# Rules for the AI assistant:
+#   * Implement ONE gate per student request: fill the step function body
+#     below its `# === GATE n ===` marker, never earlier, never later.
+#   * Each function returns web-ready content: text, a DataFrame (shown as
+#     a table), or a dict combining {"text": ..., "dataframe": ...,
+#     "chart": ..., "metric": ...}. Build charts with the shared helper:
+#         workshop_steps.chart(kind="bar", data=df, x="Sex", y="Count")
+#     Kinds: bar, pictorial (person icons), line, area, scatter, pie,
+#     donut, histogram, gauge, heatmap.
+#   * When python 01_eda.py runs cleanly, bump STEPS_COMPLETED to n.
+#   * NEVER touch a future gate. If the student asks, apply the workshop
+#     STOP-FIRST RULE instead of implementing.
+# ============================================================================
 
-    This function runs when you type:  python 01_eda.py
+
+# === GATE 1 -- "Open the passenger list" ====================================
+def step_1_open_the_list():
+    """Load data/titanic.csv with pandas, count and peek.
+
+    LOOK LIKE (web): a friendly sentence with the number of passengers and
+    the details each row carries, plus a small preview table (head).
+
+    The page renders pandas DataFrames as tables automatically:
+
+        df = pd.read_csv(DATA_PATH)
+        return {
+            "text": f"The list holds {len(df)} passengers ...",
+            "dataframe": df.head(),
+        }
     """
-    titanic = pd.read_csv(DATA_PATH)
+    df = pd.read_csv(DATA_PATH)
+    details = ", ".join(df.columns)
+    return {
+        "text": (
+            f"The passenger list holds **{len(df):,} people** from 1912. "
+            f"For each one we know: {details}."
+        ),
+        "dataframe": df.head(),
+    }
 
-    # ------------------------------------------------------------------
-    # A first look at the data -- these lines run automatically.
-    # ------------------------------------------------------------------
-    print("\n=== First look at the data ===")
-    print(f"Rows (passengers): {len(titanic)}")
-    print(f"Columns: {len(titanic.columns)} -> {', '.join(titanic.columns)}")
-    print("\nMissing values per column:")
-    missing = titanic.isna().sum()
-    print(missing.to_string() if missing.any() else "  none -- the data is clean!")
 
-    # ==================================================================
-    # TODO: PROMPT HERE  >>> BEGIN STUDENT EDIT ZONE
-    # ==================================================================
-    #
-    #  Your AI Teaching Assistant will write code here when you ask for
-    #  things like: "show me the survival chart" or "compare fares".
-    #
-    #  Starter content (placeholder): a simple overview table and the
-    #  classic survival chart so the workflow is demonstrated end-to-end.
-    #
-    #  Students: feel free to ask your AI assistant to replace this!
-    #
-    print("\n=== Survival overview ===")
-    group = titanic.groupby("Survived").size()
-    survivors = int(group.get(1, 0))
-    victims = int(group.get(0, 0))
-    print(f"Survivors : {survivors} ({survivors / len(titanic):.1%})")
-    print(f"Perished  : {victims} ({victims / len(titanic):.1%})")
+# === GATE 2 -- "Where are the holes?" =======================================
+def step_2_find_missing_values():
+    """Show how many missing values each column has.
 
-    # --- Chart 1: survival by sex -----------------------------------
-    chart_path = os.path.join(OUTPUT_DIR, "survival_chart.png")
-    by_sex = titanic.groupby(["Sex", "Survived"]).size().unstack("Survived")
-    ax = by_sex.plot(kind="bar", figsize=(7, 4.5))
-    ax.set_title("Did female passengers survive more often than male passengers?")
-    ax.set_xlabel("Sex of passenger")
-    ax.set_ylabel("Number of passengers")
-    ax.legend(["Perished", "Survived"], title=None)
-    ax.set_xticklabels(by_sex.index, rotation=0)
-    fig = ax.get_figure()
-    fig.tight_layout()
-    fig.savefig(chart_path, dpi=150)
-    plt.close(fig)
-    print(f"\nSaved chart -> {chart_path}")
+    LOOK LIKE (web): a small table of column -> number of holes.
+    NOTE for the classroom: data/titanic.csv is pre-cleaned on purpose,
+    so a nice discussion question is: 'if there are no holes, who filled
+    them and why does that matter for a model?'
+    """
+    df = pd.read_csv(DATA_PATH)
+    holes = df.isna().sum().reset_index()
+    holes.columns = ["Column", "Missing values"]
+    return {
+        "text": (
+            "Every column is complete -- someone patched the holes before "
+            "class. Worth asking: **who** filled them, and what might that "
+            "choice hide?"
+        ),
+        "dataframe": holes,
+    }
 
-    # --- Chart 2: survival by ticket class --------------------------
-    chart_path = os.path.join(OUTPUT_DIR, "class_chart.png")
-    by_class = titanic.groupby(["Pclass", "Survived"]).size().unstack("Survived")
-    ax = by_class.plot(kind="bar", figsize=(7, 4.5))
-    ax.set_title("Was ticket class linked to survival?")
-    ax.set_xlabel("Ticket class (1 = most expensive, 3 = cheapest)")
-    ax.set_ylabel("Number of passengers")
-    ax.legend(["Perished", "Survived"], title=None)
-    ax.set_xticklabels(by_class.index, rotation=0)
-    fig = ax.get_figure()
-    fig.tight_layout()
-    fig.savefig(chart_path, dpi=150)
-    plt.close(fig)
-    print(f"Saved chart -> {chart_path}")
-    #
-    # ==================================================================
-    # TODO: PROMPT HERE  <<< END STUDENT EDIT ZONE
-    # ==================================================================
 
+# === GATE 3 -- "Did you survive?" ===========================================
+def step_3_survival_overview():
+    """Count survivors vs non-survivors and their shares.
+
+    LOOK LIKE (web): a tiny table (Perished vs Survived, counts and %).
+    TIP: the student should GUESS the split out loud first. A pie or
+    donut chart of the two shares is a fun extra.
+    """
+    df = pd.read_csv(DATA_PATH)
+    counts = df["Survived"].value_counts().sort_index()
+    total = int(counts.sum())
+    perished = int(counts.get(0, 0))
+    survived = int(counts.get(1, 0))
+    summary = pd.DataFrame(
+        {
+            "Outcome": ["Perished", "Survived"],
+            "Passengers": [perished, survived],
+            "Share": [f"{perished / total:.0%}", f"{survived / total:.0%}"],
+        }
+    )
+    split = pd.DataFrame(
+        {"Outcome": ["Perished", "Survived"], "Passengers": [perished, survived]}
+    )
+    return {
+        "text": (
+            f"Only **{survived / total:.0%}** of the {total:,} passengers "
+            "survived -- most of the people on board did not make it."
+        ),
+        "dataframe": summary,
+        "chart": workshop_steps.chart(
+            kind="donut", data=split, x="Outcome", y="Passengers",
+            title="Who survived?",
+        ),
+    }
+
+
+# === GATE 4 -- "Survival by sex" ============================================
+def step_4_survival_by_sex():
+    """Chart of survival counts split by male/female.
+
+    LOOK LIKE (web): an interactive chart plus one friendly caption
+    sentence. The page can draw eye-catching person-icon bars:
+
+        df = pd.read_csv(DATA_PATH)
+        by_sex = (
+            df.groupby(["Sex", "Survived"]).size()
+            .unstack(fill_value=0)
+            .rename(columns={0: "Perished", 1: "Survived"})
+            .reset_index()
+        )
+        return {
+            "text": "Women survived far more often ...",
+            "chart": workshop_steps.chart(
+                kind="pictorial", data=by_sex, x="Sex",
+                series=["Survived", "Perished"], stacked=True,
+                title="Survival by sex",
+            ),
+        }
+
+    (kind="bar" with the same data works too.)
+    """
+    df = pd.read_csv(DATA_PATH)
+    by_sex = (
+        df.groupby(["Sex", "Survived"])
+        .size()
+        .unstack(fill_value=0)
+        .rename(columns={0: "Perished", 1: "Survived"})
+        .reset_index()
+    )
+    women = df[df["Sex"] == "female"]["Survived"].mean()
+    men = df[df["Sex"] == "male"]["Survived"].mean()
+    return {
+        "text": (
+            f"Women survived at **{women:.0%}** -- men only at {men:.0%}. "
+            "'Women and children first' is written all over this chart."
+        ),
+        "chart": workshop_steps.chart(
+            kind="pictorial", data=by_sex, x="Sex",
+            series=["Survived", "Perished"], stacked=True,
+            title="Survival by sex",
+        ),
+    }
+
+
+# === GATE 5 -- "Survival by ticket class" ===================================
+def step_5_survival_by_class():
+    """Chart of survival counts split by Pclass 1/2/3.
+
+    LOOK LIKE (web): an interactive chart plus a caption sentence.
+    Group by ["Pclass", "Survived"], rename 0/1 to Perished/Survived,
+    and feed it to workshop_steps.chart(kind="bar", ..., stacked=True).
+    """
+    df = pd.read_csv(DATA_PATH)
+    by_class = (
+        df.groupby(["Pclass", "Survived"])
+        .size()
+        .unstack(fill_value=0)
+        .rename(columns={0: "Perished", 1: "Survived"})
+        .reset_index()
+    )
+    rates = df.groupby("Pclass")["Survived"].mean()
+    return {
+        "text": (
+            f"First class survived at **{rates.get(1, 0):.0%}**, second at "
+            f"{rates.get(2, 0):.0%}, third at only {rates.get(3, 0):.0%}. "
+            "A ticket bought more than a nicer cabin."
+        ),
+        "chart": workshop_steps.chart(
+            kind="bar", data=by_class, x="Pclass",
+            series=["Survived", "Perished"], stacked=True,
+            title="Survival by ticket class",
+        ),
+    }
+
+
+# === GATE 6 -- "The age story" ==============================================
+def step_6_age_patterns():
+    """Explore age as a survival pattern with one interactive chart.
+
+    LOOK LIKE (web): one chart of your choice about age plus one
+    plain-English takeaway sentence the class can discuss. A zoomable
+    scatter is a great choice -- students can brush into the crowd:
+
+        df = pd.read_csv(DATA_PATH)
+        points = df[["Age", "Fare", "Survived"]].dropna()
+        points["Outcome"] = points["Survived"].map({0: "Perished", 1: "Survived"})
+        return {
+            "text": "One plain-English takeaway ...",
+            "chart": workshop_steps.chart(
+                kind="scatter", data=points, x="Age", y="Fare",
+                color="Outcome", title="Age vs fare, colored by survival",
+            ),
+        }
+    """
+    df = pd.read_csv(DATA_PATH)
+    points = df[["Age", "Fare", "Survived"]].dropna().copy()
+    points["Outcome"] = points["Survived"].map({0: "Perished", 1: "Survived"})
+    kids = df[df["Age"] < 12]["Survived"].mean()
+    adults = df[df["Age"] >= 12]["Survived"].mean()
+    return {
+        "text": (
+            f"Children under 12 survived at **{kids:.0%}**, everyone else at "
+            f"{adults:.0%}. Zoom into the scatter -- the youngest passengers "
+            "sit far higher than the crowd."
+        ),
+        "chart": workshop_steps.chart(
+            kind="scatter", data=points, x="Age", y="Fare", color="Outcome",
+            title="Age vs fare, colored by survival",
+            x_label="Age", y_label="Fare",
+        ),
+    }
+
+
+# ============================================================================
+# STEP DESCRIPTIONS -- the web page reads this list. Keep the wording
+# friendly and classroom-facing.
+# ============================================================================
+STEPS = [
+    {
+        "number": 1,
+        "title": "Open the passenger list",
+        "story": (
+            "Every row is a real person from 1912: their ticket class, sex, "
+            "age, family aboard, fare, and where they embarked. Meet the "
+            "data before you judge it!"
+        ),
+        "prompt": (
+            "Please open the Titanic passenger list (data/titanic.csv), "
+            "tell me how many passengers it holds and what details we know "
+            "about each person, and show me the first few rows as a table."
+        ),
+        "fn": "step_1_open_the_list",
+    },
+    {
+        "number": 2,
+        "title": "Where are the holes?",
+        "story": (
+            "Real-world data is messy. If a table has holes (missing "
+            "values), a learning model can stumble -- or worse, silently "
+            "guess."
+        ),
+        "prompt": (
+            "Check data/titanic.csv for missing values in every column and "
+            "show me a table of how many holes each column has."
+        ),
+        "fn": "step_2_find_missing_values",
+    },
+    {
+        "number": 3,
+        "title": "Did you survive?",
+        "story": (
+            "One column decides everything: Survived (1 = made it, 0 = did "
+            "not). Before seeing the answer, make a guess: did MORE or "
+            "FEWER than half of the passengers survive?"
+        ),
+        "prompt": (
+            "Count how many passengers perished and how many survived, and "
+            "show me both numbers with their percentages."
+        ),
+        "fn": "step_3_survival_overview",
+    },
+    {
+        "number": 4,
+        "title": "Survival by sex",
+        "story": (
+            "Now we look for our FIRST pattern: did female passengers "
+            "survive more often than male passengers?"
+        ),
+        "prompt": (
+            "Draw a chart comparing survival for female and male "
+            "passengers -- make it fun to look at, the page can draw "
+            "person-icon bars -- and describe the pattern in one friendly "
+            "sentence."
+        ),
+        "fn": "step_4_survival_by_sex",
+    },
+    {
+        "number": 5,
+        "title": "Survival by ticket class",
+        "story": (
+            "Ticket class was a proxy for wealth and cabin location on "
+            "board. Did the deck you slept on decide your fate?"
+        ),
+        "prompt": (
+            "Draw a chart of survival by ticket class (1, 2, 3) and tell "
+            "me what stands out."
+        ),
+        "fn": "step_5_survival_by_class",
+    },
+    {
+        "number": 6,
+        "title": "The age story",
+        "story": (
+            "Kids first? Older folks last? Build one more picture about "
+            "AGE -- this is the pattern the Step 2 model will learn from."
+        ),
+        "prompt": (
+            "Make one chart that shows whether age is connected to "
+            "survival (for example a zoomable scatter of age versus fare, "
+            "colored by survival) and give me one plain-English takeaway."
+        ),
+        "fn": "step_6_age_patterns",
+    },
+]
+
+
+# ============================================================================
+# ORCHESTRATION -- function name and behavior contract (do not rename).
+# ============================================================================
+def analyze_data():
+    """Runs every completed checkpoint in order (terminal-friendly view).
+
+    Returns the loaded DataFrame, or None until Gate 1 exists.
+    """
+    titanic = None
+
+    for step in STEPS:
+        if step["number"] > STEPS_COMPLETED:
+            break
+        fn = globals().get(step["fn"])
+        if fn is None:
+            continue
+        try:
+            result = fn()
+        except Exception as exc:
+            print(f"Gate {step['number']} hit a problem: {exc}")
+            raise
+        print(f"Gate {step['number']} OK -- {step['title']}")
+        if isinstance(result, dict) and result.get("dataframe") is not None:
+            titanic = result["dataframe"]  # handy for later gates
+
+    if titanic is None:
+        try:
+            titanic = pd.read_csv(DATA_PATH)
+        except (FileNotFoundError, NameError):
+            return None
     return titanic
 
 
 if __name__ == "__main__":
+    print(
+        "Terminal mode: running the completed checkpoints in order.\n"
+        "For the step-by-step web page:  python serve_workshop.py"
+    )
     analyze_data()
+
+
+# ============================================================================
+# PAGE METADATA -- the tab title and intro the workshop page shows.
+# ============================================================================
+PAGE = {
+    "id": "eda",
+    "title": "1 - Meet the Data",
+    "intro": (
+        "You are holding the real passenger list of the Titanic. Work "
+        "through the checkpoints one prompt at a time with your AI "
+        "Teaching Assistant and watch the picture come into focus."
+    ),
+}
+

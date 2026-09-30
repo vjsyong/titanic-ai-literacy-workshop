@@ -1,124 +1,454 @@
-"""03_dashboard.py -- Interactive survival web app (AI Literacy Workshop)
+"""03_dashboard.py -- Step 3 "Survival Explorer" (AI Literacy Workshop)
 
-WHAT THIS SCRIPT DOES
-    Builds a friendly web page where anyone can type in a passenger's details
-    (age, ticket class, sex, ...) and instantly see the model's guess: would
-    this passenger have survived the Titanic?
+THE STEP-BY-STEP EXPERIENCE
+    Five progressive checkpoints (gates). The page starts as an empty
+    explorer; each student prompt to the AI Teaching Assistant unlocks
+    one gate: load the trained brain, design the passenger form, wire
+    the prediction, make the verdicts kind, then black-box test it.
 
-WHAT YOU (THE STUDENT) DO
-    Everything in the workshop happens inside the block marked:
-        # TODO: PROMPT HERE  >>> BEGIN STUDENT EDIT ZONE
-        ...
-        # TODO: PROMPT HERE  <<< END STUDENT EDIT ZONE
-    That is the ONLY part of the file you (or your AI assistant) should change.
+    The interactive part of the web page fills in as gates unlock:
+
+        Gate 1  -> "the brain woke up" card
+        Gate 2  -> the form plan (sliders/radios ranges) card
+        Gate 3  -> LIVE passenger form + working prediction button
+        Gate 4  -> kinder verdict wording
+        Gate 5  -> black-box test bench + graduation message
+
+    The workshop page (served by workshop_server.py) notices the saved
+    file within a second and reveals the next checkpoint.
 
 HOW TO RUN
-    gradio 03_dashboard.py
-    (or:  python 03_dashboard.py  -- the run block only explains, never blocks)
+    python 03_dashboard.py    (terminal checklist view)
+    python serve_workshop.py  (the web page -- all three steps at once)
 """
 
 import os
 import pickle
 
-import gradio as gr
+import pandas as pd
+
+# Shared gate helpers (charts, metrics, structured verdicts).
+import workshop_steps
 
 # ----------------------------------------------------------------------------
-# PATHS -- never change or move these
+# PATH -- never change or move this
 # ----------------------------------------------------------------------------
 MODEL_PATH = "titanic_model.pkl"
 
+# ----------------------------------------------------------------------------
+# SHARED STATE between gates (same contract as 02_train.py) -- the AI
+# assistant may read/write entries while building a gate; never rename.
+# ----------------------------------------------------------------------------
+ARTIFACTS = {}
 
-def launch_dashboard():
-    """Build and return the Gradio web app (the object named `demo`)."""
+STEPS_COMPLETED = 5
+
+# The canonical live form, in order. Gate 2 stores its own version here;
+# the page renders whatever the gates produced (the workshop plumbing).
+DEFAULT_INPUT_SPEC = [
+    {"label": "Ticket class", "kind": "radio", "choices": [1, 2, 3], "value": 3},
+    {"label": "Sex", "kind": "radio", "choices": ["male", "female"], "value": "female"},
+    {"label": "Age", "kind": "slider", "min": 0, "max": 80, "step": 1, "value": 25},
+    {"label": "Siblings/spouses aboard", "kind": "slider", "min": 0, "max": 8, "step": 1, "value": 0},
+    {"label": "Parents/children aboard", "kind": "slider", "min": 0, "max": 9, "step": 1, "value": 0},
+    {"label": "Ticket fare (pounds, 1912)", "kind": "slider", "min": 0, "max": 500, "step": 1, "value": 30},
+]
+
+
+# ============================================================================
+# CHECKPOINT GATES -- student + AI edit zone
+# ============================================================================
+# Rules for the AI assistant:
+#   * Implement ONE gate per student request, strictly inside the gate.
+#   * Gate 3 must expose the prediction function as:
+#         ARTIFACTS["predict"](values_dict) -> dict
+#     where values_dict maps each form label -> its chosen value, and the
+#     returned dict is built with:
+#         workshop_steps.verdict(text, probability, band)
+#     "probability" is 0.0-1.0 (drives the animated gauge) and "band" is
+#     the kinder wording label (e.g. "likely", "close call", "unlikely").
+#   * Gate 2 must store the form definition as ARTIFACTS["input_spec"] =
+#     a list of dicts like DEFAULT_INPUT_SPEC above.
+#   * If a gate needs a missing prerequisite (e.g. no titanic_model.pkl),
+#     its function may return a friendly text card telling the student
+#     which earlier step to finish -- do NOT raise on missing files.
+#   * Bump STEPS_COMPLETED (one at a time) after the web page shows the
+#     gate working.
+# ============================================================================
+
+
+# === GATE 1 -- "Wake the brain" ==============================================
+def step_1_wake_the_brain():
+    """Load titanic_model.pkl (trained in Step 2) and prove it works.
+
+    LOOK LIKE: a friendly 'the trained brain is awake' card, including
+    one example prediction on a fixed test passenger. If the trained
+    brain is missing, return a kind note telling the student to finish
+    Step 2 -- checkpoint 7 first (no crash!).
+    """
+    if not os.path.exists(MODEL_PATH):
+        return (
+            "The trained brain is not on disk yet. Finish **Step 2, "
+            "checkpoint 7** (save titanic_model.pkl) first, then come back!"
+        )
     with open(MODEL_PATH, "rb") as handle:
         artifact = pickle.load(handle)
+    ARTIFACTS["artifact"] = artifact
+    sample = pd.DataFrame(
+        [[1, 1, 30, 0, 0, 100.0]], columns=artifact["feature_columns"]
+    )
+    probability = float(
+        artifact["model"].predict_proba(artifact["scaler"].transform(sample))[0][1]
+    )
+    return {
+        "text": (
+            "The brain is awake. A 30-year-old woman in first class would "
+            f"have had a **{probability:.0%}** chance of surviving."
+        ),
+        "chart": workshop_steps.chart(
+            kind="gauge", value=round(probability * 100, 1),
+            title="Sample passenger: survival chance",
+        ),
+    }
+
+
+# === GATE 2 -- "Design the passenger form" ===================================
+def step_2_design_the_form():
+    """Decide which passenger attributes the web form should offer.
+
+    LOOK LIKE: a small table describing each control (name, type,
+    sensible range/choices, default). Store the definition in
+    ARTIFACTS["input_spec"] (same shape as DEFAULT_INPUT_SPEC).
+    """
+    spec = [dict(item) for item in DEFAULT_INPUT_SPEC]
+    ARTIFACTS["input_spec"] = spec
+    table = pd.DataFrame(
+        [
+            {
+                "Control": item["label"],
+                "Type": item["kind"],
+                "Range / choices": (
+                    ", ".join(map(str, item["choices"]))
+                    if item.get("choices")
+                    else f"{item['min']} - {item['max']}"
+                ),
+                "Default": item["value"],
+            }
+            for item in spec
+        ]
+    )
+    return {
+        "text": (
+            "Six questions, all about things the model actually learned "
+            "from -- nothing it never saw."
+        ),
+        "dataframe": table,
+    }
+
+
+# === GATE 3 -- "Wire the prediction" =========================================
+def step_3_wire_prediction():
+    """Make the form actually predict.
+
+    MUST (per the gate contract):
+      * read and use ARTIFACTS["input_spec"] labels,
+      * encode 'Sex' back to numbers exactly like the model was trained
+        (word plain-fare floats are NOT welcome here),
+      * scale the numbers with the stored scaler BEFORE predicting,
+      * store `ARTIFACTS["predict"] = my_predict_function`, where the
+        function takes values_dict and returns
+        workshop_steps.verdict(text, probability, band) -- the page then
+        draws the animated survival gauge and the kinder wording itself,
+      * confirm with one live example on REAL model output (not mock
+        text); a text sentence plus a gauge is perfect.
+    """
+    artifact = ARTIFACTS.get("artifact")
+    if artifact is None:
+        return "Wake the brain first (checkpoint 1)."
+
     model = artifact["model"]
     scaler = artifact["scaler"]
-    feature_columns = artifact["feature_columns"]
+    features = artifact["feature_columns"]
+    spec = ARTIFACTS.get("input_spec", DEFAULT_INPUT_SPEC)
 
-    # ==================================================================
-    # TODO: PROMPT HERE  >>> BEGIN STUDENT EDIT ZONE
-    # ==================================================================
-    #
-    #  Your AI Teaching Assistant will write code here when you ask for
-    #  things like: "change the slider ranges" or "reword the results
-    #  message".
-    #
-    #  Starter content (placeholder): a simple, working prediction form so
-    #  the full workflow is demonstrated end-to-end. Students: ask your AI
-    #  assistant to customise this!
-    #
-    def predict_survival(pclass, sex, age, sibsp, parch, fare):
-        """Turn the form inputs into numbers the model understands."""
-        import pandas as pd
+    label_to_feature = {
+        "Ticket class": "Pclass",
+        "Sex": "Sex",
+        "Age": "Age",
+        "Siblings/spouses aboard": "SibSp",
+        "Parents/children aboard": "Parch",
+        "Ticket fare (pounds, 1912)": "Fare",
+    }
 
-        sex_as_number = 1 if sex == "female" else 0
-        row = pd.DataFrame(
-            [[pclass, sex_as_number, age, sibsp, parch, fare]],
-            columns=feature_columns,
+    def _score(values_dict):
+        row = {"Pclass": 3, "Sex": 0, "Age": 25.0, "SibSp": 0, "Parch": 0, "Fare": 30.0}
+        for label, value in values_dict.items():
+            feature = label_to_feature.get(label, label)
+            if feature == "Sex":
+                value = 1 if str(value).lower() == "female" else 0
+            if feature in row:
+                row[feature] = value
+        frame = pd.DataFrame([[row[name] for name in features]], columns=features)
+        return float(model.predict_proba(scaler.transform(frame))[0][1])
+
+    def _predict(values_dict):
+        probability = _score(values_dict)
+        return workshop_steps.verdict(
+            f"Model estimate: {probability:.0%} chance of surviving the Titanic.",
+            probability,
+            None,
         )
-        features = scaler.transform(row)
-        probability = float(model.predict_proba(features)[0][1])
 
-        percent = f"{probability:.0%}"
-        if probability >= 0.65:
-            headline = f"This passenger would very likely SURVIVE ({percent} chance)."
-        elif probability >= 0.35:
-            headline = (
-                f"This passenger might have survived -- it is a close call "
-                f"({percent} chance)."
-            )
-        else:
-            headline = f"This passenger would very likely NOT survive ({percent} chance)."
+    ARTIFACTS["score"] = _score
+    ARTIFACTS["predict"] = _predict
 
-        explanation = (
-            "The model looked at the ticket class, sex, age, and family "
-            "details you entered and compared them with patterns in the "
-            "real passenger list from 1912. Remember: this is a guess based "
-            "on history, not a certainty."
-        )
-        return headline, explanation
-
-    demo = gr.Interface(
-        fn=predict_survival,
-        inputs=[
-            gr.Radio(choices=[1, 2, 3], value=3, label="Ticket class"),
-            gr.Radio(choices=["male", "female"], value="female", label="Sex"),
-            gr.Slider(minimum=0, maximum=80, value=25, step=1, label="Age"),
-            gr.Slider(minimum=0, maximum=8, value=0, step=1, label="Siblings/spouses aboard"),
-            gr.Slider(minimum=0, maximum=9, value=0, step=1, label="Parents/children aboard"),
-            gr.Slider(minimum=0, maximum=500, value=30, step=1, label="Ticket fare (pounds, 1912)"),
-        ],
-        outputs=[
-            gr.Textbox(label="Prediction"),
-            gr.Textbox(label="How did the model decide?"),
-        ],
-        title="Titanic Survival Explorer",
-        description=(
-            "Move the sliders and press Submit to see what an AI model "
-            "predicts. The model learned from the real Titanic passenger "
-            "list -- it has no magic, just patterns in the data."
+    example = _predict({item["label"]: item["value"] for item in spec})
+    return {
+        "text": example["text"],
+        "chart": workshop_steps.chart(
+            kind="gauge", value=round(example["probability"] * 100, 1),
+            title="Example passenger (the form defaults)",
         ),
-        flagging_mode="never",
+    }
+
+
+# === GATE 4 -- "Kind verdicts" ===============================================
+def step_4_kind_verdicts():
+    """Reword the verdict so it is never scary: 3 probability bands.
+
+    LOOK LIKE: a small table bands -> wording tone. Re-place
+    ARTIFACTS["predict"] with a version that uses the kinder wording,
+    then re-run one example on the real model to show the new text.
+    The gauge color follows the band, so label them clearly.
+    """
+    bands = pd.DataFrame(
+        [
+            {"Chance": "below 35%", "Band": "unlikely",
+             "Wording": "the odds were against this passenger"},
+            {"Chance": "35-65%", "Band": "close call",
+             "Wording": "this one is too close to call"},
+            {"Chance": "above 65%", "Band": "likely",
+             "Wording": "this passenger had a real chance"},
+        ]
     )
 
-    # A tiny self-check so problems show up immediately in the terminal
-    # instead of surprising the student in the browser.
-    test_headline, _ = predict_survival(3, "male", 25, 0, 0, 8)
-    print("Self-check (3rd class, male, 25):", test_headline)
+    def _predict(values_dict):
+        probability = ARTIFACTS["score"](values_dict)
+        if probability < 0.35:
+            band = "unlikely"
+        elif probability < 0.65:
+            band = "close call"
+        else:
+            band = "likely"
+        tone = bands.loc[bands["Band"] == band, "Wording"].iloc[0]
+        return workshop_steps.verdict(
+            f"Model estimate: {probability:.0%} chance of surviving -- {tone}.",
+            probability,
+            band,
+        )
 
-    return demo
-    #
-    # ==================================================================
-    # TODO: PROMPT HERE  <<< END STUDENT EDIT ZONE
-    # ==================================================================
+    ARTIFACTS["predict"] = _predict
+
+    spec = ARTIFACTS.get("input_spec", DEFAULT_INPUT_SPEC)
+    example = _predict({item["label"]: item["value"] for item in spec})
+    return {
+        "text": example["text"],
+        "dataframe": bands,
+        "chart": workshop_steps.chart(
+            kind="gauge", value=round(example["probability"] * 100, 1),
+            title="Example with the kinder wording",
+        ),
+    }
 
 
-demo = launch_dashboard()
+# === GATE 5 -- "Black-box the brain" =========================================
+def step_5_black_box_tests():
+    """Probe the model with imaginary passengers and discuss unfairness.
+
+    LOOK LIKE: a table of at least 6 imaginary passengers, each with the
+    live verdict, PLUS an interactive bar chart comparing their survival
+    probabilities (0-100), plus 2-3 plain-English questions for class
+    discussion (is any pattern unfair? what does the model NOT see?).
+    """
+    if "predict" not in ARTIFACTS:
+        return "Wire the prediction first (checkpoint 3)."
+
+    spec = ARTIFACTS.get("input_spec", DEFAULT_INPUT_SPEC)
+    base = {item["label"]: item["value"] for item in spec}
+    passengers = [
+        ("Girl, 5, 1st class", {**base, "Sex": "female", "Age": 5, "Ticket class": 1}),
+        ("Boy, 5, 3rd class", {**base, "Sex": "male", "Age": 5, "Ticket class": 3}),
+        ("Woman, 30, 3rd class", {**base, "Sex": "female", "Age": 30, "Ticket class": 3}),
+        ("Man, 30, 1st class", {**base, "Sex": "male", "Age": 30, "Ticket class": 1}),
+        ("Man, 60, 1st class", {**base, "Sex": "male", "Age": 60, "Ticket class": 1}),
+        ("Woman, 60, 3rd class", {**base, "Sex": "female", "Age": 60, "Ticket class": 3}),
+    ]
+
+    results = [(name, ARTIFACTS["predict"](values)) for name, values in passengers]
+
+    table = pd.DataFrame(
+        [
+            {
+                "Imaginary passenger": name,
+                "Survival chance": f"{verdict['probability']:.0%}",
+                "Band": verdict.get("band") or "-",
+            }
+            for name, verdict in results
+        ]
+    )
+    chart_data = pd.DataFrame(
+        {
+            "Passenger": [name for name, _ in results],
+            "Survival chance": [
+                round(verdict["probability"] * 100, 1) for _, verdict in results
+            ],
+        }
+    )
+    return {
+        "text": (
+            "**Discussion:** is it fair that the model leans on sex and "
+            "class? The model never saw fairness -- it only mirrored 1912. "
+            "What could it NOT know (health, deck location, luck)?"
+        ),
+        "dataframe": table,
+        "chart": workshop_steps.chart(
+            kind="bar", data=chart_data, x="Passenger", y="Survival chance",
+            horizontal=True, y_label="Chance (%)",
+            title="Survival chances of imaginary passengers",
+        ),
+    }
+
+
+# ============================================================================
+# STEP DESCRIPTIONS (web page reads this).
+# ============================================================================
+STEPS = [
+    {
+        "number": 1,
+        "title": "Wake the brain",
+        "story": (
+            "Your Step 2 work saved a trained brain on disk. Wake it up "
+            "here and check that it gives sensible guesses."
+        ),
+        "prompt": (
+            "Step 3 of the workshop, checkpoint 1: load the saved model "
+            "titanic_model.pkl and prove it is alive by predicting one "
+            "fixed test passenger. If the file is missing, tell me kindly "
+            "which Step 2 checkpoint to finish first instead of crashing."
+        ),
+        "fn": "step_1_wake_the_brain",
+    },
+    {
+        "number": 2,
+        "title": "Design the passenger form",
+        "story": (
+            "Before wiring anything: decide which controls the imaginary "
+            "passenger form gets (radios for ticket class and sex, sliders "
+            "for the numbers) with human-friendly ranges."
+        ),
+        "prompt": (
+            "Step 3, checkpoint 2: propose the passenger web form -- for "
+            "each attribute tell me if it should be a dropdown/slider and "
+            "what sensible range or choices to give it, and store this "
+            "plan where the page can find it."
+        ),
+        "fn": "step_2_design_the_form",
+    },
+    {
+        "number": 3,
+        "title": "Wire the prediction",
+        "story": (
+            "Time to connect the form to the brain: press predict, and "
+            "the model's guess appears as an animated gauge. Remember the "
+            "model was trained on numbers, so 'female' must turn back into "
+            "its coded digit before reaching the model."
+        ),
+        "prompt": (
+            "Step 3, checkpoint 3: connect the form to the model so the "
+            "prediction button works. Encode the Sex choices back to "
+            "numbers exactly like Step 2 did, use the stored scaler, and "
+            "show the survival probability as a gauge with a human "
+            "sentence. Show me one live example straight from the model."
+        ),
+        "fn": "step_3_wire_prediction",
+    },
+    {
+        "number": 4,
+        "title": "Kind verdicts",
+        "story": (
+            "Nobody dies twice -- the passengers in the data are already "
+            "history. Trainings models must speak gently: soft wording "
+            "for low, medium and high probabilities."
+        ),
+        "prompt": (
+            "Step 3, checkpoint 4: make the browser wording gentler -- "
+            "define three probability bands (e.g. unlikely, close call, "
+            "likely) and reword the verdicts. Re-run one example on the "
+            "live model to show the friendlier message."
+        ),
+        "fn": "step_4_kind_verdicts",
+    },
+    {
+        "number": 5,
+        "title": "Black-box the brain",
+        "story": (
+            "Final curiosity run: feed the brain imaginary passengers and "
+            "discuss whether the patterns are FAIR. A model is a mirror "
+            "of its data, nothing more."
+        ),
+        "prompt": (
+            "Step 3, checkpoint 5 (final!): test the live model with at "
+            "least six imaginary passengers (young/old, women/men, 1st/3rd "
+            "class), show their verdicts in a table AND as a bar chart of "
+            "their survival chances, and give me two or three discussion "
+            "questions about fairness and what the data cannot tell us."
+        ),
+        "fn": "step_5_black_box_tests",
+    },
+]
+
+
+# ============================================================================
+# ORCHESTRATION -- function name and behavior contract (do not rename).
+# ============================================================================
+def launch_dashboard():
+    """Runs every completed checkpoint in order (terminal-friendly view).
+
+    The web page renders the checkpoints itself; this function exists so
+    `python 03_dashboard.py` can prove the gates work in a terminal.
+    """
+    for step in STEPS:
+        if step["number"] > STEPS_COMPLETED:
+            break
+        fn = globals().get(step["fn"])
+        if fn is None:
+            continue
+        try:
+            result = fn()
+        except Exception as exc:
+            print(f"Gate {step['number']} hit a problem: {exc}")
+            raise
+        print(f"Gate {step['number']} OK -- {step['title']}")
+    return ARTIFACTS
+
 
 if __name__ == "__main__":
     print(
-        "This file is meant to be served by Gradio's hot-reload runner:\n"
-        "    .venv/bin/gradio 03_dashboard.py\n"
-        "The web app object is the variable `demo` defined above."
+        "Terminal mode: running the completed checkpoints in order.\n"
+        "For the step-by-step web page:  python serve_workshop.py"
     )
+    launch_dashboard()
+
+
+# ============================================================================
+# PAGE METADATA -- the tab title and intro the workshop page shows.
+# ============================================================================
+PAGE = {
+    "id": "dashboard",
+    "title": "3 - Survival Explorer",
+    "intro": (
+        "The trained brain from Step 2 is loaded here. Build the form "
+        "checkpoint by checkpoint with your AI Teaching Assistant, then "
+        "test it with imaginary passengers."
+    ),
+}
