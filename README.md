@@ -1,15 +1,18 @@
 # Titanic AI Literacy Workshop
 
 A 75-minute Year 1 AI workshop for students with zero programming experience,
-bundled with a one-click OpenCode classroom environment.
+bundled with a one-click OpenCode classroom environment. **Everything happens
+in the browser**: the workshop scripts are paired with Gradio web interfaces,
+combined into one classroom page.
 
 ## What's in this repo
 
 | Path | Purpose |
 |---|---|
-| `01_eda.py` | Exploratory data analysis; creates charts in `eda_output/` |
-| `02_train.py` | Trains the survival model; writes `titanic_model.pkl` |
-| `03_dashboard.py` | Gradio survival web app (Gradio hot reload) |
+| `01_eda.py` | Step 1 - Meet the Data: charts + summary (CLI and web both work) |
+| `02_train.py` | Step 2: train the survival model, report test accuracy (CLI and web) |
+| `03_dashboard.py` | Step 3: Gradio survival web app (Gradio hot reload) |
+| `04_classroom.py` | Instructor-managed one-page launcher: all three steps as browser tabs |
 | `data/titanic.csv` | The cleaned 1912 passenger list students use |
 | `AGENTS.md` | Persistent system prompt for the students' AI Teaching Assistant |
 | `deployment/` | Launcher scripts + hardened bootstrap for the OpenCode Web UI environment (OpenCode 2.0.20 pinned, Tencent glm-5.3-flash as the only provider) |
@@ -24,9 +27,20 @@ bundled with a one-click OpenCode classroom environment.
    First run only: private Python 3.12 + Node.js + OpenCode 2.0.20 are
    installed under `%LOCALAPPDATA%\VibeCoding` and workshop packages
    (pandas / matplotlib / scikit-learn / gradio) are pip-installed.
-3. The browser opens the OpenCode Web UI pointed at the workshop folder
-   (this repository root, which contains `AGENTS.md`, the three scripts
-   and `data/titanic.csv`).
+3. The browser opens the OpenCode Web UI pointed at the workshop folder.
+4. Ask the AI Teaching Assistant to run the workshop web page:
+   ```
+   gradio 04_classroom.py
+   ```
+   (or a single step: `gradio 01_eda.py`)
+   The Teaching Assistent opens the link in your browser; the class then
+   works tab by tab: explore -> train -> predict.
+
+Instructor testing without OpenCode (must have Python packages installed):
+
+```
+gradio 04_classroom.py
+```
 
 If the Web UI ever shows no project, use File -> Open Project and pick the
 extracted workshop folder once.

@@ -108,5 +108,78 @@ def analyze_data():
     return titanic
 
 
+# ============================================================================
+# WEB INTERFACE -- pair this script with a web page (Gradio)
+#
+# The classroom experience is browser-only: students press one button and
+# see the analysis results. The chart logic still lives in analyze_data(),
+# so everything the students (or their AI assistant) build inside the
+# TODO block automatically appears on the web page too.
+#
+# HOW TO SERVE JUST THIS PAGE
+#     gradio 01_eda.py
+#
+# HOW TO SERVE ALL SCRIPTS TOGETHER
+#     gradio 04_classroom.py
+# ============================================================================
+
+import gradio as gr
+
+
+def run_eda_and_collect():
+    """Runs the same analysis as the terminal version and collects web-ready results."""
+    titanic = analyze_data()
+
+    # A tiny overview table for the web page.
+    group = titanic.groupby("Survived").size()
+    summary = pd.DataFrame(
+        {
+            "Outcome": ["Perished", "Survived"],
+            "Number of passengers": [
+                int(group.get(0, 0)),
+                int(group.get(1, 0)),
+            ],
+        }
+    )
+    share = summary["Number of passengers"] / summary["Number of passengers"].sum()
+    summary["Share of passengers"] = share.map("{:.1%}".format)
+
+    survival_chart = os.path.join(OUTPUT_DIR, "survival_chart.png")
+    class_chart = os.path.join(OUTPUT_DIR, "class_chart.png")
+    if not (os.path.exists(survival_chart) and os.path.exists(class_chart)):
+        return summary, None, None
+    return summary, survival_chart, class_chart
+
+
+def build_eda_app():
+    """Build the web interface for the data exploration steps."""
+    with gr.Blocks(title="1 - Meet the Data") as eda:
+        gr.Markdown(
+            "## Step 1 - Meet the Data\n"
+            "Press the button to look at the Titanic passenger list: how "
+            "many passengers there were, who survived, and whether you can "
+            "spot any patterns by eye."
+        )
+        run_button = gr.Button("Run the analysis", variant="primary")
+        overview = gr.Dataframe(label="Survival overview", interactive=False)
+        with gr.Row():
+            image_survival = gr.Image(label="Survival by sex", interactive=False)
+            image_class = gr.Image(label="Survival by ticket class", interactive=False)
+        run_button.click(
+            fn=run_eda_and_collect,
+            inputs=None,
+            outputs=[overview, image_survival, image_class],
+        )
+    return eda
+
+
+demo = build_eda_app()
+
 if __name__ == "__main__":
+    print(
+        "Terminal mode: running the analysis once.\n"
+        "For the web version, serve this file with:  gradio 01_eda.py\n"
+        "Or serve every workshop step at once:       gradio 04_classroom.py"
+    )
     analyze_data()
+

@@ -104,5 +104,60 @@ def train_model():
     return test_accuracy
 
 
+# ============================================================================
+# WEB INTERFACE -- pair this script with a web page (Gradio)
+#
+# Students press one button to train the model in the browser. The whole
+# training logic still lives in train_model(), so any changes made inside
+# the TODO block automatically appear on the web page too.
+#
+# HOW TO SERVE JUST THIS PAGE
+#     gradio 02_train.py
+#
+# HOW TO SERVE ALL SCRIPTS TOGETHER
+#     gradio 04_classroom.py
+# ============================================================================
+
+import gradio as gr
+
+
+def run_training_and_collect():
+    """Runs the same training as the terminal version and collects a web-ready result."""
+    test_accuracy = train_model()
+    headline = (
+        f"Training complete! Test accuracy: {test_accuracy:.1%}\n\n"
+        "The trained model is saved (titanic_model.pkl) and ready for Step 3, "
+        "where you can predict the fate of imaginary passengers."
+    )
+    return headline
+
+
+def build_training_app():
+    """Build the web interface for the training step."""
+    with gr.Blocks(title="2 - Train the Model") as training:
+        gr.Markdown(
+            "## Step 2 - Train the Model\n"
+            "Press the button and the computer will learn survival patterns "
+            "from the Titanic data all by itself, then report how good its "
+            "guesses are on passengers it was never shown."
+        )
+        train_button = gr.Button("Train the model", variant="primary")
+        summary = gr.Textbox(label="Training result", lines=5, interactive=False)
+        train_button.click(
+            fn=run_training_and_collect,
+            inputs=None,
+            outputs=[summary],
+        )
+    return training
+
+
+demo = build_training_app()
+
 if __name__ == "__main__":
+    print(
+        "Terminal mode: training once.\n"
+        "For the web version, serve this file with:  gradio 02_train.py\n"
+        "Or serve every workshop step at once:       gradio 04_classroom.py"
+    )
     train_model()
+
