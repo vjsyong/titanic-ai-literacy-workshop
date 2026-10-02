@@ -1768,7 +1768,11 @@ function Start-WorkshopPage {
 
     Push-Location -LiteralPath $ProjectRoot
     try {
-        & $Python $serve --port $Port --no-browser
+        # Out-Host keeps serve_workshop.py's progress lines visible in the
+        # console while keeping them out of this function's return value
+        # (a bare native call would append its stdout to the returned
+        # object, which breaks .Ok access under StrictMode).
+        & $Python $serve --port $Port --no-browser | Out-Host
         $serveExit = $LASTEXITCODE
     }
     finally {
