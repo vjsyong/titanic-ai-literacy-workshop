@@ -105,6 +105,7 @@ $SecretRoot = Join-Path $UserProfile ".vibecoding"
 $OpenRouterKeyFile = Join-Path $SecretRoot "openrouter-key.txt"
 
 $CredentialsFile = Join-Path $StateRoot "web-credentials.json"
+$BrowserPairStateFile = Join-Path $StateRoot "browser-pair.json"
 $OpenRouterTestStateFile = Join-Path $StateRoot "openrouter-test.json"
 $OpenCodeProviderTestStateFile = Join-Path $StateRoot "opencode-provider-test.json"
 
@@ -2073,86 +2074,115 @@ $($startResult.Output)
     }
 
     $baseUrl = "http://127.0.0.1:$Port"
-    $pairOutput = ""
 
-    # FAST PATH: if the browser session already exists (auth persisted on
-    # this machine from a previous run), reuse it and open the plain URL.
-    # Pairing on every launch produced a hanging /auth/connect page: a
-    # one-time token that is already consumed just spins in the browser.
-    $alreadyAuthed = $false
+    # The /auth/connect pairing key is one-time only: a key that was
+    # already consumed leaves the browser spinning forever. The launcher
+    # therefore records every key it hands to the browser and never
+    # re-opens one. Once a browser has completed pairing (the session
+    # cookie persists in that browser), later launches open the plain URL.
+    $pairState = $null
 
-    try {
-        $authHeader = "Basic " + [Convert]::ToBase64String(
-            [Text.Encoding]::ASCII.GetBytes("$($Credentials.username):$($Credentials.password)")
-        )
-        $authResponse = Invoke-WebRequest `
-            -Uri "$baseUrl/api/session" `
-            -UseBasicParsing `
-            -Headers @{ Authorization = $authHeader } `
-            -TimeoutSec 8
-
-        if ($authResponse.StatusCode -eq 200) {
-            $alreadyAuthed = $true
+    if (Test-Path -LiteralPath $BrowserPairStateFile) {
+        try {
+            $pairState = Get-Content -LiteralPath $BrowserPairStateFile -Raw |
+                ConvertFrom-Json
         }
+        catch {}
     }
-    catch {}
 
-    if ($alreadyAuthed) {
-        Write-OK "Existing classroom web session recognized -- opening the workshop page directly."
+    $pairCompleted = ($pairState -and
+        (Get-Member -InputObject $pairState -Name "completed") -and
+        $pairState.completed -eq $true)
+
+    if ($pairCompleted) {
+        Write-OK "Browser paired on a previous launch -- opening the workshop page directly."
         $loginUrl = $baseUrl
+        $paired = $true
 
         if (-not (Open-Browser $loginUrl)) {
             Write-Warn "Could not launch the default browser."
             Write-Host "Open manually: $loginUrl"
         }
+    }
+    else {
+        $pairOutput = ""
 
-        return [PSCustomObject]@{
-            Url = $baseUrl
-            Port = $Port
-            Paired = $false
-            PageOk = $true
+        try {
+            $pairResult = Invoke-NativeCapture `
+                -FilePath $OpenCode `
+                -Arguments @("pair", "--url", $baseUrl)
+
+            $pairOutput = $pairResult.Output
         }
-    }
+        catch {}
 
-    $pairOutput = ""
+        # Strip ANSI escape sequences before parsing.
+        $plainOutput = [regex]::Replace(
+            $pairOutput,
+            "\x1B\[[0-9;?]*[ -/]*[@-~]",
+            ""
+        )
 
-    try {
-        $pairResult = Invoke-NativeCapture `
-            -FilePath $OpenCode `
-            -Arguments @("pair", "--url", $baseUrl)
+        $loginUrl = $null
+        $urls = [regex]::Matches($plainOutput, "https?://[^\s]+")
 
-        $pairOutput = $pairResult.Output
-    }
-    catch {}
+        foreach ($match in $urls) {
+            $candidate = $match.Value.Trim().TrimEnd(")", "]", "}", ",", ";")
 
-    # Strip ANSI escape sequences before parsing.
-    $plainOutput = [regex]::Replace(
-        $pairOutput,
-        "\x1B\[[0-9;?]*[ -/]*[@-~]",
-        ""
-    )
-
-    $loginUrl = $null
-    $urls = [regex]::Matches($plainOutput, "https?://[^\s]+")
-
-    foreach ($match in $urls) {
-        $candidate = $match.Value.Trim().TrimEnd(")", "]", "}", ",", ";")
-
-        if (($candidate -like "$baseUrl*") -and
-            ($candidate -like "*/auth/connect/*")) {
-            $loginUrl = $candidate
-            break
+            if (($candidate -like "$baseUrl*") -and
+                ($candidate -like "*/auth/connect/*")) {
+                $loginUrl = $candidate
+                break
+            }
         }
-    }
 
-    if (-not $loginUrl) {
-        Write-Warn "Automatic one-time pair-link parsing failed. Opening the Web UI normally."
-        $loginUrl = $baseUrl
-    }
+        $paired = $false
 
-    if (-not (Open-Browser $loginUrl)) {
-        Write-Warn "Could not launch the default browser."
-        Write-Host "Open manually: $loginUrl"
+        if ($loginUrl) {
+            # Guard: a key that was already handed to the browser may have
+            # been consumed; opening a consumed key a second time hangs the
+            # tab. Fall back to the plain URL and let the student sign in.
+            $keyPart = ""
+            $keyMatch = [regex]::Match($loginUrl, "[?&](?:token|key)=[^&\s]+")
+
+            if ($keyMatch.Success) {
+                $keyPart = $keyMatch.Value
+            }
+
+            $keyAlreadyUsed = ($keyPart -ne "" -and $pairState -and
+                (Get-Member -InputObject $pairState -Name "lastKey") -and
+                $pairState.lastKey -eq $keyPart)
+
+            if ($keyAlreadyUsed) {
+                Write-Warn "Pairing key was already used once -- skipping the auth URL to avoid a hanging page."
+                $loginUrl = $baseUrl
+            }
+            elseif (Open-Browser $loginUrl) {
+                $paired = $true
+            }
+            else {
+                Write-Warn "Could not launch the default browser."
+                Write-Host "Open manually: $loginUrl"
+                $loginUrl = $baseUrl
+            }
+
+            # Remember the key we handed out (and whether the browser
+            # actually opened it) so the next launch can decide between
+            # the plain URL and a fresh pairing key.
+            $pairRecord = [ordered]@{
+                completed = ($paired -eq $true)
+                lastKey = $keyPart
+                recordedAt = (Get-Date).ToString("o")
+            }
+
+            $pairRecord |
+                ConvertTo-Json |
+                Set-Content -LiteralPath $BrowserPairStateFile -Encoding UTF8
+        }
+        else {
+            Write-Warn "Automatic one-time pair-link parsing failed. Opening the Web UI normally."
+            $loginUrl = $baseUrl
+        }
     }
 
     # Browser-side smoke test: the API health check above proves the
@@ -2178,7 +2208,7 @@ $($startResult.Output)
     return [PSCustomObject]@{
         Url = $baseUrl
         Port = $Port
-        Paired = ($loginUrl -ne $baseUrl)
+        Paired = $paired
         PageOk = $pageOk
     }
 }
