@@ -76,6 +76,10 @@ implemented with the fancy payloads) matching the student scaffolds.
    deployment/START WORKSHOP PAGE.bat
    ```
 
+If Vibe Coding is already running and a student starts the launcher again,
+it politely says so and offers to stop the other session and start fresh —
+or they can simply keep the existing one.
+
 If the Web UI ever shows no project, use File -> Open Project and pick the
 extracted workshop folder once.
 

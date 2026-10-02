@@ -33,7 +33,7 @@ $ProgressPreference = "SilentlyContinue"
 #   and referenced through OpenCode's {file:~...} substitution.
 # ============================================================
 
-$BootstrapVersion = "2026.09.30.13"
+$BootstrapVersion = "2026.10.02.1"
 
 # ----------------------------
 # Pinned classroom runtimes
@@ -108,6 +108,7 @@ $CredentialsFile = Join-Path $StateRoot "web-credentials.json"
 $BrowserPairStateFile = Join-Path $StateRoot "browser-pair.json"
 $OpenRouterTestStateFile = Join-Path $StateRoot "openrouter-test.json"
 $OpenCodeProviderTestStateFile = Join-Path $StateRoot "opencode-provider-test.json"
+$LauncherStateFile = Join-Path $StateRoot "launcher.json"
 
 $PayloadRoot = Join-Path $PSScriptRoot "payload"
 
@@ -1862,6 +1863,118 @@ function Start-WorkshopPage {
 }
 
 
+# ============================================================
+# Concurrent launch handling
+# ============================================================
+
+function Stop-ClassWatchdogs {
+    # Stop hidden watchdog processes left over from earlier sessions.
+    # Returns how many were stopped.
+    $stopped = 0
+
+    try {
+        $allProcesses = Get-CimInstance Win32_Process `
+            -Filter "Name = 'powershell.exe'" `
+            -ErrorAction Stop
+
+        $watchdogs = $allProcesses | Where-Object {
+            $_.CommandLine -and
+            ($_.CommandLine -like "*\watchdog.ps1*") -and
+            ($_.ProcessId -ne $PID)
+        }
+
+        foreach ($watchdog in $watchdogs) {
+            Stop-Process -Id $watchdog.ProcessId -Force -ErrorAction SilentlyContinue
+            $stopped = $stopped + 1
+        }
+    }
+    catch {
+        # CIM can be unavailable on locked-down machines; harmless.
+    }
+
+    return $stopped
+}
+
+function Get-VibeSessionInfo {
+    # Reads the previous launcher's state file. Returns $null when the file
+    # is absent, unreadable, or points at a process that is already gone.
+    if (-not (Test-Path -LiteralPath $LauncherStateFile)) {
+        return $null
+    }
+
+    try {
+        $info = Get-Content -LiteralPath $LauncherStateFile -Raw | ConvertFrom-Json
+    }
+    catch {
+        return $null
+    }
+
+    if ($null -eq $info) {
+        return $null
+    }
+
+    if (-not ($info.PSObject.Properties.Name -contains "pid")) {
+        return $null
+    }
+
+    $processId = 0
+
+    try {
+        $processId = [int]$info.pid
+    }
+    catch {
+        return $null
+    }
+
+    $process = Get-Process -Id $processId -ErrorAction SilentlyContinue
+
+    if (-not $process) {
+        return $null
+    }
+
+    if ($process.ProcessName -notlike "powershell*") {
+        return $null
+    }
+
+    $startedAt = "an earlier time"
+
+    if ($info.PSObject.Properties.Name -contains "startedAt") {
+        $startedAt = "$($info.startedAt)"
+    }
+
+    return [PSCustomObject]@{
+        Pid = $processId
+        StartedAt = $startedAt
+    }
+}
+
+function Stop-VibeSession {
+    # Stops the previous launcher (and its watchdog). The calling run then
+    # re-owns the mutex and rebuilds/restarts everything it needs.
+    param($Info)
+
+    $stopped = New-Object System.Collections.ArrayList
+
+    # Watchdogs first: they would otherwise restart services mid-launch.
+    $watchdogCount = Stop-ClassWatchdogs
+
+    for ($i = 0; $i -lt $watchdogCount; $i++) {
+        [void]$stopped.Add("watchdog")
+    }
+
+    if ($Info) {
+        try {
+            Stop-Process -Id $Info.Pid -Force -ErrorAction Stop
+            [void]$stopped.Add("launcher")
+        }
+        catch {}
+    }
+
+    Remove-Item -LiteralPath $LauncherStateFile -Force -ErrorAction SilentlyContinue
+
+    return @($stopped)
+}
+
 # A tiny detached watchdog: keeps polling the classroom web pages every 10
 # seconds for up to 8 hours, and cleanly restarts the classroom services if
 # they stop answering (e.g. students report "the page loads and loads" after
@@ -1877,6 +1990,9 @@ function Start-ClassWatchdog {
     )
 
     $watchdogScript = Join-Path $AppRoot "watchdog.ps1"
+
+    # Keep exactly one watchdog: replace any leftover from an earlier run.
+    [void](Stop-ClassWatchdogs)
 
     $watchdogBody = @'
 param(
@@ -2284,7 +2400,82 @@ try {
     }
 
     if (-not $MutexAcquired) {
-        throw "Another Vibe Coding setup is already running. Close the other setup window first."
+        # --------------------------------------------------------
+        # Another launcher is already running. That is harmless:
+        # tell the student, and offer to stop it and start fresh.
+        # --------------------------------------------------------
+        Write-Host ""
+        Write-Host "==============================================" -ForegroundColor Cyan
+        Write-Host "       VIBE CODING IS ALREADY RUNNING         " -ForegroundColor Cyan
+        Write-Host "==============================================" -ForegroundColor Cyan
+        Write-Host ""
+        Write-Host "Another Vibe Coding window is already open."
+        Write-Host "Everything is fine -- you can keep using it."
+        Write-Host ""
+
+        $existingSession = Get-VibeSessionInfo
+
+        if ($existingSession) {
+            Write-Host ("It has been running since {0}." -f $existingSession.StartedAt) -ForegroundColor DarkGray
+            Write-Host ""
+        }
+
+        $stopExisting = $false
+
+        try {
+            $answer = Read-Host "Stop the other session and start a fresh one here? [y/N]"
+
+            if ($answer -match "^(y|yes)$") {
+                $stopExisting = $true
+            }
+        }
+        catch {
+            Write-Warn "This window cannot ask questions right now."
+        }
+
+        if ($stopExisting) {
+            Write-Host "Stopping the other session..." -ForegroundColor DarkGray
+            $stoppedParts = Stop-VibeSession $existingSession
+
+            if (-not $existingSession) {
+                Write-Warn "Could not identify the other window automatically -- if it is still open, close it manually."
+            }
+            elseif ($stoppedParts.Count -gt 0) {
+                Write-OK "Stopped the other session"
+            }
+            else {
+                Write-Warn "The other window was already closing."
+            }
+
+            # The mutex is released the moment the other process dies; give
+            # it a few seconds in case Windows is still cleaning up.
+            for ($attempt = 0; $attempt -lt 40; $attempt++) {
+                try {
+                    $MutexAcquired = $Mutex.WaitOne(0, $false)
+                }
+                catch [System.Threading.AbandonedMutexException] {
+                    $MutexAcquired = $true
+                }
+
+                if ($MutexAcquired) {
+                    break
+                }
+
+                Start-Sleep -Milliseconds 250
+            }
+        }
+
+        if (-not $MutexAcquired) {
+            Write-Host ""
+            Write-Host "Keeping the existing session. Nothing to worry about." -ForegroundColor Green
+            Write-Host "To watch the workshop page, run START WORKSHOP PAGE.bat."
+            Write-Host "To start fresh later, close that window first or answer [y] here."
+            Write-Host ""
+            exit 0
+        }
+
+        Write-OK "Starting a fresh session"
+        Write-Host ""
     }
 
     foreach ($directory in @(
@@ -2299,6 +2490,18 @@ try {
         $SecretRoot
     )) {
         Ensure-Directory $directory
+    }
+
+    # Record this launcher process so a later run can offer to stop it.
+    try {
+        [ordered]@{
+            pid = $PID
+            startedAt = (Get-Date).ToString("o")
+            script = "$PSCommandPath"
+        } | ConvertTo-Json | Set-Content -LiteralPath $LauncherStateFile -Encoding UTF8
+    }
+    catch {
+        Write-Warn "Could not record launcher state (harmless)."
     }
 
     try {
@@ -2722,6 +2925,19 @@ finally {
     }
 
     if ($Mutex -and $MutexAcquired) {
+        # Remove our launcher state file (only if it is really ours).
+        try {
+            if (Test-Path -LiteralPath $LauncherStateFile) {
+                $ownerInfo = Get-Content -LiteralPath $LauncherStateFile -Raw | ConvertFrom-Json
+
+                if (($ownerInfo.PSObject.Properties.Name -contains "pid") -and
+                    ([int]$ownerInfo.pid -eq $PID)) {
+                    Remove-Item -LiteralPath $LauncherStateFile -Force -ErrorAction SilentlyContinue
+                }
+            }
+        }
+        catch {}
+
         try { $Mutex.ReleaseMutex() } catch {}
     }
 
