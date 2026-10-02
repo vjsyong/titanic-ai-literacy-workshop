@@ -1948,10 +1948,67 @@ function Get-VibeSessionInfo {
     }
 }
 
+function Get-VibeLauncherProcesses {
+    # Every running launcher besides this one. The state file is preferred
+    # for a friendly "since" timestamp, but a process scan catches older
+    # builds (or crashed state files) that never wrote one.
+    $sessions = @()
+    $fileInfo = Get-VibeSessionInfo
+
+    try {
+        $allProcesses = Get-CimInstance Win32_Process `
+            -Filter "Name = 'powershell.exe' or Name = 'pwsh.exe'" `
+            -ErrorAction Stop
+
+        foreach ($process in $allProcesses) {
+            if (-not $process.CommandLine) {
+                continue
+            }
+
+            if ($process.ProcessId -eq $PID) {
+                continue
+            }
+
+            if ($process.CommandLine -notlike "*oneclick.ps1*") {
+                continue
+            }
+
+            $startedAt = "an earlier time"
+
+            if ($fileInfo -and ($fileInfo.Pid -eq $process.ProcessId)) {
+                $startedAt = $fileInfo.StartedAt
+            }
+            else {
+                try {
+                    $live = Get-Process -Id $process.ProcessId -ErrorAction Stop
+                    $startedAt = $live.StartTime.ToString("o")
+                }
+                catch {}
+            }
+
+            $sessions = $sessions + [PSCustomObject]@{
+                Pid = $process.ProcessId
+                StartedAt = $startedAt
+            }
+        }
+    }
+    catch {
+        # CIM can be unavailable on locked-down machines; harmless.
+    }
+
+    # Last resort: the state file points at a live PowerShell process that
+    # the scan could not see (e.g. an unusual command line).
+    if ($sessions.Count -eq 0 -and $fileInfo) {
+        $sessions = @($fileInfo)
+    }
+
+    return @($sessions)
+}
+
 function Stop-VibeSession {
-    # Stops the previous launcher (and its watchdog). The calling run then
-    # re-owns the mutex and rebuilds/restarts everything it needs.
-    param($Info)
+    # Stops the previous launcher(s) and their watchdog. The calling run
+    # then re-owns the mutex and rebuilds/restarts everything it needs.
+    param($Sessions)
 
     $stopped = New-Object System.Collections.ArrayList
 
@@ -1962,9 +2019,13 @@ function Stop-VibeSession {
         [void]$stopped.Add("watchdog")
     }
 
-    if ($Info) {
+    foreach ($session in @($Sessions)) {
+        if ($null -eq $session) {
+            continue
+        }
+
         try {
-            Stop-Process -Id $Info.Pid -Force -ErrorAction Stop
+            Stop-Process -Id $session.Pid -Force -ErrorAction Stop
             [void]$stopped.Add("launcher")
         }
         catch {}
@@ -2413,10 +2474,10 @@ try {
         Write-Host "Everything is fine -- you can keep using it."
         Write-Host ""
 
-        $existingSession = Get-VibeSessionInfo
+        $existingSessions = Get-VibeLauncherProcesses
 
-        if ($existingSession) {
-            Write-Host ("It has been running since {0}." -f $existingSession.StartedAt) -ForegroundColor DarkGray
+        if ($existingSessions.Count -gt 0) {
+            Write-Host ("It has been running since {0}." -f $existingSessions[0].StartedAt) -ForegroundColor DarkGray
             Write-Host ""
         }
 
@@ -2435,9 +2496,9 @@ try {
 
         if ($stopExisting) {
             Write-Host "Stopping the other session..." -ForegroundColor DarkGray
-            $stoppedParts = Stop-VibeSession $existingSession
+            $stoppedParts = Stop-VibeSession $existingSessions
 
-            if (-not $existingSession) {
+            if ($existingSessions.Count -eq 0) {
                 Write-Warn "Could not identify the other window automatically -- if it is still open, close it manually."
             }
             elseif ($stoppedParts.Count -gt 0) {
