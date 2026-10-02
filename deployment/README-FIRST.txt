@@ -22,8 +22,8 @@ WHAT THE STUDENT DOES
 
 INSTRUCTOR CHECKLIST BEFORE DISTRIBUTION
 ----------------------------------------
-1. Copy KEY.txt.TEMPLATE to key.txt and paste the Tencent API key
-   (key only, no quotes, no "Bearer ").
+1. Copy KEY.txt.TEMPLATE to key.txt and paste the OpenRouter API key
+   (key only, no quotes, no "Bearer "; OpenRouter keys start with "sk-or-").
    key.txt is gitignored, so a real key can never be committed.
    If you distribute the package as a ZIP of this repository, MAKE SURE
    key.txt is inside it before zipping; the placeholder is deliberately
@@ -42,8 +42,8 @@ INSTRUCTOR CHECKLIST BEFORE DISTRIBUTION
    install (the React UI is prebuilt in web\dist, no Node needed) --
    the first run can still take a few minutes on slow links (progress
    streams live in the console).
-3. The launcher pins OpenCode 2.0.20 and provides glm-5.3-flash by
-   Tencent Cloud MaaS - that is the default and only permitted provider.
+3. The launcher pins OpenCode 2.0.20 and provides xiaomi/mimo-v2.6-flash by
+   OpenRouter - that is the default and only permitted provider.
 
 MANIFEST
 --------

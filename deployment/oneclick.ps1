@@ -1,6 +1,6 @@
 param(
     [switch]$Repair,
-    [switch]$SkipTencentTest
+    [switch]$SkipOpenRouterTest
 )
 
 Set-StrictMode -Version 2.0
@@ -25,11 +25,11 @@ $ProgressPreference = "SilentlyContinue"
 # - Every run is safe to repeat
 # - Keep a support log
 #
-# Tencent:
-# - Endpoint: https://tokenhub-intl.tencentcloudmaas.com/v1
-# - Model:    glm-5.3-flash
+# OpenRouter:
+# - Endpoint: https://openrouter.ai/api/v1
+# - Model:    xiaomi/mimo-v2.6-flash
 # - key.txt beside this script is copied to:
-#       %USERPROFILE%\.vibecoding\tencent-key.txt
+#       %USERPROFILE%\.vibecoding\openrouter-key.txt
 #   and referenced through OpenCode's {file:~...} substitution.
 # ============================================================
 
@@ -55,13 +55,13 @@ $OpenCodePackage = "@opencode/cli@2.0.20"
 $WorkshopPackageSignature = "pandas,scikit-learn,fastapi,uvicorn"
 
 # ----------------------------
-# Tencent configuration
+# OpenRouter configuration
 # ----------------------------
-$TencentBaseUrl = "https://tokenhub-intl.tencentcloudmaas.com/v1"
-$TencentCompletionUrl = "$TencentBaseUrl/chat/completions"
-$TencentProviderId = "tencent"
-$TencentModelId = "glm-5.3-flash"
-$TencentModelRef = "$TencentProviderId/$TencentModelId"
+$OpenRouterBaseUrl = "https://openrouter.ai/api/v1"
+$OpenRouterCompletionUrl = "$OpenRouterBaseUrl/chat/completions"
+$OpenRouterProviderId = "openrouter"
+$OpenRouterModelId = "xiaomi/mimo-v2.6-flash"
+$OpenRouterModelRef = "$OpenRouterProviderId/$OpenRouterModelId"
 
 # ----------------------------
 # Web UI configuration
@@ -102,10 +102,10 @@ $NpmGlobal = Join-Path $AppRoot "npm-global"
 
 $DeploymentKeyFile = Join-Path $PSScriptRoot "key.txt"
 $SecretRoot = Join-Path $UserProfile ".vibecoding"
-$TencentKeyFile = Join-Path $SecretRoot "tencent-key.txt"
+$OpenRouterKeyFile = Join-Path $SecretRoot "openrouter-key.txt"
 
 $CredentialsFile = Join-Path $StateRoot "web-credentials.json"
-$TencentTestStateFile = Join-Path $StateRoot "tencent-test.json"
+$OpenRouterTestStateFile = Join-Path $StateRoot "openrouter-test.json"
 $OpenCodeProviderTestStateFile = Join-Path $StateRoot "opencode-provider-test.json"
 
 $PayloadRoot = Join-Path $PSScriptRoot "payload"
@@ -1213,7 +1213,7 @@ function Install-OpenCode {
 }
 
 # ============================================================
-# OpenCode profile / Tencent configuration
+# OpenCode profile / OpenRouter configuration
 # ============================================================
 
 function Configure-OpenCodeProfile {
@@ -1243,10 +1243,10 @@ function Configure-OpenCodeProfile {
     }
 }
 
-function Install-TencentCredential {
+function Install-OpenRouterCredential {
     if (-not (Test-Path -LiteralPath $DeploymentKeyFile)) {
         throw @"
-Tencent API credential is missing.
+OpenRouter API credential is missing.
 
 Expected:
 $DeploymentKeyFile
@@ -1263,19 +1263,19 @@ Make sure key.txt is in the same folder as:
         throw "key.txt is empty."
     }
 
-    if ($apiKey -eq "PASTE_TENCENT_KEY_HERE") {
-        throw "key.txt still contains the placeholder. Replace it with the Tencent API key before distribution."
+    if ($apiKey -eq "PASTE_OPENROUTER_KEY_HERE") {
+        throw "key.txt still contains the placeholder. Replace it with the OpenRouter API key before distribution."
     }
 
-    if (($apiKey.Length -lt 20) -or (-not $apiKey.StartsWith("sk-"))) {
-        throw "key.txt does not look like the expected Tencent API key format."
+    if (($apiKey.Length -lt 20) -or (-not $apiKey.StartsWith("sk-or-"))) {
+        throw "key.txt does not look like the expected OpenRouter API key format (should start with 'sk-or-')."
     }
 
     Ensure-Directory $SecretRoot
 
     # No trailing newline and no BOM.
     [System.IO.File]::WriteAllText(
-        $TencentKeyFile,
+        $OpenRouterKeyFile,
         $apiKey,
         (New-Object System.Text.UTF8Encoding($false))
     )
@@ -1315,37 +1315,37 @@ function New-OpenCodeClassroomConfig {
     #   provider.<id>.options.apiKey
     #   provider.<id>.models
     #
-    # enabled_providers makes Tencent the only provider the
+    # enabled_providers makes OpenRouter the only provider the
     # runtime is allowed to load.
     $config = [ordered]@{
         '$schema' = "https://opencode.ai/config.json"
 
-        model = $TencentModelRef
+        model = $OpenRouterModelRef
 
         enabled_providers = @(
-            $TencentProviderId
+            $OpenRouterProviderId
         )
 
         provider = [ordered]@{
-            tencent = [ordered]@{
-                name = "Tencent Cloud MaaS"
+            openrouter = [ordered]@{
+                name = "OpenRouter"
 
                 npm = "@ai-sdk/openai-compatible"
 
                 options = [ordered]@{
-                    baseURL = $TencentBaseUrl
-                    apiKey = "{env:TENCENT_API_KEY}"
+                    baseURL = $OpenRouterBaseUrl
+                    apiKey = "{env:OPENROUTER_API_KEY}"
                     timeout = 600000
                     chunkTimeout = 120000
                 }
 
                 models = [ordered]@{
-                    "glm-5.3-flash" = [ordered]@{
-                        name = "GLM 5.3 Flash"
+                    "xiaomi/mimo-v2.6-flash" = [ordered]@{
+                        name = "Xiaomi MiMo v2.6 Flash"
 
                         limit = [ordered]@{
-                            context = 1000000
-                            output = 128000
+                            context = 1050000
+                            output = 131072
                         }
                     }
                 }
@@ -1475,34 +1475,34 @@ function Test-OpenCodeProvider {
             $state = Get-Content -LiteralPath $OpenCodeProviderTestStateFile -Raw | ConvertFrom-Json
 
             if (($state.fingerprint -eq $Fingerprint) -and
-                ($state.model -eq $TencentModelRef) -and
+                ($state.model -eq $OpenRouterModelRef) -and
                 ($state.opencodeVersion -eq $OpenCodeVersion) -and
                 ($state.success -eq $true)) {
-                Write-OK "OpenCode-to-Tencent provider was previously validated"
+                Write-OK "OpenCode-to-OpenRouter provider was previously validated"
                 return
             }
         }
         catch {}
     }
 
-    Write-Host "Testing OpenCode -> Tencent provider routing..." -ForegroundColor DarkGray
+    Write-Host "Testing OpenCode -> OpenRouter provider routing..." -ForegroundColor DarkGray
 
     # This validates the actual OpenCode provider adapter rather
-    # than only Tencent's raw HTTP endpoint. Capture output so it
+    # than only OpenRouter's raw HTTP endpoint. Capture output so it
     # does not clutter the classroom setup console.
     $result = Invoke-NativeCapture `
         -FilePath $OpenCode `
         -Arguments @(
             "run",
             "--model",
-            $TencentModelRef,
+            $OpenRouterModelRef,
             "Reply with exactly OK."
         ) `
         -WorkingDirectory $ClassroomProjectRoot
 
     if ($result.ExitCode -ne 0) {
         throw @"
-OpenCode could not complete a direct request through the Tencent classroom model.
+OpenCode could not complete a direct request through the OpenRouter classroom model.
 
 Exit code:
 $($result.ExitCode)
@@ -1516,7 +1516,7 @@ $($result.Output)
         success = $true
         testedAt = (Get-Date).ToString("o")
         fingerprint = $Fingerprint
-        model = $TencentModelRef
+        model = $OpenRouterModelRef
         opencodeVersion = $OpenCodeVersion
     }
 
@@ -1524,46 +1524,47 @@ $($result.Output)
         ConvertTo-Json |
         Set-Content -LiteralPath $OpenCodeProviderTestStateFile -Encoding UTF8
 
-    Write-OK "OpenCode -> Tencent provider request succeeded"
+    Write-OK "OpenCode -> OpenRouter provider request succeeded"
 }
 
-function Test-TencentAPI {
+function Test-OpenRouterAPI {
     param(
         [string]$ApiKey,
         [string]$Fingerprint
     )
 
-    if ($SkipTencentTest) {
-        Write-Warn "Tencent API smoke test skipped by command-line option."
+    if ($SkipOpenRouterTest) {
+        Write-Warn "OpenRouter API smoke test skipped by command-line option."
         return
     }
 
-    if ((-not $Repair) -and (Test-Path -LiteralPath $TencentTestStateFile)) {
+    if ((-not $Repair) -and (Test-Path -LiteralPath $OpenRouterTestStateFile)) {
         try {
-            $state = Get-Content -LiteralPath $TencentTestStateFile -Raw | ConvertFrom-Json
+            $state = Get-Content -LiteralPath $OpenRouterTestStateFile -Raw | ConvertFrom-Json
 
             if (($state.fingerprint -eq $Fingerprint) -and
-                ($state.endpoint -eq $TencentBaseUrl) -and
-                ($state.model -eq $TencentModelId) -and
+                ($state.endpoint -eq $OpenRouterBaseUrl) -and
+                ($state.model -eq $OpenRouterModelId) -and
                 ($state.success -eq $true)) {
-                Write-OK "Tencent API credential was previously validated"
+                Write-OK "OpenRouter API credential was previously validated"
                 return
             }
         }
         catch {}
     }
 
-    Write-Host "Testing Tencent GLM 5.3 Flash connectivity..." -ForegroundColor DarkGray
+    Write-Host "Testing Xiaomi MiMo v2.6 Flash connectivity via OpenRouter..." -ForegroundColor DarkGray
 
     $headers = @{
         Authorization = "Bearer $ApiKey"
         "Content-Type" = "application/json"
     }
 
-    # Deliberately use only fields shown in the supplied Tencent
+    # Deliberately use only fields shown in the supplied OpenRouter
     # Chat Completions example, minimizing compatibility assumptions.
+    # The provider preference pins routing to Xiaomi's FP8 endpoint.
     $body = @{
-        model = $TencentModelId
+        model = $OpenRouterModelId
         messages = @(
             @{
                 role = "user"
@@ -1571,47 +1572,52 @@ function Test-TencentAPI {
             }
         )
         stream = $false
+        provider = @{
+            only = @("xiaomi/fp8")
+            allow_fallbacks = $false
+        }
     } | ConvertTo-Json -Depth 10 -Compress
 
     try {
         $response = Invoke-RestMethod `
             -Method Post `
-            -Uri $TencentCompletionUrl `
+            -Uri $OpenRouterCompletionUrl `
             -Headers $headers `
             -Body $body `
             -TimeoutSec 90 `
             -ErrorAction Stop
 
         if (-not $response) {
-            throw "Tencent returned an empty response."
+            throw "OpenRouter returned an empty response."
         }
 
         $state = [ordered]@{
             success = $true
             testedAt = (Get-Date).ToString("o")
             fingerprint = $Fingerprint
-            endpoint = $TencentBaseUrl
-            model = $TencentModelId
+            endpoint = $OpenRouterBaseUrl
+            model = $OpenRouterModelId
         }
 
         $state |
             ConvertTo-Json |
-            Set-Content -LiteralPath $TencentTestStateFile -Encoding UTF8
+            Set-Content -LiteralPath $OpenRouterTestStateFile -Encoding UTF8
 
-        Write-OK "Tencent GLM 5.3 Flash API reachable"
+        Write-OK "Xiaomi MiMo v2.6 Flash API reachable via OpenRouter"
     }
     catch {
         throw @"
-Tencent GLM 5.3 Flash API test failed.
+OpenRouter Xiaomi MiMo v2.6 Flash API test failed.
 
 $($_.Exception.Message)
 
 Possible causes:
 - Invalid/expired key
-- Tencent credits or entitlement issue
+- OpenRouter credits or entitlement issue
+- Xiaomi/fp8 provider route unavailable (set allow_fallbacks to true to diagnose)
 - Campus firewall/proxy
 - Captive portal
-- Tencent endpoint unavailable
+- OpenRouter endpoint unavailable
 
 The API key itself has not been written to the support log.
 "@
@@ -1919,7 +1925,7 @@ function Start-OpenCodeService {
         $Credentials,
         [string]$ManagedPath,
         $Profile,
-        [string]$TencentApiKey,
+        [string]$OpenRouterApiKey,
         [string]$InlineConfig
     )
 
@@ -1971,7 +1977,7 @@ function Start-OpenCodeService {
         Set-ServiceEnv $OpenCode "OPENCODE_CONFIG_DIR" $env:OPENCODE_CONFIG_DIR
     }
 
-    Set-ServiceEnv $OpenCode "TENCENT_API_KEY" $TencentApiKey
+    Set-ServiceEnv $OpenCode "OPENROUTER_API_KEY" $OpenRouterApiKey
     Set-ServiceEnv $OpenCode "NO_PROXY" $env:NO_PROXY
     Set-ServiceEnv $OpenCode "no_proxy" $env:NO_PROXY
     Set-ServiceEnv $OpenCode "PYTHONUTF8" "1"
@@ -2265,21 +2271,21 @@ try {
     }
 
     # ========================================================
-    # Tencent key first, so a bad deployment package fails
+    # OpenRouter key first, so a bad deployment package fails
     # before downloading large runtimes.
     # ========================================================
-    Write-Section "Checking Tencent classroom credential"
+    Write-Section "Checking OpenRouter classroom credential"
 
-    $TencentKey = Install-TencentCredential
-    $KeyFingerprint = Get-KeyFingerprint $TencentKey
-    Write-OK "Tencent credential loaded"
+    $OpenRouterKey = Install-OpenRouterCredential
+    $KeyFingerprint = Get-KeyFingerprint $OpenRouterKey
+    Write-OK "OpenRouter credential loaded"
 
-    Test-TencentAPI $TencentKey $KeyFingerprint
+    Test-OpenRouterAPI $OpenRouterKey $KeyFingerprint
 
     # OpenCode V2 uses this declared provider environment variable
     # to mark the custom provider as available and to populate the
     # OpenAI-compatible Authorization header.
-    $env:TENCENT_API_KEY = $TencentKey
+    $env:OPENROUTER_API_KEY = $OpenRouterKey
 
     # ========================================================
     # Python
@@ -2467,13 +2473,13 @@ try {
     $modelExitCode = $modelResult.ExitCode
 
     if (($modelExitCode -eq 0) -and
-        ($modelOutput -match [regex]::Escape($TencentModelRef))) {
+        ($modelOutput -match [regex]::Escape($OpenRouterModelRef))) {
 
-        Write-OK "Model list contains: $TencentModelRef"
+        Write-OK "Model list contains: $OpenRouterModelRef"
     }
     elseif ($modelExitCode -eq 0) {
 
-        Write-Warn "OpenCode model listing did not display the custom Tencent model."
+        Write-Warn "OpenCode model listing did not display the custom OpenRouter model."
         Write-Host "Testing direct inference instead." -ForegroundColor DarkGray
     }
     else {
@@ -2517,7 +2523,7 @@ try {
         $Credentials `
         $ManagedPath `
         $Profile `
-        $env:TENCENT_API_KEY `
+        $env:OPENROUTER_API_KEY `
         $ClassroomConfigJson
 
     # ========================================================
@@ -2548,7 +2554,7 @@ try {
     if ($WorkshopPage -and $WorkshopPage.Ok) {
         Write-Host "Workshop page: http://127.0.0.1:$($WorkshopPage.Port)"
     }
-    Write-Host "Model:        $TencentModelRef"
+    Write-Host "Model:        $OpenRouterModelRef"
     Write-Host "Python:       $PythonVersionText"
     Write-Host "Node:         $NodeVersionText"
     Write-Host ""

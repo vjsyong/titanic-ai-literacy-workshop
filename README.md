@@ -18,7 +18,7 @@ served by a small FastAPI process, in one classroom page.
 | `web/` | The React + TypeScript + Tailwind UI (ECharts charts); `web/dist` is committed so students never need Node |
 | `data/titanic.csv` | The cleaned 1912 passenger list students use |
 | `AGENTS.md` | Persistent system prompt for the students' AI Teaching Assistant |
-| `deployment/` | One-click OpenCode classroom environment (OpenCode 2.0.20, Tencent glm-5.3-flash only) |
+| `deployment/` | One-click OpenCode classroom environment (OpenCode 2.0.20, OpenRouter xiaomi/mimo-v2.6-flash only) |
 
 ## How the class works (checkpoint flow)
 
@@ -90,7 +90,8 @@ Other launchers:
 ## Instructor checklist before class
 
 1. Copy `deployment/KEY.txt.TEMPLATE` to `deployment/key.txt` and paste
-   the Tencent Cloud MaaS key (key only, no quotes, no "Bearer ").
+   the OpenRouter API key (key only, no quotes, no "Bearer ";
+   OpenRouter keys start with "sk-or-").
    - `key.txt` is gitignored so a real key can never be committed.
    - The launcher refuses to run with the placeholder still in place.
    - When distributing a ZIP, include `key.txt` — it is inside the zip,

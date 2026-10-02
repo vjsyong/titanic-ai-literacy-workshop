@@ -25,7 +25,7 @@ echo ==============================================
 echo.
 echo This will revalidate/rebuild the classroom Python
 echo environment, Node.js runtime, OpenCode installation,
-echo Tencent connection, and OpenCode profile.
+echo OpenRouter connection, and OpenCode profile.
 echo.
 echo Student project files are not touched.
 echo.

@@ -3,7 +3,7 @@
 __pycache__/
 *.pyc
 
-# Tencent API credential (instructor fills this before distribution)
+# OpenRouter API credential (instructor fills this before distribution)
 deployment/key.txt
 
 # Workshop generated artifacts
