@@ -3,7 +3,7 @@ setlocal EnableExtensions
 
 title Vibe Coding Repair
 
-pushd "%~dp0.." >nul 2>&1
+pushd "%~dp0..\.." >nul 2>&1
 
 if errorlevel 1 (
     echo Unable to access the deployment folder.

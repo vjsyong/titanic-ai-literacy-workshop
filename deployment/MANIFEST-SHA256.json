@@ -1,78 +1,58 @@
 [
   {
-    "file": "README-FIRST.txt",
-    "sha256": "6ab60cbb01869e3d339c31a7051a16b85bf8c9c681897c7139a835a8482a4844",
-    "bytes": 4133
+    "file": "windows/README-FIRST.txt",
+    "sha256": "eefe7eaf48022aca6ec6540b04cfe13ecaebdb9b1779f58ff5c233955dec8606",
+    "bytes": 4361
   },
   {
-    "file": "REPAIR VIBE CODING.bat",
-    "sha256": "ddb6113dd6c29e9268961a6d9c2a1d7b681767a16079b49933ff7e656a416e76",
-    "bytes": 1205
+    "file": "windows/REPAIR VIBE CODING.bat",
+    "sha256": "30d858f9dcc3c5ba9db73ad631b1fbb63e0643dea016e8143211be1be18e39c4",
+    "bytes": 1208
   },
   {
-    "file": "RESET VIBE CODING.bat",
+    "file": "windows/RESET VIBE CODING.bat",
     "sha256": "12b742a60fa630fd79a9623cc7087ecf7726c9ddc8a38ddceaa01c43f6b06dc7",
     "bytes": 1523
   },
   {
-    "file": "RESET WORKSHOP.bat",
-    "sha256": "51b0842bf9c8639076a528118b5f36a42e3570a4de82c66c20edb7902fe605ea",
-    "bytes": 1156
+    "file": "windows/RESET WORKSHOP.bat",
+    "sha256": "8b8a8de086f59860721acaad03aeba63fb0c781c881f7df5f15312b7928e37ba",
+    "bytes": 1159
   },
   {
-    "file": "START VIBE CODING.bat",
-    "sha256": "02cf2e31a5032111945f2f44fb1fafb916740f9c7ef20813a87b5f04ffa3c146",
-    "bytes": 2086
+    "file": "windows/START VIBE CODING.bat",
+    "sha256": "8913f40eefe4a733a98b6c92df948fa640e27673eff1750049091ad29a8dfb4d",
+    "bytes": 2089
   },
   {
-    "file": "START WORKSHOP PAGE.bat",
-    "sha256": "7659e684ad7d5b9e7f0ae17f67052443a09569a6e25fdfd8b68ffc80c33775ac",
-    "bytes": 1670
+    "file": "windows/START WORKSHOP PAGE.bat",
+    "sha256": "05130be0f3baf8ebca583969ffcd47a1fc570c600ddcaf21e26a7ef823058df0",
+    "bytes": 1673
   },
   {
-    "file": "KEY.txt.TEMPLATE",
+    "file": "windows/KEY.txt.TEMPLATE",
     "sha256": "77c6f8da88231014ea6ac0eb8022e07623b1455248d70a8fd9c1eff31db610bd",
     "bytes": 26
   },
   {
-    "file": "oneclick.ps1",
-    "sha256": "d46e831171cdf4ca947bbabcf89efb28fbf6679be92c4e554ea29944b314d0c2",
-    "bytes": 94336
+    "file": "windows/oneclick.ps1",
+    "sha256": "149f7408664a0d9a6be44015a00182ea4fe5f09889cc6fed3615d71fc699f341",
+    "bytes": 94393
   },
   {
-    "file": "reset_workshop.ps1",
-    "sha256": "276ba962be125344cf925066235d215895cb8d5cfd99aa3929f93540eb410026",
-    "bytes": 7942
+    "file": "windows/reset_workshop.ps1",
+    "sha256": "2fd498f1d07bc3ef20d46cbce9d0c6b1ab4b71fc6540dd49d82bc5692971efd7",
+    "bytes": 7970
   },
   {
-    "file": "baseline/01_eda.py",
-    "sha256": "77d3a636d8f3f40d4af003b53fcc6bbed03ba283084375fb6025acd19bd6e3db",
-    "bytes": 14367
-  },
-  {
-    "file": "baseline/02_train.py",
-    "sha256": "a023e81255d3ffaf727ebae0a487c2fed4b37a36f55fc01d8447de36a7c45f71",
-    "bytes": 18023
-  },
-  {
-    "file": "baseline/03_dashboard.py",
-    "sha256": "a869a3b940f6d6a5e3015b86da17df5162de7537cfa8ce31a9f08056526ca60b",
-    "bytes": 13975
-  },
-  {
-    "file": "baseline/data/titanic.csv",
-    "sha256": "4a437fde05fe5264e1701a7387ac6fb75393772ba38bb2c9c566405af5af4bd7",
-    "bytes": 60302
-  },
-  {
-    "file": "payload/README.txt",
+    "file": "windows/payload/README.txt",
     "sha256": "b955c32e45d97b11d5fa50853797c1ada607b6fc18f6d0f1c7732cd48e97b50c",
     "bytes": 268
   },
   {
     "file": "macos/MAC-README-FIRST.txt",
-    "sha256": "cb7667242754fffcc9726ac552258ba4888249d8687d0a14876036c964398407",
-    "bytes": 2233
+    "sha256": "592fd66de8c6e9280c9ff72e253bc0b3b82bba3aa42599b19dcfba09398ff390",
+    "bytes": 2284
   },
   {
     "file": "macos/START VIBE CODING.command",
@@ -101,7 +81,27 @@
   },
   {
     "file": "macos/vibe-macos.sh",
-    "sha256": "8f8d64941d1c47b16ee9e76d6d8269887696482ff1965bad0fe1e99c8ef916e1",
-    "bytes": 35574
+    "sha256": "188d0be8cc6db2e3de5c72fe9865a8be05940ace9b8d86e61c05a10e3f957c5c",
+    "bytes": 35606
+  },
+  {
+    "file": "baseline/01_eda.py",
+    "sha256": "77d3a636d8f3f40d4af003b53fcc6bbed03ba283084375fb6025acd19bd6e3db",
+    "bytes": 14367
+  },
+  {
+    "file": "baseline/02_train.py",
+    "sha256": "a023e81255d3ffaf727ebae0a487c2fed4b37a36f55fc01d8447de36a7c45f71",
+    "bytes": 18023
+  },
+  {
+    "file": "baseline/03_dashboard.py",
+    "sha256": "a869a3b940f6d6a5e3015b86da17df5162de7537cfa8ce31a9f08056526ca60b",
+    "bytes": 13975
+  },
+  {
+    "file": "baseline/data/titanic.csv",
+    "sha256": "4a437fde05fe5264e1701a7387ac6fb75393772ba38bb2c9c566405af5af4bd7",
+    "bytes": 60302
   }
 ]

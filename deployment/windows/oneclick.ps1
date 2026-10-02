@@ -113,10 +113,11 @@ $LauncherStateFile = Join-Path $StateRoot "launcher.json"
 $PayloadRoot = Join-Path $PSScriptRoot "payload"
 
 # The workshop project (AGENTS.md, 01_eda.py, 02_train.py, 03_dashboard.py)
-# lives in the parent of this deployment folder. The OpenCode Web UI service
-# should open that project by default, so the launcher pins the service
-# working directory to the workshop root.
-$ClassroomProjectRoot = (Get-Item -LiteralPath $PSScriptRoot).Parent.FullName
+# lives two folders up from this launcher (deployment\windows -> deployment
+# -> project). The OpenCode Web UI service should open that project by
+# default, so the launcher pins the service working directory to the
+# workshop root.
+$ClassroomProjectRoot = (Get-Item -LiteralPath $PSScriptRoot).Parent.Parent.FullName
 
 $TimeStamp = Get-Date -Format "yyyyMMdd-HHmmss"
 $LogFile = Join-Path $LogRoot "setup-$TimeStamp.log"
@@ -657,7 +658,7 @@ function Install-WorkshopDependencies {
     $wheelArgs = @()
 
     # Optional offline shortcut: the instructor may pre-download all wheels
-    # into deployment/payload/wheels (see README-FIRST.txt). Then no Wi-Fi
+    # into deployment/windows/payload/wheels (see README-FIRST.txt). Then no Wi-Fi
     # is needed at all.
     if ((Test-Path -LiteralPath $wheelRoot) -and
         ((Get-ChildItem -LiteralPath $wheelRoot -Filter "*.whl" -ErrorAction SilentlyContinue) )) {

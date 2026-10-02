@@ -22,8 +22,9 @@ VIBE CODING CLASSROOM -- macOS QUICK START
    packages. It takes a few minutes on classroom Wi-Fi. Later runs are
    fast.
 
-   The API key must be in:  deployment/key.txt
-   (same file the Windows launcher uses; starts with "sk-or-").
+   The API key must be in:  deployment/macos/key.txt
+   (same key the Windows launcher uses, which reads
+   deployment/windows/key.txt; it starts with "sk-or-").
 
 3. What opens
 

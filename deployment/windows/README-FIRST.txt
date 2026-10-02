@@ -2,16 +2,17 @@ VIBE CODING CLASSROOM DEPLOYMENT
 ================================
 
 IMPORTANT: THIS COLLECTION OF FILES IS MEANT TO SIT INSIDE THE WORKSHOP
-REPOSITORY (the parent folder of this "deployment" folder), NOT IN
-ISOLATION.
+REPOSITORY (two folders up from this one, next to 01_eda.py, AGENTS.md and
+the rest), NOT IN ISOLATION.
 
 The README-first instructions from the standalone bundle apply, with these
 repository integration notes:
 
 WHAT THE STUDENT DOES
 ---------------------
-1. Keep the deployment folder next to the workshop files (01_eda.py,
-   02_train.py, 03_dashboard.py, AGENTS.md).
+1. Keep the deployment\windows folder inside the workshop repository
+   (next to the workshop files 01_eda.py, 02_train.py, 03_dashboard.py,
+   AGENTS.md).
 2. Double-click:
         START VIBE CODING.bat
 3. The browser opens OpenCode pointed at the workshop folder, and the
@@ -33,7 +34,7 @@ INSTRUCTOR CHECKLIST BEFORE DISTRIBUTION
    pre-download the workshop wheels so classroom machines need no PyPI:
 
        python -m pip download --only-binary=:all: ^
-           -d deployment\payload\wheels ^
+           -d deployment\windows\payload\wheels ^
            pandas scikit-learn fastapi uvicorn
 
    The launcher detects payload\wheels\*.whl and installs with
@@ -47,12 +48,12 @@ INSTRUCTOR CHECKLIST BEFORE DISTRIBUTION
 
 MANIFEST
 --------
-MANIFEST-SHA256.json (in this folder) records the SHA-256 and size of every
-launcher file as integrated into this repository:
+MANIFEST-SHA256.json (one level up, in the deployment folder) records the
+SHA-256 and size of every launcher file as integrated into this repository:
 
 - START, REPAIR and RESET now `pushd` into the workshop project directory
-  (the parent of this folder) instead of staying in the deployment folder,
-  so the OpenCode Web UI opens the workshop project by default.
+  (the grandparent of this folder) instead of staying in the deployment
+  folder, so the OpenCode Web UI opens the workshop project by default.
 - oneclick.ps1 was extended to pip-install the workshop packages
   (pandas / scikit-learn / fastapi / uvicorn) into the isolated
   classroom Python environment. The package list is part of the
@@ -64,13 +65,14 @@ launcher file as integrated into this repository:
   prebuilt React UI in web/dist).
 - The launcher and its watchdog start/restart the workshop page through
   serve_workshop.py; no Gradio anywhere.
-- RESET WORKSHOP.bat + reset_workshop.ps1 + baseline\ restore the three
-  workshop scripts AND data\titanic.csv to their pristine originals
-  (baseline\01_eda.py, baseline\02_train.py, baseline\03_dashboard.py,
-  baseline\data\titanic.csv) and delete generated artifacts, without
-  touching the classroom runtime, the API key, or the web UI. If you ever
-  change the workshop scaffolds or swap the dataset, refresh the matching
-  files in baseline\ before distributing.
+- RESET WORKSHOP.bat + reset_workshop.ps1 + deployment\baseline\ restore the
+  three workshop scripts AND data\titanic.csv to their pristine originals
+  (deployment\baseline\01_eda.py, deployment\baseline\02_train.py,
+  deployment\baseline\03_dashboard.py, deployment\baseline\data\titanic.csv)
+  and delete generated artifacts, without touching the classroom runtime,
+  the API key, or the web UI. The baseline folder is shared with the macOS
+  launcher. If you ever change the workshop scaffolds or swap the dataset,
+  refresh the matching files in deployment\baseline\ before distributing.
 - Classroom guardrails baked into the generated OpenCode config: the
   provider reads the key from %USERPROFILE%\.vibecoding\openrouter-key.txt
   at request time (never exported to the shell environment), shell is

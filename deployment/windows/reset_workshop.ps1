@@ -25,8 +25,8 @@ param(
 Set-StrictMode -Version 2.0
 $ErrorActionPreference = "Stop"
 
-$WorkshopRoot = (Get-Item -LiteralPath $PSScriptRoot).Parent.FullName
-$BaselineRoot = Join-Path $PSScriptRoot "baseline"
+$WorkshopRoot = (Get-Item -LiteralPath $PSScriptRoot).Parent.Parent.FullName
+$BaselineRoot = Join-Path (Split-Path -Parent $PSScriptRoot) "baseline"
 $WorkshopScripts = @("01_eda.py", "02_train.py", "03_dashboard.py")
 
 Write-Host ""

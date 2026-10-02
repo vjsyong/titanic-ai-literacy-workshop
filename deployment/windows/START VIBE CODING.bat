@@ -7,7 +7,7 @@ title Vibe Coding Launcher
 :: "deployment" folder), so the OpenCode Web UI opens the workshop
 :: project (AGENTS.md + 01_eda.py / 02_train.py / 03_dashboard.py).
 :: pushd also handles UNC/network paths better than cd /d.
-pushd "%~dp0.." >nul 2>&1
+pushd "%~dp0..\.." >nul 2>&1
 
 if errorlevel 1 (
     echo.

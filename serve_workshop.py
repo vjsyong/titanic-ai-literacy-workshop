@@ -20,8 +20,9 @@ USAGE
     python serve_workshop.py [--port N] [--no-browser] [--foreground]
                              [--python PATH]
 
-    deployment/START WORKSHOP PAGE.bat calls this script for students:
-    double-click it and the page opens in the browser.
+    deployment/windows/START WORKSHOP PAGE.bat (or the macOS equivalent
+    deployment/macos/START WORKSHOP PAGE.command) calls this script for
+    students: double-click it and the page opens in the browser.
 
     Students use Windows; the script also runs on macOS/Linux so the
     instructor can test outside the classroom deployment.
@@ -75,7 +76,8 @@ def _candidate_pythons(explicit):
 
     candidates = []
 
-    # The classroom environment created by deployment/START VIBE CODING.bat.
+    # The classroom environment created by deployment/windows/START VIBE
+    # CODING.bat (or deployment/macos/START VIBE CODING.command).
     if os.name == "nt":
         local_app_data = os.environ.get("LOCALAPPDATA")
         if local_app_data:
@@ -353,7 +355,7 @@ def main(argv=None):
             _say(f"ERROR: the page did not answer within {int(READY_TIMEOUT)}s.")
             _print_server_failure()
             _say()
-            _say("Run deployment/REPAIR VIBE CODING.bat, then try again.")
+            _say("Run REPAIR VIBE CODING (Windows: deployment/windows/, macOS: deployment/macos/), then try again.")
             return 1
 
         # The interpreter exited: usually a missing package. Try the next.
@@ -362,8 +364,8 @@ def main(argv=None):
     _say("ERROR: could not start the workshop page.")
     _print_server_failure()
     _say()
-    _say("Run deployment/START VIBE CODING.bat (first time) or")
-    _say("deployment/REPAIR VIBE CODING.bat, then try again.")
+    _say("Run START VIBE CODING (first time) or REPAIR VIBE CODING")
+    _say("(Windows: deployment/windows/, macOS: deployment/macos/), then try again.")
     return 1
 
 

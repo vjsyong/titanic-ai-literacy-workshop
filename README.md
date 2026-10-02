@@ -18,13 +18,16 @@ served by a small FastAPI process, in one classroom page.
 | `web/` | The React + TypeScript + Tailwind UI (ECharts charts); `web/dist` is committed so students never need Node. Styled on the mail-triage design system (self-hosted Geist fonts in `web/public/fonts`) |
 | `data/titanic.csv` | The original 1912 passenger list (holes and all — that's the point) |
 | `AGENTS.md` | Persistent system prompt for the students' AI Teaching Assistant |
-| `deployment/` | One-click OpenCode classroom environment (OpenCode 2.0.20, OpenRouter xiaomi/mimo-v2.6-flash only) |
+| `deployment/windows/` | Windows one-click OpenCode classroom environment (PowerShell + `.bat` launchers) |
+| `deployment/macos/` | macOS one-click classroom environment (`.command` launchers + shell launcher) |
+| `deployment/baseline/` | Pristine scaffold scripts + passenger data restored by both platforms' RESET WORKSHOP |
 
 ## How the class works (checkpoint flow)
 
 1. **Once**: the launcher serves the workshop page automatically
-   (`deployment/START VIBE CODING.bat` starts it on port 4097 and a hidden
-   watchdog keeps it alive). To (re)start it by hand:
+   (`deployment/windows/START VIBE CODING.bat` or
+   `deployment/macos/START VIBE CODING.command` starts it on port 4097 and a
+   hidden watchdog keeps it alive). To (re)start it by hand:
    `python serve_workshop.py`.
    Students see one page, three tabs; each tab shows its next checkpoint as a
    prompt-hint card, locked steps stay greyed out.
@@ -63,7 +66,7 @@ implemented with the fancy payloads) matching the student scaffolds.
 1. Get the workshop folder (ZIP from the instructor).
 2. Double-click:
    ```
-   deployment/START VIBE CODING.bat
+   deployment/windows/START VIBE CODING.bat
    ```
    First run only: private Python 3.12 + Node.js + OpenCode 2.0.20 are
    installed under `%LOCALAPPDATA%\VibeCoding` and workshop packages
@@ -73,7 +76,7 @@ implemented with the fancy payloads) matching the student scaffolds.
 4. Simply talk to the AI Teaching Assistant and watch the page evolve.
    If the workshop page ever stops, double-click:
    ```
-   deployment/START WORKSHOP PAGE.bat
+   deployment/windows/START WORKSHOP PAGE.bat
    ```
 
 If Vibe Coding is already running and a student starts the launcher again,
@@ -83,7 +86,8 @@ or they can simply keep the existing one.
 If the Web UI ever shows no project, use File -> Open Project and pick the
 extracted workshop folder once.
 
-Other launchers:
+Other launchers (Windows in `deployment/windows/`, macOS in
+`deployment/macos/`):
 
 - `START WORKSHOP PAGE.bat` — (re)starts the workshop web page and opens it
   in the browser. Safe to run any time; it reuses a page that is already up.
@@ -94,6 +98,8 @@ Other launchers:
   the 18 checkpoints lock again. The classroom runtime and API key stay.
 - `RESET VIBE CODING.bat` — removes only `%LOCALAPPDATA%\VibeCoding`
   and `%USERPROFILE%\.vibecoding`; system installs and student projects stay.
+
+The macOS folder has `.command` equivalents of everything above.
 
 ## Student quick start (macOS)
 
@@ -111,7 +117,8 @@ Then double-click `START VIBE CODING.command`, or use
 `RESET WORKSHOP.command`, `RESET VIBE CODING.command` exactly like on
 Windows. The private runtime is installed under
 `~/Library/Application Support/VibeCoding`, and the API key is read from
-`~/.vibecoding/openrouter-key.txt` (written from `deployment/key.txt`).
+`~/.vibecoding/openrouter-key.txt` (written from `deployment/macos/key.txt`;
+the Windows launcher uses `deployment/windows/key.txt`).
 See `deployment/macos/MAC-README-FIRST.txt` for details and troubleshooting.
 
 ## Classroom hardening
@@ -131,25 +138,27 @@ instructions:
 - The workshop server stops runaway gate code after 20 seconds, caps result
   sizes, paginates tables, validates prediction input, and rejects oversized
   request bodies.
-- `RESET WORKSHOP.bat` restores the three scripts **and** `data/titanic.csv`
-  from `deployment/baseline/`.
+- `RESET WORKSHOP` (Windows `.bat` / macOS `.command`) restores the three
+  scripts **and** `data/titanic.csv` from `deployment/baseline/`.
 - `AGENTS.md` carries the assistant's manipulation-resistance rules
   (secrets, reference prompts, file/terminal scope, off-topic requests).
 
 ## Instructor checklist before class
 
-1. Copy `deployment/KEY.txt.TEMPLATE` to `deployment/key.txt` and paste
-   the OpenRouter API key (key only, no quotes, no "Bearer ";
-   OpenRouter keys start with "sk-or-").
+1. Copy `deployment/windows/KEY.txt.TEMPLATE` to
+   `deployment/windows/key.txt` (and/or the same in `deployment/macos/`
+   for Macs) and paste the OpenRouter API key (key only, no quotes, no
+   "Bearer "; OpenRouter keys start with "sk-or-").
    - `key.txt` is gitignored so a real key can never be committed.
    - The launcher refuses to run with the placeholder still in place.
    - When distributing a ZIP, include `key.txt` — it is inside the zip,
      never in the git history.
 2. Build the UI once (`cd web && npm run build`) so `web/dist` is current.
-3. Optional: pre-bake big downloads into `deployment/payload/`
+3. Optional: pre-bake big downloads into `deployment/windows/payload/`
    (python-3.12.10 installer, node-v24.21.0 zip, SHASUMS256.txt) to reduce
-   classroom Wi-Fi traffic — see `deployment/README-FIRST.txt`.
-4. Keep the deployment folder next to the workshop files when zipping.
+   classroom Wi-Fi traffic — see `deployment/windows/README-FIRST.txt`.
+4. Keep the whole `deployment/` folder (both platform folders and the
+   shared `baseline/`) next to the workshop files when zipping.
 
 ## Updating launcher files
 

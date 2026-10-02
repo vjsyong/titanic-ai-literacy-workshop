@@ -3,7 +3,7 @@ setlocal EnableExtensions
 
 title Reset Workshop Progress
 
-pushd "%~dp0.." >nul 2>&1
+pushd "%~dp0..\.." >nul 2>&1
 
 if errorlevel 1 (
     echo Unable to access the deployment folder.

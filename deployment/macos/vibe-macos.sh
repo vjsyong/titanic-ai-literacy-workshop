@@ -2,7 +2,7 @@
 # ============================================================
 # Vibe Coding Classroom Launcher -- macOS
 # ============================================================
-# Mirrors the Windows launcher (deployment/oneclick.ps1):
+# Mirrors the Windows launcher (deployment/windows/oneclick.ps1):
 #
 #   1. verifies the OpenRouter classroom credential
 #   2. prepares a private Python (uv-managed) + workshop packages
@@ -43,10 +43,10 @@ esac
 # ============================================================
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" && pwd)"
-DEPLOY_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
-PROJECT_ROOT="$(cd "$DEPLOY_DIR/.." && pwd)"
-KEY_FILE="$DEPLOY_DIR/key.txt"
-BASELINE_ROOT="$DEPLOY_DIR/baseline"
+DEPLOYMENT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+PROJECT_ROOT="$(cd "$DEPLOYMENT_DIR/.." && pwd)"
+KEY_FILE="$SCRIPT_DIR/key.txt"
+BASELINE_ROOT="$DEPLOYMENT_DIR/baseline"
 
 APP_ROOT="$HOME/Library/Application Support/VibeCoding"
 RUNTIME_ROOT="$APP_ROOT/runtime"
@@ -476,9 +476,9 @@ ensure_credential() {
     if [ -z "$key" ] || [ "$key" = "PASTE_OPENROUTER_KEY_HERE" ]; then
         if [ -f "$SECRET_KEY" ] && [ -s "$SECRET_KEY" ]; then
             key="$(tr -d '\r\n' < "$SECRET_KEY")"
-            warn "deployment/key.txt is missing -- reusing the already installed credential."
+            warn "deployment/macos/key.txt is missing -- reusing the already installed credential."
         else
-            die "The OpenRouter API key is missing. Put it in deployment/key.txt (starts with sk-or-)."
+            die "The OpenRouter API key is missing. Put it in deployment/macos/key.txt (starts with sk-or-)."
         fi
     fi
 

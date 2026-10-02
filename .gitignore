@@ -4,7 +4,8 @@ __pycache__/
 *.pyc
 
 # OpenRouter API credential (instructor fills this before distribution)
-deployment/key.txt
+deployment/windows/key.txt
+deployment/macos/key.txt
 
 # Workshop generated artifacts
 titanic_model.pkl

@@ -6,7 +6,7 @@ title Workshop Web Page
 :: Work from the workshop project directory (the parent of this
 :: "deployment" folder) so 04_classroom.py finds its files.
 :: pushd also handles UNC/network paths better than cd /d.
-pushd "%~dp0.." >nul 2>&1
+pushd "%~dp0..\.." >nul 2>&1
 
 if errorlevel 1 (
     echo.
