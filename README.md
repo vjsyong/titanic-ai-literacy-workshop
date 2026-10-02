@@ -95,6 +95,25 @@ Other launchers:
 - `RESET VIBE CODING.bat` — removes only `%LOCALAPPDATA%\VibeCoding`
   and `%USERPROFILE%\.vibecoding`; system installs and student projects stay.
 
+## Student quick start (macOS)
+
+The macOS launchers live in `deployment/macos/` (double-clickable `.command`
+files mirroring the Windows `.bat` files). First time only, in Terminal:
+
+```
+cd deployment/macos
+chmod +x *.command vibe-macos.sh
+xattr -dr com.apple.quarantine .
+```
+
+Then double-click `START VIBE CODING.command`, or use
+`REPAIR VIBE CODING.command`, `START WORKSHOP PAGE.command`,
+`RESET WORKSHOP.command`, `RESET VIBE CODING.command` exactly like on
+Windows. The private runtime is installed under
+`~/Library/Application Support/VibeCoding`, and the API key is read from
+`~/.vibecoding/openrouter-key.txt` (written from `deployment/key.txt`).
+See `deployment/macos/MAC-README-FIRST.txt` for details and troubleshooting.
+
 ## Classroom hardening
 
 The launcher bakes guardrails into the generated OpenCode config, so the AI

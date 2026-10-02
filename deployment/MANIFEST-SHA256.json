@@ -68,5 +68,40 @@
     "file": "payload/README.txt",
     "sha256": "b955c32e45d97b11d5fa50853797c1ada607b6fc18f6d0f1c7732cd48e97b50c",
     "bytes": 268
+  },
+  {
+    "file": "macos/MAC-README-FIRST.txt",
+    "sha256": "cb7667242754fffcc9726ac552258ba4888249d8687d0a14876036c964398407",
+    "bytes": 2233
+  },
+  {
+    "file": "macos/START VIBE CODING.command",
+    "sha256": "2a446b324ef65e9bd314a5bf5c5ccdf049374cdf8b8ff74fc59748152a4f7bb4",
+    "bytes": 191
+  },
+  {
+    "file": "macos/REPAIR VIBE CODING.command",
+    "sha256": "18a4c5a086554554a72cd01d92e8fb3dd359b0b4e07703cbe0461b3b048877b4",
+    "bytes": 149
+  },
+  {
+    "file": "macos/RESET WORKSHOP.command",
+    "sha256": "c1ba93e26c3bbf8a52693b571070b7c97872bb58e7d2a5589a7a3dde8f99ff30",
+    "bytes": 149
+  },
+  {
+    "file": "macos/RESET VIBE CODING.command",
+    "sha256": "4f807a39767f845fe59127b98340829eb9d43c98c510a43a4d209b1475eb28ec",
+    "bytes": 142
+  },
+  {
+    "file": "macos/START WORKSHOP PAGE.command",
+    "sha256": "5e9fe493548209448fb814a630aba7d691c947ef673049626a4b77917e899c7b",
+    "bytes": 126
+  },
+  {
+    "file": "macos/vibe-macos.sh",
+    "sha256": "8f8d64941d1c47b16ee9e76d6d8269887696482ff1965bad0fe1e99c8ef916e1",
+    "bytes": 35574
   }
 ]
