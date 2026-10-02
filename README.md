@@ -15,7 +15,7 @@ served by a small FastAPI process, in one classroom page.
 | `workshop_server.py` | Instructor-managed FastAPI server: checkpoint state, SSE auto-refresh, prediction endpoint, serves `web/dist` |
 | `serve_workshop.py` | Instructor-managed launcher: free port, background server, browser, reuse of a running page |
 | `workshop_steps.py` | Instructor-managed shared machinery: result serialization + `chart()` / `metric()` / `verdict()` helpers |
-| `web/` | The React + TypeScript + Tailwind UI (ECharts charts); `web/dist` is committed so students never need Node |
+| `web/` | The React + TypeScript + Tailwind UI (ECharts charts); `web/dist` is committed so students never need Node. Styled on the mail-triage design system (self-hosted Geist fonts in `web/public/fonts`) |
 | `data/titanic.csv` | The cleaned 1912 passenger list students use |
 | `AGENTS.md` | Persistent system prompt for the students' AI Teaching Assistant |
 | `deployment/` | One-click OpenCode classroom environment (OpenCode 2.0.20, OpenRouter xiaomi/mimo-v2.6-flash only) |
@@ -28,14 +28,15 @@ served by a small FastAPI process, in one classroom page.
    `python serve_workshop.py`.
    Students see one page, three tabs; each tab shows its next checkpoint as a
    prompt-hint card, locked steps stay greyed out.
-2. **Loop (the magic)**: a student writes their intent (or clicks *Copy prompt*
-   on the hint card, e.g. *"Check data/titanic.csv for missing values and
-   show me a table of how many holes each column has"*). The AI Teaching
+2. **Loop (the magic)**: each checkpoint card shows a *mission* (direction and
+   goal, not a ready-made prompt) plus a box for the student's own request.
+   Once they write a meaningful attempt (6+ words), the reference prompt
+   unlocks so they can compare it with theirs or copy it. The AI Teaching
    Assistant implements **exactly one gate**, verifies it in the terminal,
    bumps the script's `STEPS_COMPLETED`, saves the file. The server notices
    within a second: the open page refreshes itself, the finished checkpoint
    becomes an animated result card (tables, interactive charts, gauges), and
-   the NEXT prompt hint appears. Repeat until all 18 checkpoints are done.
+   the NEXT mission appears. Repeat until all 18 checkpoints are done.
 
 ## Instructor development
 

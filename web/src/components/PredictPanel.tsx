@@ -20,9 +20,9 @@ function Control({
   return (
     <div>
       <div className="mb-1.5 flex items-baseline justify-between gap-3">
-        <label className="text-sm font-medium text-slate-600">{item.label}</label>
+        <label className="text-sm font-medium text-dim">{item.label}</label>
         {item.kind === "slider" && (
-          <span className="text-xs font-semibold tabular-nums text-indigo-600">
+          <span className="font-mono text-xs font-semibold text-acc">
             {value}
           </span>
         )}
@@ -33,10 +33,10 @@ function Control({
             <button
               key={String(choice)}
               onClick={() => onChange(choice)}
-              className={`rounded-lg px-3 py-1.5 text-sm font-medium transition ${
+              className={`h-8 border px-3 text-sm font-medium transition ${
                 value === choice
-                  ? "bg-indigo-600 text-white shadow-sm"
-                  : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                  ? "border-black bg-black text-white"
+                  : "border-line bg-white text-[#3f3f46] hover:border-black hover:text-black"
               }`}
             >
               {String(choice)}
@@ -62,7 +62,7 @@ function VerdictCard({ response }: { response: PredictResponse }) {
     typeof response.probability === "number" ? response.probability : null;
 
   return (
-    <div className="animate-rise mt-4 rounded-2xl border border-indigo-100 bg-indigo-50/50 p-5">
+    <div className="animate-rise mt-4 border border-acc bg-tint-acc p-5">
       <div className="flex flex-col items-center gap-5 sm:flex-row">
         {probability !== null && (
           <div className="w-56 shrink-0">
@@ -75,11 +75,11 @@ function VerdictCard({ response }: { response: PredictResponse }) {
         )}
         <div className="text-center sm:text-left">
           {response.band && (
-            <span className="inline-block rounded-full bg-white px-3 py-1 text-xs font-semibold uppercase tracking-wide text-indigo-600 shadow-sm">
+            <span className="micro-label inline-block border border-acc bg-white px-2 py-1 text-acc">
               {response.band}
             </span>
           )}
-          <p className="mt-2 text-sm leading-relaxed text-slate-700">
+          <p className="mt-2 text-sm leading-relaxed text-ink">
             {response.text}
           </p>
         </div>
@@ -105,7 +105,7 @@ export function PredictPanel({ dashboard }: { dashboard: DashboardState }) {
 
   if (!dashboard.predict_ready) {
     return (
-      <div className="flex items-center gap-3 rounded-2xl border border-dashed border-slate-200 bg-white/60 px-4 py-6 text-slate-400">
+      <div className="flex items-center gap-3 border border-dashed border-line2 bg-white/60 px-4 py-6 text-faint">
         <Lock className="h-4 w-4 shrink-0" />
         <span className="text-sm font-medium">
           {spec.length > 0
@@ -124,10 +124,10 @@ export function PredictPanel({ dashboard }: { dashboard: DashboardState }) {
   };
 
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+    <div className="border border-line bg-white p-5">
       <div className="mb-4 flex items-center gap-2">
-        <Sparkles className="h-5 w-5 text-indigo-500" />
-        <h3 className="text-lg font-bold text-slate-800">
+        <Sparkles className="h-5 w-5 text-acc" />
+        <h3 className="text-lg font-bold tracking-tight text-ink">
           Try your own imaginary passenger
         </h3>
       </div>
@@ -148,14 +148,14 @@ export function PredictPanel({ dashboard }: { dashboard: DashboardState }) {
       <button
         onClick={run}
         disabled={loading}
-        className="mt-5 inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-500 disabled:opacity-60"
+        className="mt-5 inline-flex h-9 items-center gap-2 bg-black px-4 text-sm font-semibold text-white transition hover:bg-[#333] disabled:opacity-60"
       >
         {loading && <Loader2 className="h-4 w-4 animate-spin" />}
         {loading ? "Asking the model…" : "Predict survival"}
       </button>
 
       {response && !response.ok && (
-        <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+        <div className="mt-4 border border-warn bg-tint-warn p-3 text-sm text-warn">
           {response.error}
         </div>
       )}

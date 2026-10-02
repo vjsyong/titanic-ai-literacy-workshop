@@ -186,6 +186,15 @@ STEPS = [
             "it for encoding)."
         ),
         "prompt": (
+            "GOAL: give the model a language it understands -- numbers "
+            "instead of the words female/male. You pick the numbering "
+            "scheme (any scheme is fine, as long as it's consistent and "
+            "you can explain it). Decide how you'd check the translation "
+            "worked -- seeing the old words and new numbers side by side "
+            "sounds useful -- and how the result gets kept for the "
+            "checkpoints ahead."
+        ),
+        "reference": (
             "Step 2 of the workshop, checkpoint 1: take the Sex column from "
             "data/titanic.csv, replace female/male with numbers (your "
             "choice of scheme -- explain it), and show me a preview of the "
@@ -204,6 +213,14 @@ STEPS = [
             "are person IDs, not survival clues."
         ),
         "prompt": (
+            "GOAL: decide what the model is allowed to look at, and what "
+            "it must predict. Not every column helps -- some are just "
+            "labels or free text a pattern-spotter can't use. Which "
+            "columns would you feed in, which one is the answer, and why "
+            "are things like Name useless? One trap: use the numeric sex "
+            "column you made last checkpoint, not the word version."
+        ),
+        "reference": (
             "Step 2, checkpoint 2: choose which columns the model may look "
             "at (features) and which column it must predict. Show me the "
             "chosen feature columns and why we ignored things like Name. "
@@ -221,6 +238,14 @@ STEPS = [
             "test material the model never sees during learning."
         ),
         "prompt": (
+            "GOAL: set up a fair exam for the model. Split the passengers "
+            "into a group it learns from and a hidden group it gets tested "
+            "on -- roughly 80/20 is the usual recipe. Be ready to answer "
+            "the classic question: why must the test group stay hidden "
+            "until the end? And how would you show the two group sizes so "
+            "the class trusts the split?"
+        ),
+        "reference": (
             "Step 2, checkpoint 3: split the data into a training set and "
             "a test set (about 80/20). Show me how many passengers are in "
             "each, and explain in one friendly line why we hide the test "
@@ -237,6 +262,15 @@ STEPS = [
             "bigness for importance. Fix the tube sizes with standardization."
         ),
         "prompt": (
+            "GOAL: put every numeric feature on the same scale, so no "
+            "single column (fare can reach 500!) shouts louder than the "
+            "others. The golden rule: learn the scale from the training "
+            "group only -- no peeking at the test group. How would you "
+            "show one column before and after scaling so the class can "
+            "FEEL the change (means near zero, tight spread)? Keep the "
+            "scaler safe -- the dashboard will need it."
+        ),
+        "reference": (
             "Step 2, checkpoint 4: scale the numeric features for training "
             "(fit on the train set only -- no peeking). Show me one "
             "numeric column before and after scaling so I can feel the "
@@ -253,6 +287,13 @@ STEPS = [
             "the secret test passengers it was never shown."
         ),
         "prompt": (
+            "GOAL: training time! Pick a simple, explainable first model "
+            "-- logistic regression is the classic -- teach it on the "
+            "scaled training group, then let it sit the hidden exam. How "
+            "would you present its accuracy so the whole class can cheer "
+            "(the page can draw a big animated number/ring)?"
+        ),
+        "reference": (
             "Step 2, checkpoint 5: train a Logistic Regression model on "
             "the scaled training data (this is a fine first model -- keep "
             "it simple and explainable). Then show me how accurate its "
@@ -270,6 +311,15 @@ STEPS = [
             "by eye in Step 1 with our own charts."
         ),
         "prompt": (
+            "GOAL: open the black box a crack. For a logistic regression, "
+            "each feature has a coefficient: its size says how much the "
+            "model leaned on it, its sign says which way it pushed "
+            "(toward survival or away). Plan a chart where positive and "
+            "negative pull in opposite directions, and think about how "
+            "you'd explain every row in words a 12-year-old gets -- no "
+            "statistics jargon allowed."
+        ),
+        "reference": (
             "Step 2, checkpoint 6: rank the features by how much the model "
             "used them (for a Logistic Regression, the coefficient sizes "
             "tell us that) and draw it as a colored bar chart where "
@@ -287,6 +337,15 @@ STEPS = [
             "on disk is what makes predictions reusable!"
         ),
         "prompt": (
+            "GOAL: freeze the trained brain into a file called "
+            "titanic_model.pkl so the dashboard step can wake it up later "
+            "-- model, scaler and feature list, packed in the shape the "
+            "next step expects. Then prove it's alive: invent one fresh "
+            "passenger (a 30-year-old woman in 1st class, say), predict "
+            "their chance of survival, and show it as a gauge with a "
+            "friendly, clear sentence."
+        ),
+        "reference": (
             "Step 2, checkpoint 7 (last one!): save everything needed for "
             "predictions to titanic_model.pkl (model, scaler, and the "
             "feature list in that order/shape). Prove it works by "

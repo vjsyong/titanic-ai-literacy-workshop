@@ -210,5 +210,7 @@ Write-Host ""
 Write-Host "All 18 checkpoints are locked again." 
 Write-Host "Tip: start a fresh chat with the AI Teaching Assistant" 
 Write-Host "so it does not remember the previous run." 
+Write-Host "Reference prompts already unlocked in this browser stay" 
+Write-Host "unlocked (clear the site's data to start them fresh)." 
 Write-Host ""
 exit 0

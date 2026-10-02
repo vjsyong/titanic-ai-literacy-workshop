@@ -16,19 +16,19 @@ interface CommonOption {
 }
 
 export const PALETTE = [
-  "#4f46e5",
-  "#14b8a6",
-  "#f59e0b",
-  "#ef4444",
-  "#8b5cf6",
-  "#0ea5e9",
-  "#84cc16",
-  "#f43f5e",
+  "#0070f3",
+  "#067a46",
+  "#b25e09",
+  "#d1242f",
+  "#6e56cf",
+  "#0e7490",
+  "#3f3f46",
+  "#ca8a04",
 ];
 
-const INK = "#1e293b";
-const MUTED = "#64748b";
-const GRID = "#e2e8f0";
+const INK = "#000000";
+const MUTED = "#666666";
+const GRID = "#e5e5e5";
 
 const PERSON_ICON =
   "path://M12 4.5a3.75 3.75 0 1 1 0 7.5 3.75 3.75 0 0 1 0-7.5zm0 9c4.14 0 7.5 2.02 7.5 4.5V20a1 1 0 0 1-1 1h-13a1 1 0 0 1-1-1v-2c0-2.48 3.36-4.5 7.5-4.5z";
@@ -80,9 +80,9 @@ function commonOption(hasLegend: boolean): CommonOption {
       : { show: false },
     tooltip: {
       confine: true,
-      backgroundColor: "rgba(15, 23, 42, 0.92)",
+      backgroundColor: "rgba(0, 0, 0, 0.92)",
       borderWidth: 0,
-      textStyle: { color: "#f8fafc", fontSize: 12 },
+      textStyle: { color: "#ededed", fontSize: 12 },
     },
   };
 }
@@ -157,14 +157,7 @@ function categoryChart(
         data: cats.map((category, position) => ({
           value: values[position],
           itemStyle: {
-            color: values[position] >= 0 ? "#14b8a6" : "#ef4444",
-            borderRadius: horizontal
-              ? values[position] >= 0
-                ? [0, 6, 6, 0]
-                : [6, 0, 0, 6]
-              : values[position] >= 0
-                ? [6, 6, 0, 0]
-                : [0, 0, 6, 6],
+            color: values[position] >= 0 ? "#067a46" : "#d1242f",
           },
         })),
         barMaxWidth: 22,
@@ -206,7 +199,6 @@ function categoryChart(
     if (!horizontal && !isLine && !chart.stacked && !diverging) {
       base.itemStyle = {
         color: PALETTE[index % PALETTE.length],
-        borderRadius: [6, 6, 0, 0],
       };
     }
     return base;
@@ -285,8 +277,8 @@ function scatterChart(chart: ChartPayload): Option {
         height: 16,
         bottom: 0,
         borderColor: GRID,
-        fillerColor: "rgba(79, 70, 229, 0.12)",
-        handleStyle: { color: "#6366f1" },
+        fillerColor: "rgba(0, 112, 243, 0.12)",
+        handleStyle: { color: "#0070f3" },
       },
     ],
     series,
@@ -310,7 +302,7 @@ function pieChart(chart: ChartPayload): Option {
           name: String(row[nameKey]),
           value: num(row[valueKey]),
         })),
-        itemStyle: { borderRadius: 8, borderColor: "#fff", borderWidth: 2 },
+        itemStyle: { borderColor: "#fff", borderWidth: 2 },
         label: { color: INK, formatter: "{b}\n{d}%" },
         animationType: "scale",
         animationEasing: "cubicOut",
@@ -352,9 +344,8 @@ function histogramChart(chart: ChartPayload): Option {
           itemStyle: {
             color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
               { offset: 0, color: PALETTE[index % PALETTE.length] },
-              { offset: 1, color: "rgba(79, 70, 229, 0.25)" },
+              { offset: 1, color: "rgba(0, 112, 243, 0.25)" },
             ]),
-            borderRadius: [5, 5, 0, 0],
           },
         })),
         barMaxWidth: 44,
@@ -365,7 +356,7 @@ function histogramChart(chart: ChartPayload): Option {
 
 function gaugeChart(chart: ChartPayload): Option {
   const value = Math.max(0, Math.min(100, num(chart.value)));
-  const color = value < 33 ? "#f43f5e" : value < 66 ? "#f59e0b" : "#14b8a6";
+  const color = value < 33 ? "#d1242f" : value < 66 ? "#b25e09" : "#067a46";
 
   return {
     ...commonOption(false),
@@ -376,8 +367,8 @@ function gaugeChart(chart: ChartPayload): Option {
         endAngle: -30,
         min: 0,
         max: 100,
-        progress: { show: true, width: 16, roundCap: true, itemStyle: { color } },
-        axisLine: { lineStyle: { width: 16, color: [[1, "#eef2f7"]] } },
+        progress: { show: true, width: 16, roundCap: false, itemStyle: { color } },
+        axisLine: { lineStyle: { width: 16, color: [[1, "#f0f0f0"]] } },
         pointer: { show: false },
         axisTick: { show: false },
         splitLine: { show: false },
@@ -443,16 +434,16 @@ function heatmapChart(chart: ChartPayload): Option {
       itemWidth: 12,
       itemHeight: 90,
       textStyle: { color: MUTED },
-      inRange: { color: ["#eef2ff", "#818cf8", "#4338ca"] },
+      inRange: { color: ["#f0f7ff", "#66a3ff", "#003a8c"] },
     },
     series: [
       {
         type: "heatmap",
         data,
         label: { show: true, color: INK, fontSize: 11 },
-        itemStyle: { borderRadius: 5, borderColor: "#fff", borderWidth: 2 },
+        itemStyle: { borderColor: "#fff", borderWidth: 2 },
         emphasis: {
-          itemStyle: { shadowBlur: 8, shadowColor: "rgba(15, 23, 42, 0.25)" },
+          itemStyle: { shadowBlur: 8, shadowColor: "rgba(0, 0, 0, 0.25)" },
         },
       },
     ],
@@ -520,12 +511,12 @@ export function ChartBlock({
     <div
       className={
         framed
-          ? "rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"
+          ? "border border-line bg-white p-4"
           : ""
       }
     >
       {chart.title && (
-        <div className="mb-1 text-sm font-semibold text-slate-700">{chart.title}</div>
+        <div className="mb-1 text-sm font-semibold text-ink">{chart.title}</div>
       )}
       <div ref={container} className={heightClass} />
     </div>

@@ -1,9 +1,55 @@
 @import "tailwindcss";
 
+/* ---------------------------------------------------------------------------
+   Titanic Workshop UI — restyled on the Mail Triage Design System
+   (Geist self-hosted, hairline borders, sharp corners, black primary,
+   blue accent). Tokens mirror the kit's css/base.css :root block.
+--------------------------------------------------------------------------- */
+
+@font-face {
+  font-family: "Geist";
+  src: url("/fonts/geist.woff2") format("woff2");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Geist Mono";
+  src: url("/fonts/geist-mono.woff2") format("woff2");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
 @theme {
   --font-sans:
-    ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
-    "Helvetica Neue", Arial, sans-serif;
+    "Geist", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica,
+    Arial, sans-serif;
+  --font-mono:
+    "Geist Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+
+  /* Design-system palette (mail-triage css/base.css). */
+  --color-bg: #fafafa;
+  --color-card: #ffffff;
+  --color-card2: #f5f5f5;
+  --color-line: #e5e5e5;
+  --color-line2: #d4d4d4;
+  --color-ink: #000000;
+  --color-dim: #666666;
+  --color-faint: #999999;
+  --color-acc: #0070f3;
+  --color-ok: #067a46;
+  --color-warn: #b25e09;
+  --color-err: #d1242f;
+  --color-tint-acc: #f0f7ff;
+  --color-tint-ok: #edfbf2;
+  --color-tint-warn: #fff8ea;
+  --color-tint-err: #fff1f1;
+  --color-panel: #000000;
+  --color-panel-dim: #a3a3a3;
+  --color-hover: #f7f7f7;
+  --color-active: #f2f2f2;
 }
 
 html {
@@ -11,7 +57,19 @@ html {
 }
 
 body {
-  @apply bg-slate-50 text-slate-800 antialiased;
+  @apply bg-bg text-ink antialiased;
+  font-size: 15px;
+  line-height: 1.55;
+}
+
+/* The design system's signature: everything is sharp-cornered. */
+* {
+  border-radius: 0 !important;
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-acc);
+  outline-offset: 2px;
 }
 
 /* Soft entrance for cards and result blocks. */
@@ -34,10 +92,10 @@ body {
 @keyframes soft-pulse {
   0%,
   100% {
-    box-shadow: 0 0 0 0 rgba(79, 70, 229, 0.25);
+    box-shadow: 0 0 0 0 rgba(0, 112, 243, 0.25);
   }
   50% {
-    box-shadow: 0 0 0 10px rgba(79, 70, 229, 0);
+    box-shadow: 0 0 0 10px rgba(0, 112, 243, 0);
   }
 }
 
@@ -45,17 +103,33 @@ body {
   animation: soft-pulse 1.6s ease-in-out 2;
 }
 
-/* Range slider styling (indigo thumb, clean track). */
+/* Uppercase micro-label (badges, card eyebrows, table headers). */
+.micro-label {
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+/* Range slider styling (black square thumb, hairline track). */
 input[type="range"] {
-  @apply h-2 w-full cursor-pointer appearance-none rounded-full bg-slate-200;
+  @apply h-2 w-full cursor-pointer appearance-none bg-card2;
+  border: 1px solid var(--color-line);
 }
 
 input[type="range"]::-webkit-slider-thumb {
-  @apply h-5 w-5 appearance-none rounded-full bg-indigo-600 shadow;
-  border: 2px solid white;
+  @apply h-5 w-5 appearance-none bg-black;
+  border: 1px solid var(--color-line2);
 }
 
 input[type="range"]::-moz-range-thumb {
-  @apply h-5 w-5 rounded-full bg-indigo-600 shadow;
-  border: 2px solid white;
+  @apply h-5 w-5 bg-black;
+  border: 1px solid var(--color-line2);
+}
+
+/* Monospace draft box for the student's own request. */
+textarea.draft {
+  font-family: var(--font-mono);
+  font-size: 0.86rem;
+  line-height: 1.5;
 }

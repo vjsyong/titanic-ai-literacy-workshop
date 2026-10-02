@@ -17,48 +17,48 @@ import { ChartBlock } from "./ChartBlock";
 const markdownComponents: Components = {
   p: (props) => <p className="my-1.5 leading-relaxed" {...props} />,
   strong: (props) => (
-    <strong className="font-semibold text-slate-900" {...props} />
+    <strong className="font-semibold text-ink" {...props} />
   ),
   ul: (props) => <ul className="my-2 list-disc space-y-1 pl-5" {...props} />,
   ol: (props) => <ol className="my-2 list-decimal space-y-1 pl-5" {...props} />,
   code: (props) => (
     <code
-      className="rounded bg-slate-100 px-1.5 py-0.5 text-[0.85em] text-indigo-700"
+      className="border border-line bg-card2 px-1 py-0.5 font-mono text-[0.85em]"
       {...props}
     />
   ),
   blockquote: (props) => (
     <blockquote
-      className="my-2 border-l-4 border-indigo-200 pl-3 text-slate-600"
+      className="my-2 border-l-[3px] border-line pl-3 text-dim"
       {...props}
     />
   ),
   a: (props) => (
-    <a className="text-indigo-600 underline" target="_blank" {...props} />
+    <a className="text-acc underline" target="_blank" {...props} />
   ),
   h1: (props) => <h1 className="mt-3 mb-1 text-xl font-bold" {...props} />,
   h2: (props) => <h2 className="mt-3 mb-1 text-lg font-bold" {...props} />,
   h3: (props) => <h3 className="mt-3 mb-1 text-base font-semibold" {...props} />,
   table: (props) => (
-    <div className="my-3 overflow-x-auto">
+    <div className="my-3 overflow-x-auto border border-line">
       <table
-        className="w-full border-collapse overflow-hidden rounded-lg text-sm"
+        className="w-full border-collapse text-sm"
         {...props}
       />
     </div>
   ),
   th: (props) => (
     <th
-      className="border-b border-slate-200 bg-slate-50 px-3 py-2 text-left font-semibold"
+      className="micro-label border-b border-line bg-[#fbfbfb] px-3 py-2 text-left text-dim"
       {...props}
     />
   ),
-  td: (props) => <td className="border-b border-slate-100 px-3 py-2" {...props} />,
+  td: (props) => <td className="border-b border-line px-3 py-2" {...props} />,
 };
 
 function Markdown({ text }: { text: string }) {
   return (
-    <div className="text-[0.95rem] text-slate-700">
+    <div className="text-[0.95rem] text-ink">
       <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
         {text}
       </ReactMarkdown>
@@ -89,7 +89,7 @@ function DataTable({ columns, rows, total_rows, truncated }: TableBlock) {
   });
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+    <div className="border border-line bg-white">
       <div className="max-h-96 overflow-auto">
         <table className="w-full border-collapse text-sm">
           <thead className="sticky top-0 z-10">
@@ -97,7 +97,7 @@ function DataTable({ columns, rows, total_rows, truncated }: TableBlock) {
               {columns.map((column) => (
                 <th
                   key={column}
-                  className="border-b border-slate-200 bg-slate-50 px-3 py-2 text-left font-semibold text-slate-700"
+                  className="micro-label border-b border-line bg-[#fbfbfb] px-3 py-2 text-left text-dim"
                 >
                   {column}
                 </th>
@@ -108,13 +108,15 @@ function DataTable({ columns, rows, total_rows, truncated }: TableBlock) {
             {rows.map((row, rowIndex) => (
               <tr
                 key={rowIndex}
-                className={rowIndex % 2 === 0 ? "bg-white" : "bg-slate-50/60"}
+                className={rowIndex % 2 === 0 ? "bg-white" : "bg-[#fcfcfc]"}
               >
                 {row.map((value, columnIndex) => (
                   <td
                     key={columnIndex}
-                    className={`border-b border-slate-100 px-3 py-1.5 text-slate-700 ${
-                      numericColumns[columnIndex] ? "text-right tabular-nums" : ""
+                    className={`border-b border-line px-3 py-1.5 text-ink ${
+                      numericColumns[columnIndex]
+                        ? "text-right font-mono text-[0.84rem] tabular-nums"
+                        : ""
                     }`}
                   >
                     {formatCell(value)}
@@ -126,7 +128,7 @@ function DataTable({ columns, rows, total_rows, truncated }: TableBlock) {
         </table>
       </div>
       {truncated && (
-        <div className="border-t border-slate-100 bg-amber-50 px-3 py-1.5 text-xs text-amber-700">
+        <div className="border-t border-line bg-tint-warn px-3 py-1.5 text-xs text-warn">
           Showing the first {rows.length} of {total_rows.toLocaleString()} rows.
         </div>
       )}
@@ -166,17 +168,17 @@ function MetricCard({ value, label, format }: MetricBlock) {
   const circumference = 2 * Math.PI * radius;
   const fraction = Math.min(Math.max(value, 0), 1);
   const strokeColor =
-    fraction > 0.75 ? "#14b8a6" : fraction > 0.5 ? "#6366f1" : "#f59e0b";
+    fraction > 0.75 ? "#067a46" : fraction > 0.5 ? "#0070f3" : "#b25e09";
 
   return (
-    <div className="flex items-center gap-5 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+    <div className="flex items-center gap-5 border border-line bg-white p-5">
       <svg width="104" height="104" viewBox="0 0 104 104" className="shrink-0">
         <circle
           cx="52"
           cy="52"
           r={radius}
           fill="none"
-          stroke="#eef2f7"
+          stroke="#f0f0f0"
           strokeWidth="10"
         />
         <circle
@@ -186,7 +188,6 @@ function MetricCard({ value, label, format }: MetricBlock) {
           fill="none"
           stroke={strokeColor}
           strokeWidth="10"
-          strokeLinecap="round"
           strokeDasharray={circumference}
           strokeDashoffset={circumference * (1 - fraction)}
           transform="rotate(-90 52 52)"
@@ -196,15 +197,15 @@ function MetricCard({ value, label, format }: MetricBlock) {
           x="52"
           y="58"
           textAnchor="middle"
-          className="fill-slate-800 text-lg font-bold tabular-nums"
+          className="fill-ink font-mono text-lg font-bold tabular-nums"
         >
           {animated.toFixed(isPercent ? 1 : 2)}
           {isPercent ? "%" : ""}
         </text>
       </svg>
       <div>
-        <div className="text-base font-semibold text-slate-800">{label}</div>
-        <div className="text-sm text-slate-500">the number the class earned</div>
+        <div className="text-base font-semibold text-ink">{label}</div>
+        <div className="text-sm text-dim">the number the class earned</div>
       </div>
     </div>
   );

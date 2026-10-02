@@ -155,6 +155,13 @@ STEPS = [
             "here and check that it gives sensible guesses."
         ),
         "prompt": (
+            "GOAL: wake the frozen brain from Step 2 (titanic_model.pkl) "
+            "and prove it still works on one fixed test passenger. Plan "
+            "for trouble too: the file only exists once Step 2 is "
+            "finished -- what should the page say if it's missing? (Hint: "
+            "something kinder than a crash.)"
+        ),
+        "reference": (
             "Step 3 of the workshop, checkpoint 1: load the saved model "
             "titanic_model.pkl and prove it is alive by predicting one "
             "fixed test passenger. If the file is missing, tell me kindly "
@@ -171,6 +178,14 @@ STEPS = [
             "for the numbers) with human-friendly ranges."
         ),
         "prompt": (
+            "GOAL: design the passenger form the class will play with. "
+            "For every attribute of a passenger, decide the friendliest "
+            "control: a dropdown with which choices, or a slider over "
+            "which range? Think about what values make sense (ages 0-80? "
+            "classes 1/2/3?). The plan needs to be stored where the page "
+            "can find it."
+        ),
+        "reference": (
             "Step 3, checkpoint 2: propose the passenger web form -- for "
             "each attribute tell me if it should be a dropdown/slider and "
             "what sensible range or choices to give it, and store this "
@@ -188,6 +203,14 @@ STEPS = [
             "its coded digit before reaching the model."
         ),
         "prompt": (
+            "GOAL: connect the form to the brain so the Predict button "
+            "actually works. Careful: the form's words (female/male) must "
+            "be translated back to numbers EXACTLY the way Step 2 chose, "
+            "and the stored scaler must be applied before predicting. The "
+            "verdict should appear as a survival gauge plus one human "
+            "sentence. Decide how you'd prove it's live."
+        ),
+        "reference": (
             "Step 3, checkpoint 3: connect the form to the model so the "
             "prediction button works. Encode the Sex choices back to "
             "numbers exactly like Step 2 did, use the stored scaler, and "
@@ -205,6 +228,13 @@ STEPS = [
             "for low, medium and high probabilities."
         ),
         "prompt": (
+            "GOAL: soften the wording. A cold '0.34' can sting -- real "
+            "people, real names. Plan three friendly probability bands "
+            "(unlikely / close call / likely is one option) and reword "
+            "what the page says in each. How would you demonstrate the "
+            "gentler voice on the live model?"
+        ),
+        "reference": (
             "Step 3, checkpoint 4: make the browser wording gentler -- "
             "define three probability bands (e.g. unlikely, close call, "
             "likely) and reword the verdicts. Re-run one example on the "
@@ -221,6 +251,15 @@ STEPS = [
             "of its data, nothing more."
         ),
         "prompt": (
+            "GOAL: final checkpoint -- stress-test the model like a "
+            "scientist. Imagine at least six passengers who differ "
+            "sharply (young/old, women/men, 1st/3rd class), collect "
+            "their verdicts, and show them as both a table and a chart of "
+            "survival chances. Then step back: what can this model NOT "
+            "know? Prepare two or three fairness questions for the class "
+            "discussion."
+        ),
+        "reference": (
             "Step 3, checkpoint 5 (final!): test the live model with at "
             "least six imaginary passengers (young/old, women/men, 1st/3rd "
             "class), show their verdicts in a table AND as a bar chart of "

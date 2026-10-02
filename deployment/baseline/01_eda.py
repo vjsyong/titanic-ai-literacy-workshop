@@ -84,9 +84,11 @@ def step_2_find_missing_values():
     """Show how many missing values each column has.
 
     LOOK LIKE (web): a small table of column -> number of holes.
-    NOTE for the classroom: data/titanic.csv is pre-cleaned on purpose,
-    so a nice discussion question is: 'if there are no holes, who filled
-    them and why does that matter for a model?'
+    NOTE for the classroom: data/titanic.csv is the ORIGINAL 1912
+    passenger list, holes and all (Age, Cabin and Embarked all have
+    gaps -- Cabin is mostly empty). A nice discussion question is:
+    'why would cabin records be missing for so many passengers, and
+    what should we do about holes before training a model?'
     """
     raise NotImplementedError("Gate 2 is not built yet")
 
@@ -177,6 +179,13 @@ STEPS = [
             "data before you judge it!"
         ),
         "prompt": (
+            "GOAL: get the passenger list open and take a first look. "
+            "Figure out together: how many people are we dealing with, and "
+            "what do we actually know about each of them? All 891 rows is "
+            "too many to read -- how would you ask for just a small "
+            "preview?"
+        ),
+        "reference": (
             "Please open the Titanic passenger list (data/titanic.csv), "
             "tell me how many passengers it holds and what details we know "
             "about each person, and show me the first few rows as a table."
@@ -192,6 +201,13 @@ STEPS = [
             "guess."
         ),
         "prompt": (
+            "GOAL: find out how complete this table really is before we "
+            "trust it. Think about: which columns might have gaps, how "
+            "would you count them, and how would you want the comparison "
+            "shown so the emptiest column jumps out? One column is almost "
+            "entirely empty -- can you guess which before you look?"
+        ),
+        "reference": (
             "Check data/titanic.csv for missing values in every column and "
             "show me a table of how many holes each column has."
         ),
@@ -206,6 +222,13 @@ STEPS = [
             "FEWER than half of the passengers survive?"
         ),
         "prompt": (
+            "GOAL: meet the outcome column. Say your guess out loud first, "
+            "then work out the real split: how many perished vs survived, "
+            "in people AND in percentages. What's the clearest way to show "
+            "two numbers side by side? (A chart of the shares is a nice "
+            "extra if you want one.)"
+        ),
+        "reference": (
             "Count how many passengers perished and how many survived, and "
             "show me both numbers with their percentages."
         ),
@@ -219,6 +242,13 @@ STEPS = [
             "survive more often than male passengers?"
         ),
         "prompt": (
+            "GOAL: hunt our first pattern -- survival for female vs male "
+            "passengers. Decide what kind of picture would make the "
+            "difference obvious to the whole class (the page can even draw "
+            "person-icon bars), and don't forget the point of it all: one "
+            "plain-English sentence saying what the pattern IS."
+        ),
+        "reference": (
             "Draw a chart comparing survival for female and male "
             "passengers -- make it fun to look at, the page can draw "
             "person-icon bars -- and describe the pattern in one friendly "
@@ -234,6 +264,13 @@ STEPS = [
             "board. Did the deck you slept on decide your fate?"
         ),
         "prompt": (
+            "GOAL: test the wealth effect. Compare survival across ticket "
+            "classes 1, 2 and 3 in one chart, then decide what stands out "
+            "enough to tell the class. Bonus thought: 3rd class was near "
+            "the bottom of the ship -- does the chart alone prove that "
+            "mattered, or could something else explain it?"
+        ),
+        "reference": (
             "Draw a chart of survival by ticket class (1, 2, 3) and tell "
             "me what stands out."
         ),
@@ -247,6 +284,13 @@ STEPS = [
             "AGE -- this is the pattern the Step 2 model will learn from."
         ),
         "prompt": (
+            "GOAL: one last data picture before we train a model -- is age "
+            "connected to survival? Age against fare on a zoomable scatter "
+            "with survival as the colour is one way to see it. Whatever "
+            "you choose, end with a single takeaway sentence a 12-year-old "
+            "could understand."
+        ),
+        "reference": (
             "Make one chart that shows whether age is connected to "
             "survival (for example a zoomable scatter of age versus fare, "
             "colored by survival) and give me one plain-English takeaway."

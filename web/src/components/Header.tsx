@@ -12,40 +12,40 @@ export function Header({
   const percent = total > 0 ? Math.round((done / total) * 100) : 0;
 
   return (
-    <header className="sticky top-0 z-30 border-b border-slate-200/80 bg-white/85 backdrop-blur">
+    <header className="sticky top-0 z-30 border-b border-line bg-white">
       <div className="mx-auto flex max-w-6xl items-center gap-4 px-4 py-3">
-        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-600 text-white shadow-sm">
-          <Ship className="h-5 w-5" />
+        <div className="flex h-9 w-9 items-center justify-center bg-black text-white">
+          <Ship className="h-4.5 w-4.5" />
         </div>
         <div>
-          <h1 className="text-base font-bold tracking-tight text-slate-800">
+          <h1 className="text-[0.98rem] font-bold tracking-tight text-ink">
             Titanic AI Literacy Workshop
           </h1>
-          <p className="hidden text-xs text-slate-500 sm:block">
+          <p className="hidden text-xs text-dim sm:block">
             Explore · Train · Predict — one checkpoint at a time
           </p>
         </div>
 
         <div className="ml-auto flex items-center gap-4">
           <div className="hidden items-center gap-2 sm:flex">
-            <div className="h-2 w-40 overflow-hidden rounded-full bg-slate-200">
+            <div className="h-1.5 w-40 border border-line bg-card2">
               <div
-                className="h-full rounded-full bg-gradient-to-r from-indigo-500 to-teal-400 transition-all duration-700"
+                className="h-full bg-black transition-all duration-700"
                 style={{ width: `${percent}%` }}
               />
             </div>
-            <span className="text-xs font-semibold tabular-nums text-slate-500">
+            <span className="font-mono text-xs text-dim">
               {done}/{total}
             </span>
           </div>
           <span
             className={`flex items-center gap-1.5 text-xs font-medium ${
-              connected ? "text-emerald-600" : "text-amber-600"
+              connected ? "text-ok" : "text-warn"
             }`}
           >
             <span
-              className={`h-2 w-2 rounded-full ${
-                connected ? "bg-emerald-500" : "animate-pulse bg-amber-500"
+              className={`h-2 w-2 ${
+                connected ? "bg-ok" : "animate-pulse bg-warn"
               }`}
             />
             {connected ? "live" : "reconnecting…"}

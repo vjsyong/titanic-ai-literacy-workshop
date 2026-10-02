@@ -125,6 +125,7 @@ def _describe_script(script, module):
             "title": str(step.get("title", f"Step {number}")),
             "story": str(step.get("story", "")),
             "prompt": str(step.get("prompt", "")),
+            "reference": str(step.get("reference", "")),
             "status": "locked",
             "result": None,
             "error": None,

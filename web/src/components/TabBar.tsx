@@ -20,23 +20,19 @@ export function TabBar({
           <button
             key={script.id}
             onClick={() => onChange(index)}
-            className={`flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition ${
+            className={`flex h-9 items-center gap-2 border px-4 text-sm transition ${
               isActive
-                ? "bg-indigo-600 text-white shadow"
-                : "border border-slate-200 bg-white text-slate-600 hover:border-indigo-300 hover:text-indigo-600"
+                ? "border-black bg-black font-semibold text-white"
+                : "border-line bg-white font-medium text-[#3f3f46] hover:border-black hover:text-black"
             }`}
           >
             {complete && (
               <Trophy
-                className={`h-4 w-4 ${isActive ? "text-amber-300" : "text-amber-500"}`}
+                className={`h-4 w-4 ${isActive ? "text-warn" : "text-warn"}`}
               />
             )}
             <span>{script.title}</span>
-            <span
-              className={`rounded-md px-1.5 py-0.5 text-xs tabular-nums ${
-                isActive ? "bg-white/20 text-white" : "bg-slate-100 text-slate-500"
-              }`}
-            >
+            <span className="font-mono text-xs opacity-75">
               {script.completed}/{script.total}
             </span>
           </button>
