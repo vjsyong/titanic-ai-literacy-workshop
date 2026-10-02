@@ -1338,6 +1338,17 @@ function New-OpenCodeClassroomConfig {
                     apiKey = "{env:OPENROUTER_API_KEY}"
                     timeout = 600000
                     chunkTimeout = 120000
+
+                    # Merged into every request body, so the classroom
+                    # model never spends time on extended thinking -- the
+                    # workshop prompts are intentionally simple.
+                    # Verified against OpenCode 2.0.20: options.body is
+                    # passed through to the provider runtime.
+                    body = [ordered]@{
+                        reasoning = [ordered]@{
+                            enabled = $false
+                        }
+                    }
                 }
 
                 models = [ordered]@{
@@ -1563,7 +1574,8 @@ function Test-OpenRouterAPI {
 
     # Deliberately use only fields shown in the supplied OpenRouter
     # Chat Completions example, minimizing compatibility assumptions.
-    # The provider preference pins routing to Xiaomi's FP8 endpoint.
+    # The provider preference pins routing to Xiaomi's FP8 endpoint and
+    # reasoning is off -- the smoke test just needs a fast OK.
     $body = @{
         model = $OpenRouterModelId
         messages = @(
@@ -1573,6 +1585,9 @@ function Test-OpenRouterAPI {
             }
         )
         stream = $false
+        reasoning = @{
+            enabled = $false
+        }
         provider = @{
             only = @("xiaomi/fp8")
             allow_fallbacks = $false
