@@ -65,11 +65,18 @@ launcher file as integrated into this repository:
 - The launcher and its watchdog start/restart the workshop page through
   serve_workshop.py; no Gradio anywhere.
 - RESET WORKSHOP.bat + reset_workshop.ps1 + baseline\ restore the three
-  workshop scripts to their pristine scaffolds (baseline\01_eda.py,
-  baseline\02_train.py, baseline\03_dashboard.py) and delete generated
-  artifacts, without touching the classroom runtime, the API key, or
-  data\titanic.csv. If you ever change the workshop scaffolds, refresh
-  the matching files in baseline\ before distributing.
+  workshop scripts AND data\titanic.csv to their pristine originals
+  (baseline\01_eda.py, baseline\02_train.py, baseline\03_dashboard.py,
+  baseline\data\titanic.csv) and delete generated artifacts, without
+  touching the classroom runtime, the API key, or the web UI. If you ever
+  change the workshop scaffolds or swap the dataset, refresh the matching
+  files in baseline\ before distributing.
+- Classroom guardrails baked into the generated OpenCode config: the
+  provider reads the key from %USERPROFILE%\.vibecoding\openrouter-key.txt
+  at request time (never exported to the shell environment), shell is
+  limited to the three workshop scripts, edits to those scripts, and
+  deployment\ is read-blocked (grep included). See README.md
+  "Classroom hardening".
 
 If you change any of these files later, regenerate the manifest before
 distributing a classroom ZIP.

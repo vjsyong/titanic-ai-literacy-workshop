@@ -16,7 +16,7 @@ served by a small FastAPI process, in one classroom page.
 | `serve_workshop.py` | Instructor-managed launcher: free port, background server, browser, reuse of a running page |
 | `workshop_steps.py` | Instructor-managed shared machinery: result serialization + `chart()` / `metric()` / `verdict()` helpers |
 | `web/` | The React + TypeScript + Tailwind UI (ECharts charts); `web/dist` is committed so students never need Node. Styled on the mail-triage design system (self-hosted Geist fonts in `web/public/fonts`) |
-| `data/titanic.csv` | The cleaned 1912 passenger list students use |
+| `data/titanic.csv` | The original 1912 passenger list (holes and all — that's the point) |
 | `AGENTS.md` | Persistent system prompt for the students' AI Teaching Assistant |
 | `deployment/` | One-click OpenCode classroom environment (OpenCode 2.0.20, OpenRouter xiaomi/mimo-v2.6-flash only) |
 
@@ -85,11 +85,33 @@ Other launchers:
   in the browser. Safe to run any time; it reuses a page that is already up.
 - `REPAIR VIBE CODING.bat` — revalidates/rebuilds the classroom runtimes
   without touching student project files.
-- `RESET WORKSHOP.bat` — restores the three workshop scripts to their
-  original scaffolds and deletes generated artifacts, so the 18 checkpoints
-  lock again. The classroom runtime, API key, and `data/titanic.csv` stay.
+- `RESET WORKSHOP.bat` — restores the three workshop scripts and
+  `data/titanic.csv` to their originals and deletes generated artifacts, so
+  the 18 checkpoints lock again. The classroom runtime and API key stay.
 - `RESET VIBE CODING.bat` — removes only `%LOCALAPPDATA%\VibeCoding`
   and `%USERPROFILE%\.vibecoding`; system installs and student projects stay.
+
+## Classroom hardening
+
+The launcher bakes guardrails into the generated OpenCode config, so the AI
+Teaching Assistant and student-written code are fenced by more than
+instructions:
+
+- The OpenRouter key is read from `%USERPROFILE%\.vibecoding\openrouter-key.txt`
+  at request time and is **never exported** into the service or shell
+  environment, so generated code cannot read it from the environment.
+- Shell access is limited to `python 01_eda.py` / `02_train.py` /
+  `03_dashboard.py`; edits are limited to those three scripts; `deployment/`
+  is read-blocked; grep, webfetch, subagents, skills, and external
+  directories are denied.
+- Extended model thinking is off by default (OpenRouter `reasoning.enabled=false`).
+- The workshop server stops runaway gate code after 20 seconds, caps result
+  sizes, paginates tables, validates prediction input, and rejects oversized
+  request bodies.
+- `RESET WORKSHOP.bat` restores the three scripts **and** `data/titanic.csv`
+  from `deployment/baseline/`.
+- `AGENTS.md` carries the assistant's manipulation-resistance rules
+  (secrets, reference prompts, file/terminal scope, off-topic requests).
 
 ## Instructor checklist before class
 

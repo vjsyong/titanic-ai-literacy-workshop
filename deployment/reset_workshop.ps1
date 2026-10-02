@@ -2,16 +2,15 @@
 # Reset Workshop Progress
 # ============================================================
 # Restores the workshop project to its original scaffold state:
-# - Restores 01_eda.py / 02_train.py / 03_dashboard.py from the
-#   bundled deployment\baseline copies (git fallback for the
-#   instructor's working copy).
+# - Restores 01_eda.py / 02_train.py / 03_dashboard.py and
+#   data\titanic.csv from the bundled deployment\baseline copies
+#   (git fallback for the instructor's working copy).
 # - Deletes generated artifacts (titanic_model.pkl, __pycache__,
 #   .workshop logs).
 #
 # Deliberately NOT touched:
 # - The classroom runtime (%LOCALAPPDATA%\VibeCoding)
 # - The API credential (deployment\key.txt, %USERPROFILE%\.vibecoding)
-# - data\titanic.csv
 # - web\ (UI source and the committed web\dist bundle)
 # - Any other file in the workshop project
 #
@@ -35,12 +34,12 @@ Write-Host "=============================================="
 Write-Host "         RESET WORKSHOP PROGRESS" 
 Write-Host "==============================================" 
 Write-Host ""
-Write-Host "Restores the three workshop scripts to their"
-Write-Host "original scaffold state and deletes generated"
-Write-Host "artifacts (titanic_model.pkl, caches, logs)."
+Write-Host "Restores the three workshop scripts AND the"
+Write-Host "passenger data to their original state, and"
+Write-Host "deletes generated artifacts (titanic_model.pkl,"
+Write-Host "caches, logs)."
 Write-Host ""
-Write-Host "NOT touched: classroom runtime, API key,"
-Write-Host "data\titanic.csv, web UI."
+Write-Host "NOT touched: classroom runtime, API key, web UI."
 Write-Host ""
 
 $confirmed = $false
@@ -105,6 +104,10 @@ foreach ($scriptName in $WorkshopScripts) {
             $gitOutput = & git checkout -- $scriptName 2>&1
             $gitExit = $LASTEXITCODE
         }
+        catch {
+            $gitExit = -1
+            $gitOutput = $_.Exception.Message
+        }
         finally {
             Pop-Location
         }
@@ -126,6 +129,41 @@ if ($restored.Count -eq 0) {
     Write-Host ""
     Write-Host "Nothing was restored. Workshop progress unchanged." -ForegroundColor Yellow
     exit 1
+}
+
+# ------------------------------------------------------------
+# 1b. Restore the passenger data (students sometimes "clean"
+#     data\titanic.csv in place -- reset brings it back)
+# ------------------------------------------------------------
+Write-Section "Restoring passenger data"
+
+$dataTarget = Join-Path $WorkshopRoot "data\titanic.csv"
+$dataBaseline = Join-Path $BaselineRoot "data\titanic.csv"
+
+if (Test-Path -LiteralPath $dataBaseline) {
+    Copy-Item -LiteralPath $dataBaseline -Destination $dataTarget -Force
+    Write-OK "Restored data\titanic.csv from baseline"
+}
+else {
+    Push-Location -LiteralPath $WorkshopRoot
+    try {
+        $gitOutput = & git checkout -- "data/titanic.csv" 2>&1
+        $gitExit = $LASTEXITCODE
+    }
+    catch {
+        $gitExit = -1
+        $gitOutput = $_.Exception.Message
+    }
+    finally {
+        Pop-Location
+    }
+
+    if ($gitExit -eq 0) {
+        Write-OK "Restored data\titanic.csv via git"
+    }
+    else {
+        Write-Warn "Could not restore data\titanic.csv -- replace it with the instructor's copy."
+    }
 }
 
 # ------------------------------------------------------------

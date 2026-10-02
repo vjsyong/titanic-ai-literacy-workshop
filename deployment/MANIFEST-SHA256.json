@@ -1,8 +1,8 @@
 [
   {
     "file": "README-FIRST.txt",
-    "sha256": "414149a5750409cfc30eea06f17da0e2d8f79a5b43e68bc1bbc562c07bb4e037",
-    "bytes": 3700
+    "sha256": "6ab60cbb01869e3d339c31a7051a16b85bf8c9c681897c7139a835a8482a4844",
+    "bytes": 4133
   },
   {
     "file": "REPAIR VIBE CODING.bat",
@@ -36,13 +36,13 @@
   },
   {
     "file": "oneclick.ps1",
-    "sha256": "dd899e8ac8f55c8e64aec22070e79572498ad6038a5f35157d98a9b76167e835",
-    "bytes": 82369
+    "sha256": "7f93bd0c853c9c56f8e8088175193e017485c1f3f637f6a634c2dced69e1f0d5",
+    "bytes": 85770
   },
   {
     "file": "reset_workshop.ps1",
-    "sha256": "5f28dea294fa6777f551f67218d3fa64de3ecbb912ba0c82b31c69d13572d026",
-    "bytes": 6779
+    "sha256": "276ba962be125344cf925066235d215895cb8d5cfd99aa3929f93540eb410026",
+    "bytes": 7942
   },
   {
     "file": "baseline/01_eda.py",
@@ -58,6 +58,11 @@
     "file": "baseline/03_dashboard.py",
     "sha256": "a869a3b940f6d6a5e3015b86da17df5162de7537cfa8ce31a9f08056526ca60b",
     "bytes": 13975
+  },
+  {
+    "file": "baseline/data/titanic.csv",
+    "sha256": "4a437fde05fe5264e1701a7387ac6fb75393772ba38bb2c9c566405af5af4bd7",
+    "bytes": 60302
   },
   {
     "file": "payload/README.txt",

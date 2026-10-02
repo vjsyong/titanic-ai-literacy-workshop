@@ -67,6 +67,11 @@ import pandas as pd
 # snappy even if a gate returns a big DataFrame).
 MAX_TABLE_ROWS = 250
 
+# Defensive caps for student-written gates: oversized outputs must never
+# freeze the shared classroom page.
+MAX_CHART_POINTS = 2000
+MAX_TEXT_CHARS = 20000
+
 # Every chart kind the web page can draw.
 CHART_KINDS = (
     "bar",
@@ -214,7 +219,10 @@ def _chart_payload(chart):
             raise ValueError("gauge charts need value=...")
         payload["value"] = json_ready(chart["value"])
     else:
-        payload["data"] = _records(chart.get("data"))
+        records = _records(chart.get("data"))
+        if len(records) > MAX_CHART_POINTS:
+            records = records[:MAX_CHART_POINTS]
+        payload["data"] = records
 
     return payload
 
@@ -232,6 +240,13 @@ def _metric_block(metric):
     }
 
 
+def _cap_text(text):
+    """Keep runaway gate output from freezing the shared classroom page."""
+    if len(text) <= MAX_TEXT_CHARS:
+        return text
+    return text[:MAX_TEXT_CHARS] + "\n\n... (output trimmed for the classroom page)"
+
+
 def serialize_result(result):
     """Turns whatever a gate function returned into JSON blocks for the page.
 
@@ -246,12 +261,12 @@ def serialize_result(result):
 
     blocks = []
     if isinstance(result, str):
-        blocks.append({"type": "markdown", "text": result})
+        blocks.append({"type": "markdown", "text": _cap_text(result)})
     elif isinstance(result, pd.DataFrame):
         blocks.append(_table_payload(result))
     elif isinstance(result, dict):
         if result.get("text"):
-            blocks.append({"type": "markdown", "text": str(result["text"])})
+            blocks.append({"type": "markdown", "text": _cap_text(str(result["text"]))})
         if result.get("dataframe") is not None:
             blocks.append(_table_payload(result["dataframe"]))
         if result.get("chart"):

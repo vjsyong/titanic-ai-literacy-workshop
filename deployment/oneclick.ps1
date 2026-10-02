@@ -1318,6 +1318,12 @@ function New-OpenCodeClassroomConfig {
     #
     # enabled_providers makes OpenRouter the only provider the
     # runtime is allowed to load.
+    #
+    # permissions: hard classroom fences for student-written gate code and
+    # the AI assistant. Rules are ordered broad-first; the last matching
+    # rule wins. Shell is limited to running the three workshop scripts,
+    # edits are limited to the three scripts, deployment/ (which holds the
+    # API key) cannot be read, and network/subagent/webfetch are denied.
     $config = [ordered]@{
         '$schema' = "https://opencode.ai/config.json"
 
@@ -1325,6 +1331,35 @@ function New-OpenCodeClassroomConfig {
 
         enabled_providers = @(
             $OpenRouterProviderId
+        )
+
+        permissions = @(
+            [ordered]@{ action = "read"; resource = "*"; effect = "allow" }
+            [ordered]@{ action = "glob"; resource = "*"; effect = "allow" }
+            # grep is blocked: its permission resource is the regex (not
+            # the path), so it could otherwise scoop up contents of
+            # deployment\key.txt despite the read deny below.
+            [ordered]@{ action = "grep"; resource = "*"; effect = "deny" }
+            [ordered]@{ action = "question"; resource = "*"; effect = "allow" }
+            [ordered]@{ action = "edit"; resource = "*"; effect = "deny" }
+            [ordered]@{ action = "edit"; resource = "01_eda.py"; effect = "allow" }
+            [ordered]@{ action = "edit"; resource = "*/01_eda.py"; effect = "allow" }
+            [ordered]@{ action = "edit"; resource = "02_train.py"; effect = "allow" }
+            [ordered]@{ action = "edit"; resource = "*/02_train.py"; effect = "allow" }
+            [ordered]@{ action = "edit"; resource = "03_dashboard.py"; effect = "allow" }
+            [ordered]@{ action = "edit"; resource = "*/03_dashboard.py"; effect = "allow" }
+            [ordered]@{ action = "read"; resource = "deployment/*"; effect = "deny" }
+            [ordered]@{ action = "read"; resource = "*/deployment/*"; effect = "deny" }
+            [ordered]@{ action = "shell"; resource = "*"; effect = "deny" }
+            [ordered]@{ action = "shell"; resource = "python 01_eda.py *"; effect = "allow" }
+            [ordered]@{ action = "shell"; resource = "python 02_train.py *"; effect = "allow" }
+            [ordered]@{ action = "shell"; resource = "python 03_dashboard.py *"; effect = "allow" }
+            [ordered]@{ action = "external_directory"; resource = "*"; effect = "deny" }
+            [ordered]@{ action = "webfetch"; resource = "*"; effect = "deny" }
+            [ordered]@{ action = "websearch"; resource = "*"; effect = "deny" }
+            [ordered]@{ action = "subagent"; resource = "*"; effect = "deny" }
+            [ordered]@{ action = "skill"; resource = "*"; effect = "deny" }
+            [ordered]@{ action = "execute"; resource = "*"; effect = "deny" }
         )
 
         provider = [ordered]@{
@@ -1335,7 +1370,11 @@ function New-OpenCodeClassroomConfig {
 
                 options = [ordered]@{
                     baseURL = $OpenRouterBaseUrl
-                    apiKey = "{env:OPENROUTER_API_KEY}"
+                    # Read straight from the user-profile secret file at
+                    # request time, so the API key never lives in the
+                    # OpenCode service environment (where the assistant's
+                    # shell could see it).
+                    apiKey = "{file:~/.vibecoding/openrouter-key.txt}"
                     timeout = 600000
                     chunkTimeout = 120000
 
@@ -1945,7 +1984,6 @@ function Start-OpenCodeService {
         $Credentials,
         [string]$ManagedPath,
         $Profile,
-        [string]$OpenRouterApiKey,
         [string]$InlineConfig
     )
 
@@ -1997,7 +2035,6 @@ function Start-OpenCodeService {
         Set-ServiceEnv $OpenCode "OPENCODE_CONFIG_DIR" $env:OPENCODE_CONFIG_DIR
     }
 
-    Set-ServiceEnv $OpenCode "OPENROUTER_API_KEY" $OpenRouterApiKey
     Set-ServiceEnv $OpenCode "NO_PROXY" $env:NO_PROXY
     Set-ServiceEnv $OpenCode "no_proxy" $env:NO_PROXY
     Set-ServiceEnv $OpenCode "PYTHONUTF8" "1"
@@ -2331,10 +2368,10 @@ try {
 
     Test-OpenRouterAPI $OpenRouterKey $KeyFingerprint
 
-    # OpenCode V2 uses this declared provider environment variable
-    # to mark the custom provider as available and to populate the
-    # OpenAI-compatible Authorization header.
-    $env:OPENROUTER_API_KEY = $OpenRouterKey
+    # The provider reads the key from the user-profile secret file at
+    # request time (see the classroom config), so the key is deliberately
+    # NOT exported into this process or the OpenCode service environment --
+    # student-facing shell commands and workshop scripts cannot see it.
 
     # ========================================================
     # Python
@@ -2572,7 +2609,6 @@ try {
         $Credentials `
         $ManagedPath `
         $Profile `
-        $env:OPENROUTER_API_KEY `
         $ClassroomConfigJson
 
     # ========================================================

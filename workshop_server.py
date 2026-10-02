@@ -38,13 +38,14 @@ import hashlib
 import importlib
 import importlib.util
 import json
+import math
 import threading
 import time
 import traceback
 from pathlib import Path
 
 from fastapi import FastAPI
-from fastapi.responses import HTMLResponse, StreamingResponse
+from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 
 import workshop_steps
@@ -54,6 +55,13 @@ WEB_DIST = HERE / "web" / "dist"
 
 # How often the watcher checks for saved workshop files.
 REFRESH_INTERVAL = 0.5
+
+# Hardening guards for student-written gate code. A runaway checkpoint must
+# never freeze the shared classroom page or the watcher loop.
+GATE_TIMEOUT_SECONDS = 20.0
+PREDICT_TIMEOUT_SECONDS = 10.0
+MAX_RESULT_BYTES = 1_500_000
+MAX_PREDICT_BODY_BYTES = 64 * 1024
 
 SCRIPTS = [
     {"id": "eda", "file": "01_eda.py", "module_name": "workshop_step_01_eda"},
@@ -87,6 +95,122 @@ _state = {
 }
 _modules = {}
 _signature = None
+
+
+class _Timeout(Exception):
+    """Raised when a student-written gate function runs too long."""
+
+
+_running_lock = threading.Lock()
+_running = {}
+
+
+def _run_with_timeout(key, fn, timeout):
+    """Run fn with a hard time budget so infinite loops cannot hang the page.
+
+    The worker runs in a daemon thread; if it is still alive after timeout we
+    report a friendly error and remember it, so later refreshes do not pile
+    up more threads while the old one is still stuck.
+    """
+    with _running_lock:
+        active = _running.get(key)
+        if active is not None and active.is_alive():
+            raise _Timeout(
+                "a previous run of this checkpoint is still stuck -- "
+                "simplify the code (look for an infinite loop)"
+            )
+
+    box = {}
+
+    def runner():
+        try:
+            box["value"] = fn()
+        except BaseException as exc:  # noqa: BLE001 - re-raised by the caller
+            box["error"] = exc
+
+    thread = threading.Thread(target=runner, daemon=True, name=f"gate:{key}")
+    with _running_lock:
+        _running[key] = thread
+
+    thread.start()
+    thread.join(timeout)
+
+    if thread.is_alive():
+        raise _Timeout(
+            f"took longer than {int(timeout)} seconds and was stopped -- "
+            "look for an infinite loop or very heavy work"
+        )
+
+    with _running_lock:
+        _running.pop(key, None)
+
+    if "error" in box:
+        error = box["error"]
+        if isinstance(error, Exception):
+            raise error
+        # SystemExit / KeyboardInterrupt from student code must not kill
+        # the watcher thread -- report it like any other gate error.
+        raise RuntimeError(
+            f"checkpoint code tried to exit ({type(error).__name__})"
+        )
+    return box.get("value")
+
+
+def _safe_result(fn, key):
+    """Run a gate function and keep the serialized result classroom-sized."""
+    result = workshop_steps.serialize_result(
+        _run_with_timeout(key, fn, GATE_TIMEOUT_SECONDS)
+    )
+    if result is None:
+        return None
+    try:
+        encoded = json.dumps(result, ensure_ascii=False, default=str)
+    except (TypeError, ValueError):
+        return {
+            "blocks": [
+                {
+                    "type": "markdown",
+                    "text": "This checkpoint produced output that could not be displayed.",
+                }
+            ]
+        }
+    if len(encoded) > MAX_RESULT_BYTES:
+        return {
+            "blocks": [
+                {
+                    "type": "markdown",
+                    "text": (
+                        "This checkpoint produced far too much output for the "
+                        "classroom page. Ask your AI Teaching Assistant to show "
+                        "a smaller summary instead."
+                    ),
+                }
+            ]
+        }
+    return result
+
+
+def _sanitize_values(values):
+    """Only plain scalar form values may reach student-written predict code."""
+    if not isinstance(values, dict) or len(values) > 30:
+        return None
+    clean = {}
+    for key, value in values.items():
+        if not isinstance(key, str) or len(key) > 80:
+            return None
+        if value is None or isinstance(value, bool):
+            clean[key] = value
+        elif isinstance(value, (int, float)):
+            if isinstance(value, float) and not math.isfinite(value):
+                return None
+            clean[key] = value
+        elif isinstance(value, str):
+            if len(value) > 200:
+                return None
+            clean[key] = value
+        else:
+            return None
+    return clean
 
 
 # ---------------------------------------------------------------------------
@@ -137,9 +261,16 @@ def _describe_script(script, module):
                 entry["error"] = f"step function {step.get('fn')!r} is missing"
             else:
                 try:
-                    entry["result"] = workshop_steps.serialize_result(fn())
+                    entry["result"] = _safe_result(
+                        fn, f"{script['id']}:{number}"
+                    )
                 except NotImplementedError as exc:
                     entry["error"] = f"not ready: {exc}"
+                except _Timeout as exc:
+                    entry["error"] = (
+                        f"checkpoint stopped: {exc}. Ask the AI Teaching "
+                        "Assistant to simplify this gate's code."
+                    )
                 except Exception as exc:
                     entry["error"] = f"{type(exc).__name__}: {exc}"
         elif number == completed + 1:
@@ -264,6 +395,26 @@ def _watch_loop():
 app = FastAPI(title="Titanic AI Literacy Workshop", docs_url=None, redoc_url=None)
 
 
+@app.middleware("http")
+async def limit_request_body(request, call_next):
+    """Refuse oversized POSTs before they reach any student-written code."""
+    if request.method == "POST":
+        raw_length = request.headers.get("content-length")
+        if raw_length is not None:
+            try:
+                if int(raw_length) > MAX_PREDICT_BODY_BYTES:
+                    return JSONResponse(
+                        {"ok": False, "error": "Request too large."},
+                        status_code=413,
+                    )
+            except ValueError:
+                return JSONResponse(
+                    {"ok": False, "error": "Invalid Content-Length."},
+                    status_code=400,
+                )
+    return await call_next(request)
+
+
 @app.get("/api/health")
 def health():
     with _lock:
@@ -301,7 +452,13 @@ def events():
 
 @app.post("/api/predict")
 def predict(payload: dict):
-    values = (payload or {}).get("values") or {}
+    values = _sanitize_values((payload or {}).get("values"))
+
+    if values is None:
+        return {
+            "ok": False,
+            "error": "Those form values did not look right. Please reset the form and try again.",
+        }
 
     with _lock:
         module = _modules.get("dashboard")
@@ -320,18 +477,29 @@ def predict(payload: dict):
         }
 
     try:
-        raw = predict_fn(values)
+        raw = _run_with_timeout(
+            "predict", lambda: predict_fn(values), PREDICT_TIMEOUT_SECONDS
+        )
+    except _Timeout as exc:
+        return {
+            "ok": False,
+            "error": (
+                f"The prediction code was stopped: {exc}. "
+                "Ask your AI Teaching Assistant to simplify it."
+            ),
+        }
     except Exception as exc:
         return {"ok": False, "error": f"{type(exc).__name__}: {exc}"}
 
     if isinstance(raw, dict):
+        text = str(raw.get("text") or raw.get("verdict") or "")
         return {
             "ok": True,
-            "text": str(raw.get("text") or raw.get("verdict") or ""),
+            "text": text[:2000],
             "probability": workshop_steps.json_ready(raw.get("probability")),
             "band": workshop_steps.json_ready(raw.get("band")),
         }
-    return {"ok": True, "text": str(raw), "probability": None, "band": None}
+    return {"ok": True, "text": str(raw)[:2000], "probability": None, "band": None}
 
 
 # The API routes are registered above; the static mount catches the rest.
