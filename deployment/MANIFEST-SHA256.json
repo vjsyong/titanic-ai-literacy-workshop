@@ -1,18 +1,23 @@
 [
   {
     "file": "README-FIRST.txt",
-    "sha256": "c6083c3ae4746a6527b7d87dd6d556253abe0c99beb43e5ec088c3a765a494b9",
-    "bytes": 3253
+    "sha256": "414149a5750409cfc30eea06f17da0e2d8f79a5b43e68bc1bbc562c07bb4e037",
+    "bytes": 3700
   },
   {
     "file": "REPAIR VIBE CODING.bat",
-    "sha256": "37efe6c37fd1a760de6cb10a9e727e23650b79798f642b80d501a384134c6b54",
-    "bytes": 1202
+    "sha256": "ddb6113dd6c29e9268961a6d9c2a1d7b681767a16079b49933ff7e656a416e76",
+    "bytes": 1205
   },
   {
     "file": "RESET VIBE CODING.bat",
     "sha256": "12b742a60fa630fd79a9623cc7087ecf7726c9ddc8a38ddceaa01c43f6b06dc7",
     "bytes": 1523
+  },
+  {
+    "file": "RESET WORKSHOP.bat",
+    "sha256": "51b0842bf9c8639076a528118b5f36a42e3570a4de82c66c20edb7902fe605ea",
+    "bytes": 1156
   },
   {
     "file": "START VIBE CODING.bat",
@@ -26,13 +31,33 @@
   },
   {
     "file": "KEY.txt.TEMPLATE",
-    "sha256": "a5a401010547f496928dedfef4a000501452581ebe45c93a2e24c187ad12b609",
-    "bytes": 22
+    "sha256": "77c6f8da88231014ea6ac0eb8022e07623b1455248d70a8fd9c1eff31db610bd",
+    "bytes": 26
   },
   {
     "file": "oneclick.ps1",
-    "sha256": "4cb9332d8d3fca7278e97d3c408414d2fe970681cedd3c44faab7838f18252cf",
-    "bytes": 80066
+    "sha256": "dd899e8ac8f55c8e64aec22070e79572498ad6038a5f35157d98a9b76167e835",
+    "bytes": 82369
+  },
+  {
+    "file": "reset_workshop.ps1",
+    "sha256": "0f1dd9c0c66de045e79b7e07b004782b01f403411c6ecd202bb42b5724e14487",
+    "bytes": 6641
+  },
+  {
+    "file": "baseline/01_eda.py",
+    "sha256": "b4cbb5eebd3aac6c77b33a8a76cbe9c027e9f932f04d1bfa878c1665318cfaaa",
+    "bytes": 11940
+  },
+  {
+    "file": "baseline/02_train.py",
+    "sha256": "ed5027545e8f56412c1b363431001c1f80cefc32845c9d89286a1d767454e3b7",
+    "bytes": 14650
+  },
+  {
+    "file": "baseline/03_dashboard.py",
+    "sha256": "a28dec3ceaebbb3f3b51e46c6cc762b9e6fff8a1daa76f97665aa9f7de2873d0",
+    "bytes": 11842
   },
   {
     "file": "payload/README.txt",

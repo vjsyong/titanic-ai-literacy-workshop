@@ -84,6 +84,9 @@ Other launchers:
   in the browser. Safe to run any time; it reuses a page that is already up.
 - `REPAIR VIBE CODING.bat` — revalidates/rebuilds the classroom runtimes
   without touching student project files.
+- `RESET WORKSHOP.bat` — restores the three workshop scripts to their
+  original scaffolds and deletes generated artifacts, so the 18 checkpoints
+  lock again. The classroom runtime, API key, and `data/titanic.csv` stay.
 - `RESET VIBE CODING.bat` — removes only `%LOCALAPPDATA%\VibeCoding`
   and `%USERPROFILE%\.vibecoding`; system installs and student projects stay.
 

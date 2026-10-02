@@ -64,6 +64,12 @@ launcher file as integrated into this repository:
   prebuilt React UI in web/dist).
 - The launcher and its watchdog start/restart the workshop page through
   serve_workshop.py; no Gradio anywhere.
+- RESET WORKSHOP.bat + reset_workshop.ps1 + baseline\ restore the three
+  workshop scripts to their pristine scaffolds (baseline\01_eda.py,
+  baseline\02_train.py, baseline\03_dashboard.py) and delete generated
+  artifacts, without touching the classroom runtime, the API key, or
+  data\titanic.csv. If you ever change the workshop scaffolds, refresh
+  the matching files in baseline\ before distributing.
 
 If you change any of these files later, regenerate the manifest before
 distributing a classroom ZIP.
