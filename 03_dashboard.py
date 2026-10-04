@@ -198,7 +198,18 @@ STEPS = [
             "passenger both times — are the answers identical? Why "
             "should they be?"
         ),
+        "context": (
+            "**Where the brain has been:**\n\n"
+            "`titanic_model.pkl` was frozen at the end of Stage 2. A "
+            "saved brain is: train once → save to disk → wake it "
+            "anywhere, forever. Waking it = loading the file and "
+            "calling its predict on a passenger."
+        ),
         "fn": "step_1_wake_the_brain",
+        "placeholder": (
+            "e.g. “Wake up the model we trained earlier and prove it "
+            "still guesses sensibly…”"
+        ),
     },
     {
         "number": 2,
@@ -258,6 +269,10 @@ STEPS = [
             "rule together."
         ),
         "fn": "step_2_design_the_form",
+        "placeholder": (
+            "e.g. “Plan the passenger form: which fields and which "
+            "controls for each…”"
+        ),
     },
     {
         "number": 3,
@@ -307,7 +322,22 @@ STEPS = [
             "identical gauge both times? If not, ask the AI what's "
             "leaking."
         ),
+        "context": (
+            "**The pipeline that will run on every click (same three "
+            "moves as Stage 2, now automatic):**\n\n"
+            "1. **encode** — form words → the exact digits Stage 2 "
+            "chose\n"
+            "2. **scale** — squeeze the numbers with the SAME scaler "
+            "from the freezer\n"
+            "3. **predict** — the model answers with a probability\n\n"
+            "One mismatched digit or unscaled number = quietly wrong "
+            "answers."
+        ),
         "fn": "step_3_wire_prediction",
+        "placeholder": (
+            "e.g. “Connect the form to the model so the Predict button "
+            "really predicts…”"
+        ),
     },
     {
         "number": 4,
@@ -353,7 +383,20 @@ STEPS = [
             "bands — where does 'close call' start and end? Are the "
             "band edges honest?"
         ),
+        "context": (
+            "**Translating a probability into human words — worked "
+            "example:**\n\n"
+            "0.34 → 34% → roughly **1 passenger in 3** with those facts "
+            "made it.\n\n"
+            "Same number, three voices: a decimal for the machine, a "
+            "percent for the math-minded, a 'one in three' for humans. "
+            "Your checkpoint adds the fourth voice: friendly wording."
+        ),
         "fn": "step_4_kind_verdicts",
+        "placeholder": (
+            "e.g. “Soften the model's verdicts into three friendly "
+            "wordings…”"
+        ),
     },
     {
         "number": 5,
@@ -405,7 +448,21 @@ STEPS = [
             "then 1st→3rd class) — how far does the verdict move? Which "
             "single attribute moves it most?"
         ),
+        "context": (
+            "**Scientist's trick for this checkpoint — change ONE thing "
+            "at a time.** The dials your imaginary passengers can "
+            "vary:\n\n"
+            "- sex · ticket class · age (young/old) · fare "
+            "(cheap/expensive) · family aboard (yes/no)\n\n"
+            "If you change two things at once and the verdict moves, "
+            "you can't tell which one did it. Fairness arguments need "
+            "clean comparisons."
+        ),
         "fn": "step_5_black_box_tests",
+        "placeholder": (
+            "e.g. “Test the model with very different imaginary "
+            "passengers and help us judge it fairly…”"
+        ),
     },
 ]
 

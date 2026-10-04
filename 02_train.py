@@ -200,9 +200,27 @@ STEPS = [
             "The result must be kept for the checkpoints ahead — mention "
             "that.",
         ],
-        "context": pd.DataFrame(
-            {"Sex": ["female", "male"], "Passengers": [314, 577]}
-        ),
+        "context": {
+            "text": (
+                "This is the pattern your digits will have to carry — "
+                "you know it by heart from Stage 1. A model can do "
+                "arithmetic on numbers, never on words; translating "
+                "female/male is the whole checkpoint."
+            ),
+            "dataframe": pd.DataFrame(
+                {"Sex": ["female", "male"], "Passengers": [314, 577]}
+            ),
+            "chart": workshop_steps.chart(
+                kind="bar",
+                title="The pattern your digits must carry",
+                data=[
+                    {"Sex": "Women", "Survived %": 74.2},
+                    {"Sex": "Men", "Survived %": 18.9},
+                ],
+                x="Sex",
+                y="Survived %",
+            ),
+        },
         "guide": (
             "**Models only do arithmetic, so words must become numbers.** "
             "Which number means which is arbitrary — 0 = female and 1 = "
@@ -231,6 +249,10 @@ STEPS = [
             "digit means which?"
         ),
         "fn": "step_1_encode_sex",
+        "placeholder": (
+            "e.g. “Turn the female/male words into numbers so the model "
+            "can use them…”"
+        ),
     },
     {
         "number": 2,
@@ -307,6 +329,10 @@ STEPS = [
             "Was it a good reason to drop Name or not?"
         ),
         "fn": "step_2_pick_features",
+        "placeholder": (
+            "e.g. “Decide which columns the model may look at and which "
+            "one it must predict…”"
+        ),
     },
     {
         "number": 3,
@@ -352,7 +378,29 @@ STEPS = [
             "passengers landed in each group — roughly equal? Why would "
             "a lopsided exam be unfair?"
         ),
+        "context": {
+            "text": (
+                "The exam idea, as a picture: most passengers become the "
+                "model's STUDY material; a sealed slice stays hidden "
+                "until the final test. Roughly four-fifths vs "
+                "one-fifth."
+            ),
+            "chart": workshop_steps.chart(
+                kind="donut",
+                title="Who gets to study, who waits in the exam room",
+                data=[
+                    {"Group": "study group (learning)", "Share": 80},
+                    {"Group": "sealed exam group", "Share": 20},
+                ],
+                x="Group",
+                y="Share",
+            ),
+        },
         "fn": "step_3_split_data",
+        "placeholder": (
+            "e.g. “Hold back some passengers as a secret test group for "
+            "the model's final exam…”"
+        ),
     },
     {
         "number": 4,
@@ -409,6 +457,10 @@ STEPS = [
             "receipt that it worked?"
         ),
         "fn": "step_4_scale_features",
+        "placeholder": (
+            "e.g. “Put fare and age on the same scale so neither shouts "
+            "louder than the other…”"
+        ),
     },
     {
         "number": 5,
@@ -458,7 +510,18 @@ STEPS = [
             "guessing 'perished'? Compare it with your ring — how much "
             "better is your model, really?"
         ),
+        "context": (
+            "**The journey your data takes in this gate:**\n\n"
+            "passenger facts → *the pattern the model learned* → a "
+            "yes/no survival guess\n\n"
+            "The ring that appears is what the class EARNED: how many "
+            "of the sealed exam passengers it judged correctly."
+        ),
         "fn": "step_5_train",
+        "placeholder": (
+            "e.g. “Train a simple model and show me how it does on its "
+            "secret exam…”"
+        ),
     },
     {
         "number": 6,
@@ -508,7 +571,26 @@ STEPS = [
             "every extra pound of fare, the model…\") — does the story "
             "match the chart's arrow direction?"
         ),
+        "context": (
+            "**How to READ a coefficient — worked example with a toy "
+            "model** (it predicts *will cheer at a football match*, not "
+            "survival):\n\n"
+            "| Clue | Coefficient | Plain English |\n"
+            "|---|---|---|\n"
+            "| home team winning | +2.1 | positive, strong → pushes toward "
+            "cheering |\n"
+            "| price of tickets | -1.4 | negative, strong → pushes away "
+            "from cheering |\n"
+            "| day of week | +0.1 | positive but tiny → barely matters |\n\n"
+            "Size = how much the model leans on it. Sign = which way it "
+            "pushes. Your checkpoint asks the AI to do the same reading "
+            "for the survival model."
+        ),
         "fn": "step_6_explain_model",
+        "placeholder": (
+            "e.g. “Show me which clues the model leaned on most and what "
+            "each one means…”"
+        ),
     },
     {
         "number": 7,
@@ -558,7 +640,21 @@ STEPS = [
             "passengers from the saved file — do the odds line up with "
             "what Stage 1's charts taught you?"
         ),
+        "context": (
+            "**What goes into the freezer (a recipe card for the AI):**\n\n"
+            "1. the **model** — the learned pattern itself\n"
+            "2. the **scaler** — so future passengers get squeezed the "
+            "SAME way as the study group was\n"
+            "3. the **feature list** — the exact column order the model "
+            "expects\n\n"
+            "All three are packed into one file: `titanic_model.pkl`. "
+            "Forget one and whoever wakes it later gets nonsense."
+        ),
         "fn": "step_7_save_model",
+        "placeholder": (
+            "e.g. “Save the finished model to a file and prove it can "
+            "predict a brand-new passenger…”"
+        ),
     },
 ]
 

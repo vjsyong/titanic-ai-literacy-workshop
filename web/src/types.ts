@@ -68,6 +68,7 @@ export interface StepState {
   story: string;
   prompt: string;
   hints: string[];
+  placeholder: string;
   guide: string;
   experiment: string;
   context: Result | null;

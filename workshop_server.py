@@ -250,6 +250,7 @@ def _describe_script(script, module):
             "story": str(step.get("story", "")),
             "prompt": str(step.get("prompt", "")),
             "hints": [str(hint) for hint in (step.get("hints") or [])],
+            "placeholder": str(step.get("placeholder", "")),
             "guide": str(step.get("guide", "")),
             "experiment": str(step.get("experiment", "")),
             "context": workshop_steps.serialize_result(step.get("context")),

@@ -222,7 +222,28 @@ STEPS = [
             "Ask the AI to show the LAST few rows instead of the first "
             "few — does anything at the end of the list surprise you?"
         ),
+        "context": {
+            "text": (
+                "A taster of what this table can answer: where the 891 "
+                "passengers boarded. You can hover the slices."
+            ),
+            "chart": workshop_steps.chart(
+                kind="donut",
+                title="Where they boarded",
+                data=[
+                    {"Port": "Southampton (S)", "Passengers": 644},
+                    {"Port": "Cherbourg (C)", "Passengers": 168},
+                    {"Port": "Queenstown (Q)", "Passengers": 77},
+                ],
+                x="Port",
+                y="Passengers",
+            ),
+        },
         "fn": "step_1_open_the_list",
+        "placeholder": (
+            "e.g. “Open the passenger list and give me a small preview of "
+            "what's in it…”"
+        ),
     },
     {
         "number": 2,
@@ -243,18 +264,35 @@ STEPS = [
             "look!",
             "Ask for the emptiest column to jump out of the table.",
         ],
-        "context": pd.DataFrame(
-            [
-                {"PassengerId": 1, "Name": "Braund, Mr. Owen Harris",
-                 "Age": 22.0, "Cabin": None, "Embarked": "S"},
-                {"PassengerId": 3, "Name": "Heikkinen, Miss. Laina",
-                 "Age": 26.0, "Cabin": None, "Embarked": "S"},
-                {"PassengerId": 6, "Name": "Moran, Mr. James",
-                 "Age": None, "Cabin": None, "Embarked": "Q"},
-                {"PassengerId": 18, "Name": "Williams, Mr. Charles Eugene",
-                 "Age": None, "Cabin": None, "Embarked": "S"},
-            ]
-        ),
+        "context": {
+            "text": (
+                "First, three real passengers so 'a hole' is concrete — "
+                "the — cells are empty slots in the record. Then the big "
+                "picture: most records are NOT fully complete."
+            ),
+            "dataframe": pd.DataFrame(
+                [
+                    {"PassengerId": 1, "Name": "Braund, Mr. Owen Harris",
+                     "Age": 22.0, "Cabin": None, "Embarked": "S"},
+                    {"PassengerId": 3, "Name": "Heikkinen, Miss. Laina",
+                     "Age": 26.0, "Cabin": None, "Embarked": "S"},
+                    {"PassengerId": 6, "Name": "Moran, Mr. James",
+                     "Age": None, "Cabin": None, "Embarked": "Q"},
+                    {"PassengerId": 18, "Name": "Williams, Mr. Charles Eugene",
+                     "Age": None, "Cabin": None, "Embarked": "S"},
+                ]
+            ),
+            "chart": workshop_steps.chart(
+                kind="donut",
+                title="Records in this table",
+                data=[
+                    {"Record": "filled in completely", "Count": 183},
+                    {"Record": "has at least one hole", "Count": 708},
+                ],
+                x="Record",
+                y="Count",
+            ),
+        },
         "guide": (
             "**Real data is messy: Age is missing for ~177 passengers and "
             "Cabin for ~687.** Holes happen — unfinished records, lost "
@@ -278,6 +316,10 @@ STEPS = [
             "that). Do both methods agree?"
         ),
         "fn": "step_2_find_missing_values",
+        "placeholder": (
+            "e.g. “Check the passenger list for holes in the data and "
+            "show me where they are…”"
+        ),
     },
     {
         "number": 3,
@@ -318,7 +360,32 @@ STEPS = [
             "numbers — does a picture change how the room FEELS about "
             "38%?"
         ),
+        "context": {
+            "text": (
+                "A worked example of how a column split READS — this is "
+                "the ticket-class mix, NOT the survival split you'll ask "
+                "for in a second. Notice: groups side by side, counts "
+                "big to small. When you make your guess about survival, "
+                "imagine which slice of THIS crowd you belong to."
+            ),
+            "chart": workshop_steps.chart(
+                kind="bar",
+                horizontal=True,
+                title="The class mix (counts, not survival)",
+                data=[
+                    {"Class": "3rd class", "Passengers": 491},
+                    {"Class": "2nd class", "Passengers": 184},
+                    {"Class": "1st class", "Passengers": 216},
+                ],
+                x="Class",
+                y="Passengers",
+            ),
+        },
         "fn": "step_3_survival_overview",
+        "placeholder": (
+            "e.g. “Count how many passengers survived and how many "
+            "didn't…”"
+        ),
     },
     {
         "number": 4,
@@ -364,7 +431,32 @@ STEPS = [
             "different style (person icons instead of bars, or bars "
             "instead of icons) — which version tells the story better?"
         ),
+        "context": {
+            "text": (
+                "Worked example on a DIFFERENT question, so you can see "
+                "the shape of a grouped survival comparison: survival by "
+                "BOARDING PORT. Cherbourg passengers fared best, "
+                "Southampton worst. Your checkpoint asks the same shape "
+                "of question about sex — make the AI draw it and say "
+                "what it shows."
+            ),
+            "chart": workshop_steps.chart(
+                kind="bar",
+                title="Worked example: survival by boarding port",
+                data=[
+                    {"Port": "Cherbourg", "Survived %": 55.4},
+                    {"Port": "Queenstown", "Survived %": 39.0},
+                    {"Port": "Southampton", "Survived %": 33.7},
+                ],
+                x="Port",
+                y="Survived %",
+            ),
+        },
         "fn": "step_4_survival_by_sex",
+        "placeholder": (
+            "e.g. “Compare survival between women and men on board and "
+            "show me the difference…”"
+        ),
     },
     {
         "number": 5,
@@ -406,7 +498,30 @@ STEPS = [
             "survival percentage for each class — does the survived "
             "share really fall from 1st to 3rd?"
         ),
+        "context": {
+            "text": (
+                "Another worked example of the same reading skill, on a "
+                "different relationship: traveling WITH family vs "
+                "ALONE. Family looks protective here — hold that "
+                "thought, it returns in Stage 2. Then ask the AI for "
+                "the ticket-class comparison yourself."
+            ),
+            "chart": workshop_steps.chart(
+                kind="pictorial",
+                title="Worked example: survival, family vs alone",
+                data=[
+                    {"Traveling": "With family aboard", "Survived %": 50.6},
+                    {"Traveling": "Alone", "Survived %": 30.4},
+                ],
+                x="Traveling",
+                y="Survived %",
+            ),
+        },
         "fn": "step_5_survival_by_class",
+        "placeholder": (
+            "e.g. “Show survival in each ticket class and tell me what "
+            "stands out…”"
+        ),
     },
     {
         "number": 6,
@@ -453,7 +568,36 @@ STEPS = [
             "bars instead of a scatter) — did changing the design change "
             "what the class can actually see?"
         ),
+        "context": {
+            "text": (
+                "Before relating AGE to anything, meet the age crowd "
+                "itself — KNOW YOUR VARIABLE first (data-scientist "
+                "habit). Passengers per decade of age: how does the ship "
+                "lean? Then decide with the AI how to picture age vs "
+                "survival."
+            ),
+            "chart": workshop_steps.chart(
+                kind="bar",
+                title="Know the variable: passengers per decade of age",
+                data=[
+                    {"Age group": "0–9", "Passengers": 62},
+                    {"Age group": "10–19", "Passengers": 102},
+                    {"Age group": "20–29", "Passengers": 220},
+                    {"Age group": "30–39", "Passengers": 167},
+                    {"Age group": "40–49", "Passengers": 89},
+                    {"Age group": "50–59", "Passengers": 48},
+                    {"Age group": "60–69", "Passengers": 19},
+                    {"Age group": "70+", "Passengers": 7},
+                ],
+                x="Age group",
+                y="Passengers",
+            ),
+        },
         "fn": "step_6_age_patterns",
+        "placeholder": (
+            "e.g. “Find out whether a passenger's age mattered for "
+            "survival and show me one chart…”"
+        ),
     },
 ]
 

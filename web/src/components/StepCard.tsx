@@ -194,6 +194,7 @@ function PromptWorkshop({
           <textarea
             className="draft mt-2 min-h-[76px] w-full border border-line bg-white p-3 outline-none focus:border-black focus:shadow-[0_0_0_3px_rgba(0,112,243,0.35)]"
             placeholder={
+              step.placeholder ||
               "What would YOU ask the assistant? e.g. “Look at the passenger list and …”"
             }
             value={draft}
