@@ -9,6 +9,39 @@ import { PredictPanel } from "./components/PredictPanel";
 import { ErrorBanner } from "./components/ErrorBanner";
 import { useCompletionCelebration } from "./components/Celebration";
 
+function StageCompleteBanner({
+  script,
+  nextTitle,
+  onNextStage,
+}: {
+  script: ScriptState;
+  nextTitle?: string;
+  onNextStage?: () => void;
+}) {
+  const stageComplete = script.total > 0 && script.completed >= script.total;
+  if (!(stageComplete && nextTitle && onNextStage)) return null;
+
+  return (
+    <div className="animate-rise flex flex-col gap-3 border border-ok bg-tint-ok p-5 sm:flex-row sm:items-center sm:justify-between">
+      <div>
+        <div className="text-lg font-bold tracking-tight text-ink">
+          Stage complete — nice work!
+        </div>
+        <div className="text-sm text-dim">
+          All {script.total} checkpoints are done. Ready for “{nextTitle}”?
+        </div>
+      </div>
+      <button
+        onClick={onNextStage}
+        className="flex h-11 shrink-0 items-center gap-2 bg-black px-6 font-semibold text-white transition hover:bg-[#27272a]"
+      >
+        Continue to {nextTitle}
+        <ArrowRight className="h-5 w-5" />
+      </button>
+    </div>
+  );
+}
+
 function ScriptPanel({
   script,
   dashboard,
@@ -22,8 +55,6 @@ function ScriptPanel({
   nextTitle?: string;
   onNextStage?: () => void;
 }) {
-  const stageComplete = script.total > 0 && script.completed >= script.total;
-
   return (
     <section className="animate-rise space-y-3">
       <div className="border border-line bg-white p-5">
@@ -46,25 +77,11 @@ function ScriptPanel({
         </div>
       </div>
 
-      {stageComplete && nextTitle && onNextStage && (
-        <div className="animate-rise flex flex-col gap-3 border border-ok bg-tint-ok p-5 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <div className="text-lg font-bold tracking-tight text-ink">
-              Stage complete — nice work!
-            </div>
-            <div className="text-sm text-dim">
-              All {script.total} checkpoints are done. Ready for “{nextTitle}”?
-            </div>
-          </div>
-          <button
-            onClick={onNextStage}
-            className="flex h-11 shrink-0 items-center gap-2 bg-black px-6 font-semibold text-white transition hover:bg-[#27272a]"
-          >
-            Continue to {nextTitle}
-            <ArrowRight className="h-5 w-5" />
-          </button>
-        </div>
-      )}
+      <StageCompleteBanner
+        script={script}
+        nextTitle={nextTitle}
+        onNextStage={onNextStage}
+      />
 
       {script.steps.map((step) => (
         <StepCard
@@ -76,6 +93,14 @@ function ScriptPanel({
       ))}
 
       {script.id === "dashboard" && <PredictPanel dashboard={dashboard} />}
+
+      {/* Students read top-down: repeat the continue button at the bottom
+          so it waits for them where they finished scrolling. */}
+      <StageCompleteBanner
+        script={script}
+        nextTitle={nextTitle}
+        onNextStage={onNextStage}
+      />
 
       {allComplete && (
         <div className="animate-rise flex items-center gap-4 border border-ok bg-tint-ok p-5">
