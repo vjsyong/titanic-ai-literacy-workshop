@@ -40,7 +40,7 @@ DATA_PATH = os.path.join("data", "titanic.csv")
 # PROGRESS COUNTER -- the ONLY number the AI assistant bumps in class,
 # strictly one step at a time, AFTER it proved the step works.
 # ----------------------------------------------------------------------------
-STEPS_COMPLETED = 1
+STEPS_COMPLETED = 0
 
 
 # ============================================================================
@@ -80,19 +80,7 @@ def step_1_open_the_list():
             "dataframe": df.head(),
         }
     """
-    df = pd.read_csv(DATA_PATH)
-
-    columns = ", ".join(df.columns)
-    text = (
-        f"The list holds **{len(df)} passengers**. "
-        f"For each person we know {len(df.columns)} details: {columns}. "
-        "Here are the first few rows:"
-    )
-
-    return {
-        "text": text,
-        "dataframe": df.head(),
-    }
+    raise NotImplementedError("Gate 1 is not built yet")
 
 
 # === GATE 2 -- "Where are the holes?" =======================================

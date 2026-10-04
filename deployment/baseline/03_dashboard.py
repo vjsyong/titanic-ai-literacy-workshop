@@ -74,6 +74,11 @@ DEFAULT_INPUT_SPEC = [
 #     which earlier step to finish -- do NOT raise on missing files.
 #   * Bump STEPS_COMPLETED (one at a time) after the web page shows the
 #     gate working.
+#   * The LOOK LIKE notes are the MINIMUM, not a blueprint. Compose each
+#     card your own way -- chart kind, text and metric mix are yours to
+#     choose, and two good assistants should NOT produce identical
+#     cards. Only the MUST/contract items (input_spec, predict, pkl)
+#     are rigid: the page plumbing depends on them.
 # ============================================================================
 
 
@@ -123,10 +128,12 @@ def step_3_wire_prediction():
 def step_4_kind_verdicts():
     """Reword the verdict so it is never scary: 3 probability bands.
 
-    LOOK LIKE: a small table bands -> wording tone. Re-place
-    ARTIFACTS["predict"] with a version that uses the kinder wording,
-    then re-run one example on the real model to show the new text.
-    The gauge color follows the band, so label them clearly.
+    MUST: re-place ARTIFACTS["predict"] with a version using the kinder
+    wording, and re-run one example on the real model to show the new
+    voice. The gauge color follows the band, so label the bands clearly.
+    CHOOSE freely: how you present the three bands (a bands->tone
+    table, before/after verdicts at different probabilities, live
+    examples) -- your call.
     """
     raise NotImplementedError("Gate 4 is not built yet")
 
@@ -135,10 +142,13 @@ def step_4_kind_verdicts():
 def step_5_black_box_tests():
     """Probe the model with imaginary passengers and discuss unfairness.
 
-    LOOK LIKE: a table of at least 6 imaginary passengers, each with the
-    live verdict, PLUS an interactive bar chart comparing their survival
-    probabilities (0-100), plus 2-3 plain-English questions for class
+    MUST: at least 6 imaginary passengers who differ sharply, each with
+    their live verdict, plus 2-3 plain-English questions for class
     discussion (is any pattern unfair? what does the model NOT see?).
+    CHOOSE freely: table + bar chart of survival probabilities is one
+    strong shape; a "case files" style card, a comparison matrix, or
+    provocative pairs (same person, one attribute flipped) also work --
+    pick the staging that sparks the argument.
     """
     raise NotImplementedError("Gate 5 is not built yet")
 
@@ -155,11 +165,22 @@ STEPS = [
             "here and check that it gives sensible guesses."
         ),
         "prompt": (
-            "GOAL: wake the frozen brain from Step 2 (titanic_model.pkl) "
-            "and prove it still works on one fixed test passenger. Plan "
-            "for trouble too: the file only exists once Step 2 is "
-            "finished -- what should the page say if it's missing? (Hint: "
-            "something kinder than a crash.)"
+            "Ask the AI to wake the frozen brain from titanic_model.pkl "
+            "and prove it works on one fixed test passenger."
+        ),
+        "hints": [
+            "The file only exists once Stage 2's last checkpoint is done.",
+            "If it's missing, the page should say something kind — not "
+            "crash. Ask for that explicitly.",
+            "One fixed test passenger is enough proof of life.",
+        ],
+        "guide": (
+            "**Reusing a saved model is the industry norm: train once, "
+            "predict everywhere.** The brain on disk is exactly the one "
+            "that scored ~80% on its hidden exam.\n\n"
+            "*Discuss:* what should an app do when a dependency is "
+            "missing? Crashing is easy; a kind message is design.\n\n"
+            "*Next up:* design the form classmates will play with."
         ),
         "reference": (
             "Step 3 of the workshop, checkpoint 1: load the saved model "
@@ -167,7 +188,28 @@ STEPS = [
             "fixed test passenger. If the file is missing, tell me kindly "
             "which Step 2 checkpoint to finish first instead of crashing."
         ),
+        "reference_alt": (
+            "Load titanic_model.pkl and predict one fixed passenger "
+            "with it; if the file is missing, show a kind message "
+            "pointing to Stage 2's last checkpoint."
+        ),
+        "experiment": (
+            "Ask the AI to wake the brain twice and predict the same "
+            "passenger both times — are the answers identical? Why "
+            "should they be?"
+        ),
+        "context": (
+            "**Where the brain has been:**\n\n"
+            "`titanic_model.pkl` was frozen at the end of Stage 2. A "
+            "saved brain is: train once → save to disk → wake it "
+            "anywhere, forever. Waking it = loading the file and "
+            "calling its predict on a passenger."
+        ),
         "fn": "step_1_wake_the_brain",
+        "placeholder": (
+            "e.g. “Wake up the model we trained earlier and prove it "
+            "still guesses sensibly…”"
+        ),
     },
     {
         "number": 2,
@@ -178,12 +220,37 @@ STEPS = [
             "for the numbers) with human-friendly ranges."
         ),
         "prompt": (
-            "GOAL: design the passenger form the class will play with. "
-            "For every attribute of a passenger, decide the friendliest "
-            "control: a dropdown with which choices, or a slider over "
-            "which range? Think about what values make sense (ages 0-80? "
-            "classes 1/2/3?). The plan needs to be stored where the page "
-            "can find it."
+            "Ask the AI to design the passenger form: for each attribute, "
+            "which control (dropdown or slider) and which sensible "
+            "choices or range."
+        ),
+        "hints": [
+            "Ticket class and sex suit dropdowns/radios — age and fare "
+            "suit sliders.",
+            "Think about sensible ranges: ages 0–80? classes 1/2/3?",
+            "The plan must be stored where the page can find it — say so "
+            "in your request.",
+        ],
+        "context": pd.DataFrame(
+            [
+                {"Field": "Pclass", "Example value": "1, 2 or 3"},
+                {"Field": "Sex", "Example value": "male / female"},
+                {"Field": "Age", "Example value": "22.0 (babies to 80)"},
+                {"Field": "SibSp", "Example value": "0–8"},
+                {"Field": "Parch", "Example value": "0–6"},
+                {"Field": "Fare", "Example value": "7.25–512.33"},
+                {"Field": "Embarked", "Example value": "S / C / Q"},
+            ]
+        ),
+        "guide": (
+            "**A good form hides the machinery: classmates will use it "
+            "without ever seeing a number pipeline.** Designing sensible "
+            "defaults (not ages 0–500!) is real product thinking.\n\n"
+            "*Discuss:* which attribute would you REMOVE from the form to "
+            "keep it friendly? Fewer, well-chosen inputs often beat "
+            "complete ones.\n\n"
+            "*Next up:* wire the form to the brain so Predict actually "
+            "predicts."
         ),
         "reference": (
             "Step 3, checkpoint 2: propose the passenger web form -- for "
@@ -191,7 +258,21 @@ STEPS = [
             "what sensible range or choices to give it, and store this "
             "plan where the page can find it."
         ),
+        "reference_alt": (
+            "Propose the passenger form: for each field pick a dropdown "
+            "or a slider with sensible ranges, and store the plan where "
+            "the page can use it."
+        ),
+        "experiment": (
+            "Ask the AI what happens if a user drags the age slider to "
+            "110 — should the form allow impossible values? Decide a "
+            "rule together."
+        ),
         "fn": "step_2_design_the_form",
+        "placeholder": (
+            "e.g. “Plan the passenger form: which fields and which "
+            "controls for each…”"
+        ),
     },
     {
         "number": 3,
@@ -203,12 +284,26 @@ STEPS = [
             "its coded digit before reaching the model."
         ),
         "prompt": (
-            "GOAL: connect the form to the brain so the Predict button "
-            "actually works. Careful: the form's words (female/male) must "
-            "be translated back to numbers EXACTLY the way Step 2 chose, "
-            "and the stored scaler must be applied before predicting. The "
-            "verdict should appear as a survival gauge plus one human "
-            "sentence. Decide how you'd prove it's live."
+            "Ask the AI to connect the form to the model so the Predict "
+            "button produces a live survival gauge plus a human sentence."
+        ),
+        "hints": [
+            "The form's words (female/male) must become numbers EXACTLY "
+            "the way Stage 2 chose.",
+            "The stored scaler must be applied before predicting — same "
+            "rule as training time.",
+            "Ask for one live example straight from the model to prove "
+            "it's real.",
+        ],
+        "guide": (
+            "**The full pipeline runs on every click: translate words → "
+            "scale → predict.** It's the exact journey of Stage 2, now "
+            "invisible and instant.\n\n"
+            "*Discuss:* what happens if the form's encoding drifts even "
+            "slightly from training-time encoding? (Garbage in, garbage "
+            "out — quietly.)\n\n"
+            "*Next up:* the raw probability can sting — time to choose "
+            "kinder words."
         ),
         "reference": (
             "Step 3, checkpoint 3: connect the form to the model so the "
@@ -217,7 +312,32 @@ STEPS = [
             "show the survival probability as a gauge with a human "
             "sentence. Show me one live example straight from the model."
         ),
+        "reference_alt": (
+            "Connect the form to the saved model: encode sex exactly as "
+            "trained, apply the scaler, and show each prediction as a "
+            "gauge with one human sentence."
+        ),
+        "experiment": (
+            "Predict the same passenger twice through the form — "
+            "identical gauge both times? If not, ask the AI what's "
+            "leaking."
+        ),
+        "context": (
+            "**The pipeline that will run on every click (same three "
+            "moves as Stage 2, now automatic):**\n\n"
+            "1. **encode** — form words → the exact digits Stage 2 "
+            "chose\n"
+            "2. **scale** — squeeze the numbers with the SAME scaler "
+            "from the freezer\n"
+            "3. **predict** — the model answers with a probability\n\n"
+            "One mismatched digit or unscaled number = quietly wrong "
+            "answers."
+        ),
         "fn": "step_3_wire_prediction",
+        "placeholder": (
+            "e.g. “Connect the form to the model so the Predict button "
+            "really predicts…”"
+        ),
     },
     {
         "number": 4,
@@ -228,11 +348,24 @@ STEPS = [
             "for low, medium and high probabilities."
         ),
         "prompt": (
-            "GOAL: soften the wording. A cold '0.34' can sting -- real "
-            "people, real names. Plan three friendly probability bands "
-            "(unlikely / close call / likely is one option) and reword "
-            "what the page says in each. How would you demonstrate the "
-            "gentler voice on the live model?"
+            "Ask the AI to soften the verdicts: three friendly "
+            "probability bands, demonstrated on the live model."
+        ),
+        "hints": [
+            "A cold '0.34' can sting — these were real people.",
+            "Unlikely / close call / likely is one set of bands; make "
+            "them your own.",
+            "Demonstrate on the live model so the class hears the "
+            "gentler voice.",
+        ],
+        "guide": (
+            "**Machine-learning output is a number; how you present it is "
+            "a human decision.** Same probability, very different "
+            "feel — wording is part of the interface, not decoration.\n\n"
+            "*Discuss:* could kinder wording mislead someone? Where's "
+            "the line between gentle and sugar-coated?\n\n"
+            "*Next up:* the final checkpoint — stress-test the whole "
+            "system like a scientist."
         ),
         "reference": (
             "Step 3, checkpoint 4: make the browser wording gentler -- "
@@ -240,7 +373,30 @@ STEPS = [
             "likely) and reword the verdicts. Re-run one example on the "
             "live model to show the friendlier message."
         ),
+        "reference_alt": (
+            "Sort the survival chances into three friendly bands (e.g. "
+            "unlikely, close call, likely), reword the verdicts, and "
+            "demo one on the live model."
+        ),
+        "experiment": (
+            "Ask the AI to show the SAME probability worded in all three "
+            "bands — where does 'close call' start and end? Are the "
+            "band edges honest?"
+        ),
+        "context": (
+            "**Translating a probability into human words — worked "
+            "example:**\n\n"
+            "0.34 → 34% → roughly **1 passenger in 3** with those facts "
+            "made it.\n\n"
+            "Same number, three voices: a decimal for the machine, a "
+            "percent for the math-minded, a 'one in three' for humans. "
+            "Your checkpoint adds the fourth voice: friendly wording."
+        ),
         "fn": "step_4_kind_verdicts",
+        "placeholder": (
+            "e.g. “Soften the model's verdicts into three friendly "
+            "wordings…”"
+        ),
     },
     {
         "number": 5,
@@ -251,13 +407,29 @@ STEPS = [
             "of its data, nothing more."
         ),
         "prompt": (
-            "GOAL: final checkpoint -- stress-test the model like a "
-            "scientist. Imagine at least six passengers who differ "
-            "sharply (young/old, women/men, 1st/3rd class), collect "
-            "their verdicts, and show them as both a table and a chart of "
-            "survival chances. Then step back: what can this model NOT "
-            "know? Prepare two or three fairness questions for the class "
-            "discussion."
+            "Ask the AI to test the model with at least six very "
+            "different imaginary passengers, shown as a table and a bar "
+            "chart of survival chances, plus discussion questions."
+        ),
+        "hints": [
+            "Make them differ sharply: young/old, women/men, 1st/3rd "
+            "class.",
+            "Ask for the verdicts as a table AND a chart of survival "
+            "chances.",
+            "Finish with 2–3 fairness questions the class can argue "
+            "about.",
+        ],
+        "guide": (
+            "**The model is a mirror of its data, nothing more.** It "
+            "rewarded the patterns of 1912 — including the unfair ones. "
+            "It cannot see courage, luck, or the lifeboat queue.\n\n"
+            "*Discuss:* is it fair to predict someone's survival from "
+            "their sex or ticket class? What does the model NOT know? "
+            "And where else in today's world do models quietly inherit "
+            "yesterday's biases?\n\n"
+            "**That's the whole workshop** — you met data, trained a "
+            "model, and interrogated it. This discussion is the real "
+            "graduation."
         ),
         "reference": (
             "Step 3, checkpoint 5 (final!): test the live model with at "
@@ -266,7 +438,31 @@ STEPS = [
             "their survival chances, and give me two or three discussion "
             "questions about fairness and what the data cannot tell us."
         ),
+        "reference_alt": (
+            "Test the model with six or more very different imaginary "
+            "passengers, chart their survival odds, and give the class "
+            "2–3 fairness questions to argue about."
+        ),
+        "experiment": (
+            "Flip ONE attribute at a time (same person, female→male, "
+            "then 1st→3rd class) — how far does the verdict move? Which "
+            "single attribute moves it most?"
+        ),
+        "context": (
+            "**Scientist's trick for this checkpoint — change ONE thing "
+            "at a time.** The dials your imaginary passengers can "
+            "vary:\n\n"
+            "- sex · ticket class · age (young/old) · fare "
+            "(cheap/expensive) · family aboard (yes/no)\n\n"
+            "If you change two things at once and the verdict moves, "
+            "you can't tell which one did it. Fairness arguments need "
+            "clean comparisons."
+        ),
         "fn": "step_5_black_box_tests",
+        "placeholder": (
+            "e.g. “Test the model with very different imaginary "
+            "passengers and help us judge it fairly…”"
+        ),
     },
 ]
 

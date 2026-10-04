@@ -60,6 +60,11 @@ STEPS_COMPLETED = 0
 #   * Store anything later gates need in ARTIFACTS (e.g. ARTIFACTS["model"]).
 #   * When python 02_train.py runs cleanly, bump STEPS_COMPLETED to n.
 #   * NEVER touch a future gate (STOP-FIRST RULE applies).
+#   * The LOOK LIKE notes are the MINIMUM, not a blueprint. Compose each
+#     card your own way -- chart kind, text, metric mix are yours to
+#     choose, and two good assistants should NOT produce identical
+#     cards. Only MUST/Store items are rigid (later gates and the
+#     dashboard depend on them).
 # ============================================================================
 
 
@@ -67,10 +72,14 @@ STEPS_COMPLETED = 0
 def step_1_encode_sex():
     """Turn the Sex column into numbers the model can digest.
 
-    LOOK LIKE (web): a small preview table with both original Sex and the
-    new Sex column, plus one sentence about why numbers help a model.
-    TIP for the AI: keep it humble -- mapping 0/1 is arbitrary ordering,
-    which is exactly the discussion this gate is for.
+    MUST land: the translation must be visible and checkable (old words
+    next to new numbers, or equivalent), and the result stored for
+    later gates.
+    CHOOSE freely: preview table, value-counts table, before/after
+    chart -- your call. TIP: keep it humble -- mapping 0/1 is arbitrary
+    ordering, which is exactly the discussion this gate is for.
+    Store: the encoded data so later checkpoints can use it
+    (e.g. ARTIFACTS).
     """
     raise NotImplementedError("Gate 1 is not built yet")
 
@@ -79,9 +88,12 @@ def step_1_encode_sex():
 def step_2_pick_features():
     """Decide the feature columns X and the target y (Survived).
 
-    LOOK LIKE (web): the final feature list (Pclass, Sex-out, Age,
-    SibSp, Parch, Fare), a small preview table, and a friendly line about
-    'what we let the model see vs what we ask it to predict'.
+    MUST land: which columns feed the model, which column is the
+    answer, and a friendly line on 'what we let the model see vs what
+    we ask it to predict'. The reasoning matters more than the list
+    format.
+    CHOOSE freely: feature list, table, "allowed vs forbidden" split --
+    any presentation that makes the exclusions discussable.
     Store: ARTIFACTS["feature_columns"], ARTIFACTS["X"] and ARTIFACTS["y"].
     """
     raise NotImplementedError("Gate 2 is not built yet")
@@ -91,8 +103,10 @@ def step_2_pick_features():
 def step_3_split_data():
     """Split into train and test (80/20, stratify=y, random_state=42).
 
-    LOOK LIKE (web): how many passengers the model studies vs gets
-    quizzed on, plus why (fair test = no peeking).
+    MUST land: how many passengers the model studies vs gets quizzed
+    on, and why the test group stays hidden (fair test = no peeking).
+    CHOOSE freely: numbers, a visual split, a proportion gauge --
+    whatever sells the 80/20 idea.
     Store: ARTIFACTS["x_train"], ARTIFACTS["x_test"], ARTIFACTS["y_train"],
     ARTIFACTS["y_test"].
     """
@@ -103,9 +117,11 @@ def step_3_split_data():
 def step_4_scale_features():
     """Scale numeric features (StandardScaler: fit on train only; transform both).
 
-    LOOK LIKE (web): mean/mean-std style before-vs-after illustration
-    for at least one numeric column, and a plain-English line about why
-    huge fares should not crowd out small ages.
+    MUST land: a before-vs-after illustration for at least one numeric
+    column (the "same tube size" feeling), and a plain-English line
+    about why huge fares should not crowd out small ages.
+    CHOOSE freely: mean/std table, before/after mini-chart, a "both
+    columns whisper now" framing -- your call.
     Store: ARTIFACTS["scaler"], the scaled arrays, and any helper info
     that the dashboard needs (ARTIFACTS["scaler"] is used later).
     """
@@ -116,16 +132,10 @@ def step_4_scale_features():
 def step_5_train():
     """Train LogisticRegression(max_iter=1000) on the scaled train set.
 
-    LOOK LIKE (web): the headline the class earned, rendered as an
-    animated ring with workshop_steps.metric:
-
-        accuracy = ARTIFACTS["model"].score(
-            ARTIFACTS["x_test_scaled"], ARTIFACTS["y_test"])
-        return {
-            "text": "The model judges passengers it has never seen ...",
-            "metric": workshop_steps.metric(accuracy, "Test accuracy"),
-        }
-
+    MUST land: the test-set accuracy as the headline, rendered so the
+    whole class can cheer. workshop_steps.metric (animated ring) is the
+    natural hero -- but compose the card your way (add context, a
+    comparison, whatever earns the moment).
     Store: ARTIFACTS["model"] (and ARTIFACTS["test_accuracy"] if handy).
     """
     raise NotImplementedError("Gate 5 is not built yet")
@@ -135,18 +145,14 @@ def step_5_train():
 def step_6_explain_model():
     """Rank feature importance via LogisticRegression coefficients.
 
-    LOOK LIKE (web): a table of feature -> coefficient, PLUS a
-    horizontal diverging bar chart (positive values color one way,
-    negative the other) made with:
-
-        workshop_steps.chart(
-            kind="bar", data=coefs, x="Feature", y="Coefficient",
-            diverging=True, horizontal=True,
-        )
-
-    Explain in plain words (e.g. 'Sex' pushes women toward surviving;
-    'Pclass' pushes cheaper classes toward perishing). No jargon like
-    log-odds.
+    MUST land: how much the model leaned on each feature, which way
+    each pushed (toward/away from survival), explained in plain words
+    (e.g. 'Sex' pushes women toward surviving; 'Pclass' pushes cheaper
+    classes toward perishing). No jargon like log-odds.
+    CHOOSE freely: diverging bar chart, sorted table, "hero and
+    villain" framing -- pick the telling that lands. (A diverging
+    horizontal bar: workshop_steps.chart(kind="bar", ..., diverging=True,
+    horizontal=True) handles the colored sides for you.)
     """
     raise NotImplementedError("Gate 6 is not built yet")
 
@@ -155,18 +161,14 @@ def step_6_explain_model():
 def step_7_save_model():
     """Pickle the trained model, its scaler, and feature_columns together.
 
-    LOOK LIKE (web): a friendly confirmation that titanic_model.pkl is
-    ready for Step 3, plus ONE sample passenger verdict shown as an
-    animated gauge:
-
-        workshop_steps.chart(
-            kind="gauge", value=probability * 100,
-            title="First-class woman, 30: survival chance",
-        )
-
     MUST pickle a dict {"model": ..., "scaler": ..., "feature_columns": ...}
     to MODEL_PATH -- the Step 3 dashboard (03_dashboard.py) expects exactly
     that structure (this is the cross-script contract).
+
+    MUST land on the page: a friendly confirmation that titanic_model.pkl
+    is ready for Step 3, plus ONE sample passenger verdict. An animated
+    gauge (workshop_steps.chart(kind="gauge", value=probability*100, ...))
+    is the natural reveal -- the surrounding composition is yours.
     """
     raise NotImplementedError("Gate 7 is not built yet")
 
@@ -186,13 +188,48 @@ STEPS = [
             "it for encoding)."
         ),
         "prompt": (
-            "GOAL: give the model a language it understands -- numbers "
-            "instead of the words female/male. You pick the numbering "
-            "scheme (any scheme is fine, as long as it's consistent and "
-            "you can explain it). Decide how you'd check the translation "
-            "worked -- seeing the old words and new numbers side by side "
-            "sounds useful -- and how the result gets kept for the "
-            "checkpoints ahead."
+            "Ask the AI to turn the Sex column's words (female/male) into "
+            "numbers, and show the translation side by side with the "
+            "original."
+        ),
+        "hints": [
+            "Any consistent numbering scheme is fine — 0/1, 1/2, whatever "
+            "you can explain.",
+            "Ask to see the old words and new numbers together so you can "
+            "check the translation.",
+            "The result must be kept for the checkpoints ahead — mention "
+            "that.",
+        ],
+        "context": {
+            "text": (
+                "This is the pattern your digits will have to carry — "
+                "you know it by heart from Stage 1. A model can do "
+                "arithmetic on numbers, never on words; translating "
+                "female/male is the whole checkpoint."
+            ),
+            "dataframe": pd.DataFrame(
+                {"Sex": ["female", "male"], "Passengers": [314, 577]}
+            ),
+            "chart": workshop_steps.chart(
+                kind="bar",
+                title="The pattern your digits must carry",
+                data=[
+                    {"Sex": "Women", "Survived %": 74.2},
+                    {"Sex": "Men", "Survived %": 18.9},
+                ],
+                x="Sex",
+                y="Survived %",
+            ),
+        },
+        "guide": (
+            "**Models only do arithmetic, so words must become numbers.** "
+            "Which number means which is arbitrary — 0 = female and 1 = "
+            "male works just as well as the reverse, as long as it's "
+            "consistent.\n\n"
+            "*Discuss:* what could go wrong if you translated female/male "
+            "differently on different days?\n\n"
+            "*Next up:* the model can't look at everything — you decide "
+            "what it may see."
         ),
         "reference": (
             "Step 2 of the workshop, checkpoint 1: take the Sex column from "
@@ -201,7 +238,21 @@ STEPS = [
             "new column side by side with the original words. Store the "
             "results so the next checkpoints can use them."
         ),
+        "reference_alt": (
+            "Create a numeric version of the Sex column in "
+            "data/titanic.csv (0 and 1), explain your mapping, and "
+            "preview it next to the original words."
+        ),
+        "experiment": (
+            "Ask the AI what would happen if you flipped the mapping "
+            "(male=0, female=1) — does the model actually care which "
+            "digit means which?"
+        ),
         "fn": "step_1_encode_sex",
+        "placeholder": (
+            "e.g. “Turn the female/male words into numbers so the model "
+            "can use them…”"
+        ),
     },
     {
         "number": 2,
@@ -213,12 +264,52 @@ STEPS = [
             "are person IDs, not survival clues."
         ),
         "prompt": (
-            "GOAL: decide what the model is allowed to look at, and what "
-            "it must predict. Not every column helps -- some are just "
-            "labels or free text a pattern-spotter can't use. Which "
-            "columns would you feed in, which one is the answer, and why "
-            "are things like Name useless? One trap: use the numeric sex "
-            "column you made last checkpoint, not the word version."
+            "Ask the AI to pick which columns the model may look at, and "
+            "which column it must predict."
+        ),
+        "hints": [
+            "The prediction target is always Survived (1 = made it).",
+            "Good clues: ticket class, sex (numeric!), age, family aboard, "
+            "fare.",
+            "Why are Name and PassengerId useless? Ask the AI to explain.",
+        ],
+        "context": pd.DataFrame(
+            [
+                {"Column": "PassengerId", "Example": "1",
+                 "What it holds": "just a row number"},
+                {"Column": "Survived", "Example": "0 or 1",
+                 "What it holds": "the answer: did they make it?"},
+                {"Column": "Pclass", "Example": "1, 2 or 3",
+                 "What it holds": "ticket class (wealth proxy)"},
+                {"Column": "Name", "Example": "Braund, Mr. Owen Harris",
+                 "What it holds": "full name, with title"},
+                {"Column": "Sex", "Example": "male / female",
+                 "What it holds": "words — now numeric (checkpoint 1)"},
+                {"Column": "Age", "Example": "22.0 (some missing)",
+                 "What it holds": "age in years, babies included"},
+                {"Column": "SibSp", "Example": "0–8",
+                 "What it holds": "siblings/spouses aboard"},
+                {"Column": "Parch", "Example": "0–6",
+                 "What it holds": "parents/children aboard"},
+                {"Column": "Ticket", "Example": "A/5 21171",
+                 "What it holds": "free-text ticket code"},
+                {"Column": "Fare", "Example": "7.25 (up to 512)",
+                 "What it holds": "ticket price in pounds"},
+                {"Column": "Cabin", "Example": "C85 (mostly missing)",
+                 "What it holds": "cabin code"},
+                {"Column": "Embarked", "Example": "S / C / Q",
+                 "What it holds": "port of embarkation"},
+            ]
+        ),
+        "guide": (
+            "**Garbage in, garbage out: you just made the model's first "
+            "big quality decision.** Name and PassengerId are labels, not "
+            "clues — every passenger has a unique one, so there's no "
+            "pattern to learn.\n\n"
+            "*Discuss:* is there any column you're UNSURE about? Dropping "
+            "a useful clue weakens the model; keeping noise confuses it.\n\n"
+            "*Next up:* a fair exam — hiding some passengers from the "
+            "model."
         ),
         "reference": (
             "Step 2, checkpoint 2: choose which columns the model may look "
@@ -227,7 +318,21 @@ STEPS = [
             "Remember to use the sex column you encoded in checkpoint 1, "
             "not the word version."
         ),
+        "reference_alt": (
+            "Which columns from data/titanic.csv should the model use as "
+            "inputs, which column is the target, and why should Name and "
+            "PassengerId be left out?"
+        ),
+        "experiment": (
+            "Challenge the AI: could the title hidden in Name (Mr, Mrs, "
+            "Master) actually be a clue? Ask it — then judge its answer. "
+            "Was it a good reason to drop Name or not?"
+        ),
         "fn": "step_2_pick_features",
+        "placeholder": (
+            "e.g. “Decide which columns the model may look at and which "
+            "one it must predict…”"
+        ),
     },
     {
         "number": 3,
@@ -238,12 +343,24 @@ STEPS = [
             "test material the model never sees during learning."
         ),
         "prompt": (
-            "GOAL: set up a fair exam for the model. Split the passengers "
-            "into a group it learns from and a hidden group it gets tested "
-            "on -- roughly 80/20 is the usual recipe. Be ready to answer "
-            "the classic question: why must the test group stay hidden "
-            "until the end? And how would you show the two group sizes so "
-            "the class trusts the split?"
+            "Ask the AI to split the passengers into a training group and "
+            "a hidden test group (about 80/20)."
+        ),
+        "hints": [
+            "Roughly 80% to learn from, 20% kept secret for the final "
+            "exam.",
+            "Ask how many passengers ended up in each group.",
+            "The test group must stay hidden until the very end — no "
+            "peeking.",
+        ],
+        "guide": (
+            "**A model tested on data it already saw is like a student "
+            "graded on the exact homework answers — the score is fake.** "
+            "The hidden 20% is the only honest measure.\n\n"
+            "*Discuss:* what would happen to the accuracy number if we "
+            "accidentally let the model peek?\n\n"
+            "*Next up:* the features live on wildly different scales — "
+            "that needs fixing before training."
         ),
         "reference": (
             "Step 2, checkpoint 3: split the data into a training set and "
@@ -251,7 +368,39 @@ STEPS = [
             "each, and explain in one friendly line why we hide the test "
             "set from training."
         ),
+        "reference_alt": (
+            "Split the passengers 80/20 into training and test groups, "
+            "tell me the sizes, and explain why the test set stays "
+            "sealed until the end."
+        ),
+        "experiment": (
+            "Ask the AI to show how many Survived=1 vs Survived=0 "
+            "passengers landed in each group — roughly equal? Why would "
+            "a lopsided exam be unfair?"
+        ),
+        "context": {
+            "text": (
+                "The exam idea, as a picture: most passengers become the "
+                "model's STUDY material; a sealed slice stays hidden "
+                "until the final test. Roughly four-fifths vs "
+                "one-fifth."
+            ),
+            "chart": workshop_steps.chart(
+                kind="donut",
+                title="Who gets to study, who waits in the exam room",
+                data=[
+                    {"Group": "study group (learning)", "Share": 80},
+                    {"Group": "sealed exam group", "Share": 20},
+                ],
+                x="Group",
+                y="Share",
+            ),
+        },
         "fn": "step_3_split_data",
+        "placeholder": (
+            "e.g. “Hold back some passengers as a secret test group for "
+            "the model's final exam…”"
+        ),
     },
     {
         "number": 4,
@@ -262,13 +411,34 @@ STEPS = [
             "bigness for importance. Fix the tube sizes with standardization."
         ),
         "prompt": (
-            "GOAL: put every numeric feature on the same scale, so no "
-            "single column (fare can reach 500!) shouts louder than the "
-            "others. The golden rule: learn the scale from the training "
-            "group only -- no peeking at the test group. How would you "
-            "show one column before and after scaling so the class can "
-            "FEEL the change (means near zero, tight spread)? Keep the "
-            "scaler safe -- the dashboard will need it."
+            "Ask the AI to put every numeric feature on the same scale — "
+            "learning the scale from the training group only."
+        ),
+        "hints": [
+            "Fare reaches ~500; Age sits between 0 and 80. Bigness must "
+            "not look like importance.",
+            "Golden rule: the scale is learned from the training group "
+            "only — no peeking at the test group.",
+            "Ask to see one column before and after, so you can feel the "
+            "change (mean near 0).",
+        ],
+        "context": pd.DataFrame(
+            [
+                {"Feature": "Age", "Smallest value": 0.42, "Largest value": 80.0},
+                {"Feature": "Fare", "Smallest value": 0.0, "Largest value": 512.33},
+                {"Feature": "SibSp", "Smallest value": 0, "Largest value": 8},
+                {"Feature": "Parch", "Smallest value": 0, "Largest value": 6},
+                {"Feature": "Pclass", "Smallest value": 1, "Largest value": 3},
+            ]
+        ),
+        "guide": (
+            "**After scaling, every feature speaks at the same volume — "
+            "mean ≈ 0, spread ≈ 1.** Without it, a model can mistake big "
+            "numbers (fare!) for important numbers.\n\n"
+            "*Discuss:* why is it cheating to learn the scale from the "
+            "test group too? (It leaks exam answers into study time.)\n\n"
+            "*Next up:* the main event — train the model and see its real "
+            "exam score."
         ),
         "reference": (
             "Step 2, checkpoint 4: scale the numeric features for training "
@@ -276,7 +446,21 @@ STEPS = [
             "numeric column before and after scaling so I can feel the "
             "difference (mean ~ 0). Keep the scaler handy for later."
         ),
+        "reference_alt": (
+            "Scale the numeric features with the scaler fitted on the "
+            "training group only, show me one column before and after, "
+            "and keep the scaler safe for the dashboard."
+        ),
+        "experiment": (
+            "Ask the AI to prove the scaling worked: what is the MEAN of "
+            "a scaled column? (Spoiler: about 0.) Why is that number the "
+            "receipt that it worked?"
+        ),
         "fn": "step_4_scale_features",
+        "placeholder": (
+            "e.g. “Put fare and age on the same scale so neither shouts "
+            "louder than the other…”"
+        ),
     },
     {
         "number": 5,
@@ -287,11 +471,27 @@ STEPS = [
             "the secret test passengers it was never shown."
         ),
         "prompt": (
-            "GOAL: training time! Pick a simple, explainable first model "
-            "-- logistic regression is the classic -- teach it on the "
-            "scaled training group, then let it sit the hidden exam. How "
-            "would you present its accuracy so the whole class can cheer "
-            "(the page can draw a big animated number/ring)?"
+            "Ask the AI to train a simple model (logistic regression is a "
+            "great first pick) and show its accuracy on the hidden test "
+            "group as a big animated number."
+        ),
+        "hints": [
+            "Logistic regression = a simple, explainable pattern-spotter. "
+            "Perfect for a first model.",
+            "The model learns from the scaled training group, then sits "
+            "the hidden exam.",
+            "Ask for the accuracy as a big ring/number the whole class "
+            "can cheer at.",
+        ],
+        "guide": (
+            "**Expect roughly 78–82% accuracy.** Sounds great — but a "
+            "model that always guessed 'perished' would score ~62% "
+            "(remember the split from Stage 1?). Accuracy alone can "
+            "flatter.\n\n"
+            "*Discuss:* is ~80% good enough to trust with someone's life "
+            "in 1912? Where do you think it gets things wrong?\n\n"
+            "*Next up:* open the box — ask the model WHICH clues it "
+            "actually used."
         ),
         "reference": (
             "Step 2, checkpoint 5: train a Logistic Regression model on "
@@ -300,7 +500,28 @@ STEPS = [
             "guesses were on the test set -- display the score as a big "
             "animated number/ring so the class can cheer."
         ),
+        "reference_alt": (
+            "Train a logistic regression model on the prepared data and "
+            "show me its accuracy on the unseen test passengers as a "
+            "big animated score."
+        ),
+        "experiment": (
+            "Ask the AI: what accuracy would a LAZY model get by always "
+            "guessing 'perished'? Compare it with your ring — how much "
+            "better is your model, really?"
+        ),
+        "context": (
+            "**The journey your data takes in this gate:**\n\n"
+            "passenger facts → *the pattern the model learned* → a "
+            "yes/no survival guess\n\n"
+            "The ring that appears is what the class EARNED: how many "
+            "of the sealed exam passengers it judged correctly."
+        ),
         "fn": "step_5_train",
+        "placeholder": (
+            "e.g. “Train a simple model and show me how it does on its "
+            "secret exam…”"
+        ),
     },
     {
         "number": 6,
@@ -311,13 +532,27 @@ STEPS = [
             "by eye in Step 1 with our own charts."
         ),
         "prompt": (
-            "GOAL: open the black box a crack. For a logistic regression, "
-            "each feature has a coefficient: its size says how much the "
-            "model leaned on it, its sign says which way it pushed "
-            "(toward survival or away). Plan a chart where positive and "
-            "negative pull in opposite directions, and think about how "
-            "you'd explain every row in words a 12-year-old gets -- no "
-            "statistics jargon allowed."
+            "Ask the AI to rank the model's features by how much it "
+            "leaned on each one, as a chart where positive and negative "
+            "pull in opposite directions."
+        ),
+        "hints": [
+            "Each feature gets a coefficient: size = how much the model "
+            "used it, sign = which way it pushed.",
+            "Positive should push toward survival, negative away — a "
+            "diverging bar chart shows this well.",
+            "Every row must be explainable in words a 12-year-old gets — "
+            "no statistics jargon.",
+        ],
+        "guide": (
+            "**The model confirms what WE saw by eye in Stage 1: sex "
+            "dominates, class next — and it never saw our charts.** That "
+            "is the magic: the same patterns, rediscovered by "
+            "arithmetic.\n\n"
+            "*Discuss:* did any coefficient surprise you? Anything you "
+            "expected that the model ignored?\n\n"
+            "*Next up:* freeze the finished brain so the dashboard can "
+            "use it."
         ),
         "reference": (
             "Step 2, checkpoint 6: rank the features by how much the model "
@@ -326,7 +561,36 @@ STEPS = [
             "positive and negative pull in different directions. Explain "
             "each row in plain English -- no statistics jargon."
         ),
+        "reference_alt": (
+            "Show me which inputs the trained model leaned on most, in "
+            "a chart where positive and negative pull apart, explained "
+            "with zero jargon."
+        ),
+        "experiment": (
+            "Ask the AI to re-explain ONE coefficient as a story (\"for "
+            "every extra pound of fare, the model…\") — does the story "
+            "match the chart's arrow direction?"
+        ),
+        "context": (
+            "**How to READ a coefficient — worked example with a toy "
+            "model** (it predicts *will cheer at a football match*, not "
+            "survival):\n\n"
+            "| Clue | Coefficient | Plain English |\n"
+            "|---|---|---|\n"
+            "| home team winning | +2.1 | positive, strong → pushes toward "
+            "cheering |\n"
+            "| price of tickets | -1.4 | negative, strong → pushes away "
+            "from cheering |\n"
+            "| day of week | +0.1 | positive but tiny → barely matters |\n\n"
+            "Size = how much the model leans on it. Sign = which way it "
+            "pushes. Your checkpoint asks the AI to do the same reading "
+            "for the survival model."
+        ),
         "fn": "step_6_explain_model",
+        "placeholder": (
+            "e.g. “Show me which clues the model leaned on most and what "
+            "each one means…”"
+        ),
     },
     {
         "number": 7,
@@ -337,13 +601,26 @@ STEPS = [
             "on disk is what makes predictions reusable!"
         ),
         "prompt": (
-            "GOAL: freeze the trained brain into a file called "
-            "titanic_model.pkl so the dashboard step can wake it up later "
-            "-- model, scaler and feature list, packed in the shape the "
-            "next step expects. Then prove it's alive: invent one fresh "
-            "passenger (a 30-year-old woman in 1st class, say), predict "
-            "their chance of survival, and show it as a gauge with a "
-            "friendly, clear sentence."
+            "Ask the AI to save the trained brain to titanic_model.pkl, "
+            "then prove it's alive by predicting one fresh imaginary "
+            "passenger."
+        ),
+        "hints": [
+            "Everything needed must go in the file: model, scaler, and "
+            "the feature list.",
+            "Invent a fresh passenger to test — e.g. a 30-year-old woman "
+            "in 1st class.",
+            "Ask for the survival chance shown as a gauge with a friendly "
+            "sentence.",
+        ],
+        "guide": (
+            "**A saved model is a reusable brain: the file outlives this "
+            "notebook and can make predictions forever.** That's what "
+            "turns a school exercise into an app.\n\n"
+            "*Discuss:* your test passenger's odds — do they match your "
+            "gut feeling from Stage 1's charts?\n\n"
+            "*Next up:* Stage 3 — a web form anyone can use, no code "
+            "needed."
         ),
         "reference": (
             "Step 2, checkpoint 7 (last one!): save everything needed for "
@@ -353,7 +630,31 @@ STEPS = [
             "1st class, and show me the survival chance as a gauge. Make "
             "the message friendly and clear."
         ),
+        "reference_alt": (
+            "Save the model, scaler and feature list to "
+            "titanic_model.pkl, then prove it works by predicting a "
+            "30-year-old woman in 1st class with a survival gauge."
+        ),
+        "experiment": (
+            "Ask the AI to predict three very different imaginary "
+            "passengers from the saved file — do the odds line up with "
+            "what Stage 1's charts taught you?"
+        ),
+        "context": (
+            "**What goes into the freezer (a recipe card for the AI):**\n\n"
+            "1. the **model** — the learned pattern itself\n"
+            "2. the **scaler** — so future passengers get squeezed the "
+            "SAME way as the study group was\n"
+            "3. the **feature list** — the exact column order the model "
+            "expects\n\n"
+            "All three are packed into one file: `titanic_model.pkl`. "
+            "Forget one and whoever wakes it later gets nonsense."
+        ),
         "fn": "step_7_save_model",
+        "placeholder": (
+            "e.g. “Save the finished model to a file and prove it can "
+            "predict a brand-new passenger…”"
+        ),
     },
 ]
 
