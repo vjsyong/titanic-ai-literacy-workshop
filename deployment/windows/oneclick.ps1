@@ -597,6 +597,18 @@ function Test-WorkshopPackages {
 # the workshop scripts' pandas/scikit-learn stack is healthy. Once a
 # classroom venv has proven healthy we remember that and re-answer
 # instantly; a changed package list or recreated venv invalidates it.
+
+# StrictMode 2.0 turns reads of properties that don't exist on an object
+# into terminating errors. State files written by older bootstrap versions
+# may lack newer keys (e.g. "packages"), so always go through this helper.
+function Get-StateProperty {
+    param($Object, [string]$Name)
+    if ($null -eq $Object) { return $null }
+    $prop = $Object.PSObject.Properties[$Name]
+    if ($null -eq $prop) { return $null }
+    return $prop.Value
+}
+
 function Test-WorkshopPackagesFast {
     $stateFile = Join-Path $StateRoot "workshop-packages-ok.json"
 
@@ -610,7 +622,10 @@ function Test-WorkshopPackagesFast {
         }
     }
 
-    if ($state -and ($state.venv -eq $PythonVenvRoot) -and ($state.ok -eq $true) -and ($state.packages -eq $WorkshopPackageSignature)) {
+    if ($state -and
+        ((Get-StateProperty $state "venv") -eq $PythonVenvRoot) -and
+        ((Get-StateProperty $state "ok") -eq $true) -and
+        ((Get-StateProperty $state "packages") -eq $WorkshopPackageSignature)) {
         return $true
     }
 
@@ -1527,10 +1542,10 @@ function Test-OpenCodeProvider {
         try {
             $state = Get-Content -LiteralPath $OpenCodeProviderTestStateFile -Raw | ConvertFrom-Json
 
-            if (($state.fingerprint -eq $Fingerprint) -and
-                ($state.model -eq $OpenRouterModelRef) -and
-                ($state.opencodeVersion -eq $OpenCodeVersion) -and
-                ($state.success -eq $true)) {
+            if (((Get-StateProperty $state "fingerprint") -eq $Fingerprint) -and
+                ((Get-StateProperty $state "model") -eq $OpenRouterModelRef) -and
+                ((Get-StateProperty $state "opencodeVersion") -eq $OpenCodeVersion) -and
+                ((Get-StateProperty $state "success") -eq $true)) {
                 Write-OK "OpenCode-to-OpenRouter provider was previously validated"
                 return
             }
@@ -1595,10 +1610,10 @@ function Test-OpenRouterAPI {
         try {
             $state = Get-Content -LiteralPath $OpenRouterTestStateFile -Raw | ConvertFrom-Json
 
-            if (($state.fingerprint -eq $Fingerprint) -and
-                ($state.endpoint -eq $OpenRouterBaseUrl) -and
-                ($state.model -eq $OpenRouterModelId) -and
-                ($state.success -eq $true)) {
+            if (((Get-StateProperty $state "fingerprint") -eq $Fingerprint) -and
+                ((Get-StateProperty $state "endpoint") -eq $OpenRouterBaseUrl) -and
+                ((Get-StateProperty $state "model") -eq $OpenRouterModelId) -and
+                ((Get-StateProperty $state "success") -eq $true)) {
                 Write-OK "OpenRouter API credential was previously validated"
                 return
             }
