@@ -60,6 +60,11 @@ STEPS_COMPLETED = 0
 #   * Store anything later gates need in ARTIFACTS (e.g. ARTIFACTS["model"]).
 #   * When python 02_train.py runs cleanly, bump STEPS_COMPLETED to n.
 #   * NEVER touch a future gate (STOP-FIRST RULE applies).
+#   * The LOOK LIKE notes are the MINIMUM, not a blueprint. Compose each
+#     card your own way -- chart kind, text, metric mix are yours to
+#     choose, and two good assistants should NOT produce identical
+#     cards. Only MUST/Store items are rigid (later gates and the
+#     dashboard depend on them).
 # ============================================================================
 
 
@@ -67,10 +72,14 @@ STEPS_COMPLETED = 0
 def step_1_encode_sex():
     """Turn the Sex column into numbers the model can digest.
 
-    LOOK LIKE (web): a small preview table with both original Sex and the
-    new Sex column, plus one sentence about why numbers help a model.
-    TIP for the AI: keep it humble -- mapping 0/1 is arbitrary ordering,
-    which is exactly the discussion this gate is for.
+    MUST land: the translation must be visible and checkable (old words
+    next to new numbers, or equivalent), and the result stored for
+    later gates.
+    CHOOSE freely: preview table, value-counts table, before/after
+    chart -- your call. TIP: keep it humble -- mapping 0/1 is arbitrary
+    ordering, which is exactly the discussion this gate is for.
+    Store: the encoded data so later checkpoints can use it
+    (e.g. ARTIFACTS).
     """
     raise NotImplementedError("Gate 1 is not built yet")
 
@@ -79,9 +88,12 @@ def step_1_encode_sex():
 def step_2_pick_features():
     """Decide the feature columns X and the target y (Survived).
 
-    LOOK LIKE (web): the final feature list (Pclass, Sex-out, Age,
-    SibSp, Parch, Fare), a small preview table, and a friendly line about
-    'what we let the model see vs what we ask it to predict'.
+    MUST land: which columns feed the model, which column is the
+    answer, and a friendly line on 'what we let the model see vs what
+    we ask it to predict'. The reasoning matters more than the list
+    format.
+    CHOOSE freely: feature list, table, "allowed vs forbidden" split --
+    any presentation that makes the exclusions discussable.
     Store: ARTIFACTS["feature_columns"], ARTIFACTS["X"] and ARTIFACTS["y"].
     """
     raise NotImplementedError("Gate 2 is not built yet")
@@ -91,8 +103,10 @@ def step_2_pick_features():
 def step_3_split_data():
     """Split into train and test (80/20, stratify=y, random_state=42).
 
-    LOOK LIKE (web): how many passengers the model studies vs gets
-    quizzed on, plus why (fair test = no peeking).
+    MUST land: how many passengers the model studies vs gets quizzed
+    on, and why the test group stays hidden (fair test = no peeking).
+    CHOOSE freely: numbers, a visual split, a proportion gauge --
+    whatever sells the 80/20 idea.
     Store: ARTIFACTS["x_train"], ARTIFACTS["x_test"], ARTIFACTS["y_train"],
     ARTIFACTS["y_test"].
     """
@@ -103,9 +117,11 @@ def step_3_split_data():
 def step_4_scale_features():
     """Scale numeric features (StandardScaler: fit on train only; transform both).
 
-    LOOK LIKE (web): mean/mean-std style before-vs-after illustration
-    for at least one numeric column, and a plain-English line about why
-    huge fares should not crowd out small ages.
+    MUST land: a before-vs-after illustration for at least one numeric
+    column (the "same tube size" feeling), and a plain-English line
+    about why huge fares should not crowd out small ages.
+    CHOOSE freely: mean/std table, before/after mini-chart, a "both
+    columns whisper now" framing -- your call.
     Store: ARTIFACTS["scaler"], the scaled arrays, and any helper info
     that the dashboard needs (ARTIFACTS["scaler"] is used later).
     """
@@ -116,16 +132,10 @@ def step_4_scale_features():
 def step_5_train():
     """Train LogisticRegression(max_iter=1000) on the scaled train set.
 
-    LOOK LIKE (web): the headline the class earned, rendered as an
-    animated ring with workshop_steps.metric:
-
-        accuracy = ARTIFACTS["model"].score(
-            ARTIFACTS["x_test_scaled"], ARTIFACTS["y_test"])
-        return {
-            "text": "The model judges passengers it has never seen ...",
-            "metric": workshop_steps.metric(accuracy, "Test accuracy"),
-        }
-
+    MUST land: the test-set accuracy as the headline, rendered so the
+    whole class can cheer. workshop_steps.metric (animated ring) is the
+    natural hero -- but compose the card your way (add context, a
+    comparison, whatever earns the moment).
     Store: ARTIFACTS["model"] (and ARTIFACTS["test_accuracy"] if handy).
     """
     raise NotImplementedError("Gate 5 is not built yet")
@@ -135,18 +145,14 @@ def step_5_train():
 def step_6_explain_model():
     """Rank feature importance via LogisticRegression coefficients.
 
-    LOOK LIKE (web): a table of feature -> coefficient, PLUS a
-    horizontal diverging bar chart (positive values color one way,
-    negative the other) made with:
-
-        workshop_steps.chart(
-            kind="bar", data=coefs, x="Feature", y="Coefficient",
-            diverging=True, horizontal=True,
-        )
-
-    Explain in plain words (e.g. 'Sex' pushes women toward surviving;
-    'Pclass' pushes cheaper classes toward perishing). No jargon like
-    log-odds.
+    MUST land: how much the model leaned on each feature, which way
+    each pushed (toward/away from survival), explained in plain words
+    (e.g. 'Sex' pushes women toward surviving; 'Pclass' pushes cheaper
+    classes toward perishing). No jargon like log-odds.
+    CHOOSE freely: diverging bar chart, sorted table, "hero and
+    villain" framing -- pick the telling that lands. (A diverging
+    horizontal bar: workshop_steps.chart(kind="bar", ..., diverging=True,
+    horizontal=True) handles the colored sides for you.)
     """
     raise NotImplementedError("Gate 6 is not built yet")
 
@@ -155,18 +161,14 @@ def step_6_explain_model():
 def step_7_save_model():
     """Pickle the trained model, its scaler, and feature_columns together.
 
-    LOOK LIKE (web): a friendly confirmation that titanic_model.pkl is
-    ready for Step 3, plus ONE sample passenger verdict shown as an
-    animated gauge:
-
-        workshop_steps.chart(
-            kind="gauge", value=probability * 100,
-            title="First-class woman, 30: survival chance",
-        )
-
     MUST pickle a dict {"model": ..., "scaler": ..., "feature_columns": ...}
     to MODEL_PATH -- the Step 3 dashboard (03_dashboard.py) expects exactly
     that structure (this is the cross-script contract).
+
+    MUST land on the page: a friendly confirmation that titanic_model.pkl
+    is ready for Step 3, plus ONE sample passenger verdict. An animated
+    gauge (workshop_steps.chart(kind="gauge", value=probability*100, ...))
+    is the natural reveal -- the surrounding composition is yours.
     """
     raise NotImplementedError("Gate 7 is not built yet")
 
@@ -198,6 +200,9 @@ STEPS = [
             "The result must be kept for the checkpoints ahead — mention "
             "that.",
         ],
+        "context": pd.DataFrame(
+            {"Sex": ["female", "male"], "Passengers": [314, 577]}
+        ),
         "guide": (
             "**Models only do arithmetic, so words must become numbers.** "
             "Which number means which is arbitrary — 0 = female and 1 = "
@@ -214,6 +219,16 @@ STEPS = [
             "choice of scheme -- explain it), and show me a preview of the "
             "new column side by side with the original words. Store the "
             "results so the next checkpoints can use them."
+        ),
+        "reference_alt": (
+            "Create a numeric version of the Sex column in "
+            "data/titanic.csv (0 and 1), explain your mapping, and "
+            "preview it next to the original words."
+        ),
+        "experiment": (
+            "Ask the AI what would happen if you flipped the mapping "
+            "(male=0, female=1) — does the model actually care which "
+            "digit means which?"
         ),
         "fn": "step_1_encode_sex",
     },
@@ -236,6 +251,34 @@ STEPS = [
             "fare.",
             "Why are Name and PassengerId useless? Ask the AI to explain.",
         ],
+        "context": pd.DataFrame(
+            [
+                {"Column": "PassengerId", "Example": "1",
+                 "What it holds": "just a row number"},
+                {"Column": "Survived", "Example": "0 or 1",
+                 "What it holds": "the answer: did they make it?"},
+                {"Column": "Pclass", "Example": "1, 2 or 3",
+                 "What it holds": "ticket class (wealth proxy)"},
+                {"Column": "Name", "Example": "Braund, Mr. Owen Harris",
+                 "What it holds": "full name, with title"},
+                {"Column": "Sex", "Example": "male / female",
+                 "What it holds": "words — now numeric (checkpoint 1)"},
+                {"Column": "Age", "Example": "22.0 (some missing)",
+                 "What it holds": "age in years, babies included"},
+                {"Column": "SibSp", "Example": "0–8",
+                 "What it holds": "siblings/spouses aboard"},
+                {"Column": "Parch", "Example": "0–6",
+                 "What it holds": "parents/children aboard"},
+                {"Column": "Ticket", "Example": "A/5 21171",
+                 "What it holds": "free-text ticket code"},
+                {"Column": "Fare", "Example": "7.25 (up to 512)",
+                 "What it holds": "ticket price in pounds"},
+                {"Column": "Cabin", "Example": "C85 (mostly missing)",
+                 "What it holds": "cabin code"},
+                {"Column": "Embarked", "Example": "S / C / Q",
+                 "What it holds": "port of embarkation"},
+            ]
+        ),
         "guide": (
             "**Garbage in, garbage out: you just made the model's first "
             "big quality decision.** Name and PassengerId are labels, not "
@@ -252,6 +295,16 @@ STEPS = [
             "chosen feature columns and why we ignored things like Name. "
             "Remember to use the sex column you encoded in checkpoint 1, "
             "not the word version."
+        ),
+        "reference_alt": (
+            "Which columns from data/titanic.csv should the model use as "
+            "inputs, which column is the target, and why should Name and "
+            "PassengerId be left out?"
+        ),
+        "experiment": (
+            "Challenge the AI: could the title hidden in Name (Mr, Mrs, "
+            "Master) actually be a clue? Ask it — then judge its answer. "
+            "Was it a good reason to drop Name or not?"
         ),
         "fn": "step_2_pick_features",
     },
@@ -289,6 +342,16 @@ STEPS = [
             "each, and explain in one friendly line why we hide the test "
             "set from training."
         ),
+        "reference_alt": (
+            "Split the passengers 80/20 into training and test groups, "
+            "tell me the sizes, and explain why the test set stays "
+            "sealed until the end."
+        ),
+        "experiment": (
+            "Ask the AI to show how many Survived=1 vs Survived=0 "
+            "passengers landed in each group — roughly equal? Why would "
+            "a lopsided exam be unfair?"
+        ),
         "fn": "step_3_split_data",
     },
     {
@@ -311,6 +374,15 @@ STEPS = [
             "Ask to see one column before and after, so you can feel the "
             "change (mean near 0).",
         ],
+        "context": pd.DataFrame(
+            [
+                {"Feature": "Age", "Smallest value": 0.42, "Largest value": 80.0},
+                {"Feature": "Fare", "Smallest value": 0.0, "Largest value": 512.33},
+                {"Feature": "SibSp", "Smallest value": 0, "Largest value": 8},
+                {"Feature": "Parch", "Smallest value": 0, "Largest value": 6},
+                {"Feature": "Pclass", "Smallest value": 1, "Largest value": 3},
+            ]
+        ),
         "guide": (
             "**After scaling, every feature speaks at the same volume — "
             "mean ≈ 0, spread ≈ 1.** Without it, a model can mistake big "
@@ -325,6 +397,16 @@ STEPS = [
             "(fit on the train set only -- no peeking). Show me one "
             "numeric column before and after scaling so I can feel the "
             "difference (mean ~ 0). Keep the scaler handy for later."
+        ),
+        "reference_alt": (
+            "Scale the numeric features with the scaler fitted on the "
+            "training group only, show me one column before and after, "
+            "and keep the scaler safe for the dashboard."
+        ),
+        "experiment": (
+            "Ask the AI to prove the scaling worked: what is the MEAN of "
+            "a scaled column? (Spoiler: about 0.) Why is that number the "
+            "receipt that it worked?"
         ),
         "fn": "step_4_scale_features",
     },
@@ -366,6 +448,16 @@ STEPS = [
             "guesses were on the test set -- display the score as a big "
             "animated number/ring so the class can cheer."
         ),
+        "reference_alt": (
+            "Train a logistic regression model on the prepared data and "
+            "show me its accuracy on the unseen test passengers as a "
+            "big animated score."
+        ),
+        "experiment": (
+            "Ask the AI: what accuracy would a LAZY model get by always "
+            "guessing 'perished'? Compare it with your ring — how much "
+            "better is your model, really?"
+        ),
         "fn": "step_5_train",
     },
     {
@@ -406,6 +498,16 @@ STEPS = [
             "positive and negative pull in different directions. Explain "
             "each row in plain English -- no statistics jargon."
         ),
+        "reference_alt": (
+            "Show me which inputs the trained model leaned on most, in "
+            "a chart where positive and negative pull apart, explained "
+            "with zero jargon."
+        ),
+        "experiment": (
+            "Ask the AI to re-explain ONE coefficient as a story (\"for "
+            "every extra pound of fare, the model…\") — does the story "
+            "match the chart's arrow direction?"
+        ),
         "fn": "step_6_explain_model",
     },
     {
@@ -445,6 +547,16 @@ STEPS = [
             "predicting one fresh passenger, e.g. a 30-year-old woman in "
             "1st class, and show me the survival chance as a gauge. Make "
             "the message friendly and clear."
+        ),
+        "reference_alt": (
+            "Save the model, scaler and feature list to "
+            "titanic_model.pkl, then prove it works by predicting a "
+            "30-year-old woman in 1st class with a survival gauge."
+        ),
+        "experiment": (
+            "Ask the AI to predict three very different imaginary "
+            "passengers from the saved file — do the odds line up with "
+            "what Stage 1's charts taught you?"
         ),
         "fn": "step_7_save_model",
     },

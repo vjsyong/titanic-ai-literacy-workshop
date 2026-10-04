@@ -8,6 +8,7 @@ import {
   Lightbulb,
   Lock,
   PenLine,
+  Repeat,
   Unlock,
 } from "lucide-react";
 import type { StepState } from "../types";
@@ -15,10 +16,13 @@ import { ResultBlocks, Markdown } from "./ResultBlocks";
 
 // ---------------------------------------------------------------------------
 // Attempt-to-unlock: the reference prompt stays hidden until the student has
-// written their own request. The unlock persists per step in localStorage.
+// written their own request. The unlock persists per step in localStorage,
+// and so does the student's draft -- it becomes the reflection material on
+// the completed card ("your words vs the reference").
 // ---------------------------------------------------------------------------
 
 const UNLOCK_KEY = "titanic-unlocked-references";
+const DRAFT_KEY = "titanic-prompt-drafts";
 const MIN_WORDS = 6;
 const MIN_CHARS = 30;
 
@@ -43,13 +47,44 @@ function persistUnlock(key: string) {
   }
 }
 
+function readDrafts(): Record<string, string> {
+  try {
+    return JSON.parse(localStorage.getItem(DRAFT_KEY) ?? "{}") as Record<
+      string,
+      string
+    >;
+  } catch {
+    return {};
+  }
+}
+
+function persistDraft(key: string, draft: string) {
+  try {
+    const all = readDrafts();
+    if (draft.trim()) {
+      all[key] = draft;
+    } else {
+      delete all[key];
+    }
+    localStorage.setItem(DRAFT_KEY, JSON.stringify(all));
+  } catch {
+    // private mode etc. — the draft just won't survive a reload
+  }
+}
+
 function isMeaningful(draft: string): boolean {
   const trimmed = draft.trim();
   const words = trimmed.split(/\s+/).filter(Boolean).length;
   return trimmed.length >= MIN_CHARS && words >= MIN_WORDS;
 }
 
-function ReferencePanel({ reference }: { reference: string }) {
+function ReferencePanel({
+  reference,
+  alt,
+}: {
+  reference: string;
+  alt?: string;
+}) {
   const [copied, setCopied] = useState(false);
 
   const copy = async () => {
@@ -81,6 +116,14 @@ function ReferencePanel({ reference }: { reference: string }) {
       <p className="mt-2 text-sm italic leading-relaxed text-ink">
         “{reference}”
       </p>
+      {alt && (
+        <div className="mt-3 border-t border-line pt-3">
+          <span className="micro-label text-dim">Another way to ask</span>
+          <p className="mt-1.5 text-sm italic leading-relaxed text-dim">
+            “{alt}”
+          </p>
+        </div>
+      )}
       <p className="mt-2 text-xs text-dim">
         Yours counts too — send whichever you prefer (or your own words).
       </p>
@@ -103,6 +146,11 @@ function PromptWorkshop({
 
   const meaningful = isMeaningful(draft);
   const attempted = draft.trim().length > 0;
+
+  const updateDraft = (value: string) => {
+    setDraft(value);
+    persistDraft(storageKey, value);
+  };
 
   const unlock = () => {
     if (!meaningful) return;
@@ -135,7 +183,7 @@ function PromptWorkshop({
 
       {unlocked ? (
         <div className="mt-3">
-          <ReferencePanel reference={step.reference} />
+          <ReferencePanel reference={step.reference} alt={step.reference_alt} />
         </div>
       ) : (
         <div className="mt-3">
@@ -149,7 +197,7 @@ function PromptWorkshop({
               "What would YOU ask the assistant? e.g. “Look at the passenger list and …”"
             }
             value={draft}
-            onChange={(event) => setDraft(event.target.value)}
+            onChange={(event) => updateDraft(event.target.value)}
           />
           <div className="mt-2 flex flex-wrap items-center gap-3">
             <button
@@ -172,6 +220,37 @@ function PromptWorkshop({
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+function PromptReflection({
+  step,
+  scriptId,
+}: {
+  step: StepState;
+  scriptId: string;
+}) {
+  const draft = readDrafts()[`${scriptId}:${step.number}`]?.trim();
+  if (!draft || draft.length < MIN_CHARS) return null;
+  if (draft === step.reference.trim()) return null;
+
+  return (
+    <div className="mt-4 border border-line bg-[#fcfcfc] p-4">
+      <div className="micro-label flex items-center gap-1.5 text-dim">
+        <PenLine className="h-3.5 w-3.5" />
+        Your words vs the reference
+      </div>
+      <p className="mt-2 text-sm italic leading-relaxed text-ink">
+        You asked: “{draft}”
+      </p>
+      <p className="mt-1.5 text-sm italic leading-relaxed text-dim">
+        The reference asked: “{step.reference}”
+      </p>
+      <p className="mt-2 text-xs text-dim">
+        Same checkpoint, two phrasings — what would you change in yours
+        next time? More specific? A clearer output? A sharper goal?
+      </p>
     </div>
   );
 }
@@ -223,6 +302,14 @@ export function StepCard({
           {step.title}
         </h3>
         <p className="mt-2 text-sm leading-relaxed text-dim">{step.story}</p>
+        {step.context && (
+          <div className="mt-3">
+            <div className="micro-label mb-1.5 text-dim">
+              The raw material you're deciding about
+            </div>
+            <ResultBlocks result={step.context} />
+          </div>
+        )}
         <PromptWorkshop step={step} scriptId={scriptId} />
       </div>
     );
@@ -243,6 +330,7 @@ export function StepCard({
       ) : (
         <p className="text-sm text-faint">No output for this step.</p>
       )}
+      {!step.error && <PromptReflection step={step} scriptId={scriptId} />}
       {step.guide && !step.error && (
         <div className="mt-4 border border-ok bg-tint-ok p-4">
           <div className="micro-label flex items-center gap-1.5 text-ok">
@@ -252,6 +340,17 @@ export function StepCard({
           <div className="mt-1.5">
             <Markdown text={step.guide} />
           </div>
+          {step.experiment && (
+            <div className="mt-3 border-t border-ok/25 pt-3">
+              <div className="micro-label flex items-center gap-1.5 text-ok">
+                <Repeat className="h-3.5 w-3.5" />
+                Try this next
+              </div>
+              <p className="mt-1.5 text-sm leading-relaxed text-ink">
+                {step.experiment}
+              </p>
+            </div>
+          )}
         </div>
       )}
     </div>

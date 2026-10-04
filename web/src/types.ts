@@ -69,7 +69,10 @@ export interface StepState {
   prompt: string;
   hints: string[];
   guide: string;
+  experiment: string;
+  context: Result | null;
   reference: string;
+  reference_alt: string;
   status: StepStatus;
   result: Result | null;
   error: string | null;

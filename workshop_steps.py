@@ -38,6 +38,17 @@ WHAT A GATE FUNCTION RETURNS (the payload vocabulary)
     Any combination of "text", "dataframe", "chart" and "metric" keys in
     one dict renders together on the page, in that order.
 
+OPTIONAL STEP-DESCRIPTION KEYS (read by the page, not the gates):
+    "hints":   list of short strings shown under the mission on the
+               current card ("Stuck? Think about...").
+    "guide":   teacher debrief shown under the result once the step
+               completes ("What to notice").
+    "context": prep material for a decision the student must make --
+               a DataFrame, string, or result dict rendered on the
+               current card above the mission ("The raw material").
+               Use it whenever a checkpoint asks the student to decide
+               something about data they cannot currently see.
+
 CHART KINDS
     bar, pictorial (person icons), line, area, scatter (zoomable),
     pie, donut, histogram, gauge, heatmap.

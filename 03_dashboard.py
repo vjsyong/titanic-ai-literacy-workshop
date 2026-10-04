@@ -74,6 +74,11 @@ DEFAULT_INPUT_SPEC = [
 #     which earlier step to finish -- do NOT raise on missing files.
 #   * Bump STEPS_COMPLETED (one at a time) after the web page shows the
 #     gate working.
+#   * The LOOK LIKE notes are the MINIMUM, not a blueprint. Compose each
+#     card your own way -- chart kind, text and metric mix are yours to
+#     choose, and two good assistants should NOT produce identical
+#     cards. Only the MUST/contract items (input_spec, predict, pkl)
+#     are rigid: the page plumbing depends on them.
 # ============================================================================
 
 
@@ -123,10 +128,12 @@ def step_3_wire_prediction():
 def step_4_kind_verdicts():
     """Reword the verdict so it is never scary: 3 probability bands.
 
-    LOOK LIKE: a small table bands -> wording tone. Re-place
-    ARTIFACTS["predict"] with a version that uses the kinder wording,
-    then re-run one example on the real model to show the new text.
-    The gauge color follows the band, so label them clearly.
+    MUST: re-place ARTIFACTS["predict"] with a version using the kinder
+    wording, and re-run one example on the real model to show the new
+    voice. The gauge color follows the band, so label the bands clearly.
+    CHOOSE freely: how you present the three bands (a bands->tone
+    table, before/after verdicts at different probabilities, live
+    examples) -- your call.
     """
     raise NotImplementedError("Gate 4 is not built yet")
 
@@ -135,10 +142,13 @@ def step_4_kind_verdicts():
 def step_5_black_box_tests():
     """Probe the model with imaginary passengers and discuss unfairness.
 
-    LOOK LIKE: a table of at least 6 imaginary passengers, each with the
-    live verdict, PLUS an interactive bar chart comparing their survival
-    probabilities (0-100), plus 2-3 plain-English questions for class
+    MUST: at least 6 imaginary passengers who differ sharply, each with
+    their live verdict, plus 2-3 plain-English questions for class
     discussion (is any pattern unfair? what does the model NOT see?).
+    CHOOSE freely: table + bar chart of survival probabilities is one
+    strong shape; a "case files" style card, a comparison matrix, or
+    provocative pairs (same person, one attribute flipped) also work --
+    pick the staging that sparks the argument.
     """
     raise NotImplementedError("Gate 5 is not built yet")
 
@@ -178,6 +188,16 @@ STEPS = [
             "fixed test passenger. If the file is missing, tell me kindly "
             "which Step 2 checkpoint to finish first instead of crashing."
         ),
+        "reference_alt": (
+            "Load titanic_model.pkl and predict one fixed passenger "
+            "with it; if the file is missing, show a kind message "
+            "pointing to Stage 2's last checkpoint."
+        ),
+        "experiment": (
+            "Ask the AI to wake the brain twice and predict the same "
+            "passenger both times — are the answers identical? Why "
+            "should they be?"
+        ),
         "fn": "step_1_wake_the_brain",
     },
     {
@@ -200,6 +220,17 @@ STEPS = [
             "The plan must be stored where the page can find it — say so "
             "in your request.",
         ],
+        "context": pd.DataFrame(
+            [
+                {"Field": "Pclass", "Example value": "1, 2 or 3"},
+                {"Field": "Sex", "Example value": "male / female"},
+                {"Field": "Age", "Example value": "22.0 (babies to 80)"},
+                {"Field": "SibSp", "Example value": "0–8"},
+                {"Field": "Parch", "Example value": "0–6"},
+                {"Field": "Fare", "Example value": "7.25–512.33"},
+                {"Field": "Embarked", "Example value": "S / C / Q"},
+            ]
+        ),
         "guide": (
             "**A good form hides the machinery: classmates will use it "
             "without ever seeing a number pipeline.** Designing sensible "
@@ -215,6 +246,16 @@ STEPS = [
             "each attribute tell me if it should be a dropdown/slider and "
             "what sensible range or choices to give it, and store this "
             "plan where the page can find it."
+        ),
+        "reference_alt": (
+            "Propose the passenger form: for each field pick a dropdown "
+            "or a slider with sensible ranges, and store the plan where "
+            "the page can use it."
+        ),
+        "experiment": (
+            "Ask the AI what happens if a user drags the age slider to "
+            "110 — should the form allow impossible values? Decide a "
+            "rule together."
         ),
         "fn": "step_2_design_the_form",
     },
@@ -256,6 +297,16 @@ STEPS = [
             "show the survival probability as a gauge with a human "
             "sentence. Show me one live example straight from the model."
         ),
+        "reference_alt": (
+            "Connect the form to the saved model: encode sex exactly as "
+            "trained, apply the scaler, and show each prediction as a "
+            "gauge with one human sentence."
+        ),
+        "experiment": (
+            "Predict the same passenger twice through the form — "
+            "identical gauge both times? If not, ask the AI what's "
+            "leaking."
+        ),
         "fn": "step_3_wire_prediction",
     },
     {
@@ -291,6 +342,16 @@ STEPS = [
             "define three probability bands (e.g. unlikely, close call, "
             "likely) and reword the verdicts. Re-run one example on the "
             "live model to show the friendlier message."
+        ),
+        "reference_alt": (
+            "Sort the survival chances into three friendly bands (e.g. "
+            "unlikely, close call, likely), reword the verdicts, and "
+            "demo one on the live model."
+        ),
+        "experiment": (
+            "Ask the AI to show the SAME probability worded in all three "
+            "bands — where does 'close call' start and end? Are the "
+            "band edges honest?"
         ),
         "fn": "step_4_kind_verdicts",
     },
@@ -333,6 +394,16 @@ STEPS = [
             "class), show their verdicts in a table AND as a bar chart of "
             "their survival chances, and give me two or three discussion "
             "questions about fairness and what the data cannot tell us."
+        ),
+        "reference_alt": (
+            "Test the model with six or more very different imaginary "
+            "passengers, chart their survival odds, and give the class "
+            "2–3 fairness questions to argue about."
+        ),
+        "experiment": (
+            "Flip ONE attribute at a time (same person, female→male, "
+            "then 1st→3rd class) — how far does the verdict move? Which "
+            "single attribute moves it most?"
         ),
         "fn": "step_5_black_box_tests",
     },

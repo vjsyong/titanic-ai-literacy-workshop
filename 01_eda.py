@@ -58,6 +58,10 @@ STEPS_COMPLETED = 1
 #   * When python 01_eda.py runs cleanly, bump STEPS_COMPLETED to n.
 #   * NEVER touch a future gate. If the student asks, apply the workshop
 #     STOP-FIRST RULE instead of implementing.
+#   * The LOOK LIKE notes are the MINIMUM, not a blueprint. Compose each
+#     card your own way -- pick the chart kind, text and metric mix that
+#     tells the story best. Two good assistants should NOT produce
+#     identical cards. Only the MUST/contract items are rigid.
 # ============================================================================
 
 
@@ -95,7 +99,11 @@ def step_1_open_the_list():
 def step_2_find_missing_values():
     """Show how many missing values each column has.
 
-    LOOK LIKE (web): a small table of column -> number of holes.
+    MUST land: the per-column hole counts, with the emptiest column
+    impossible to miss.
+    CHOOSE freely: a table, a sorted bar chart, a "completeness meter",
+    whatever makes gaps visceral for a first-year audience.
+
     NOTE for the classroom: data/titanic.csv is the ORIGINAL 1912
     passenger list, holes and all (Age, Cabin and Embarked all have
     gaps -- Cabin is mostly empty). A nice discussion question is:
@@ -109,9 +117,11 @@ def step_2_find_missing_values():
 def step_3_survival_overview():
     """Count survivors vs non-survivors and their shares.
 
-    LOOK LIKE (web): a tiny table (Perished vs Survived, counts and %).
-    TIP: the student should GUESS the split out loud first. A pie or
-    donut chart of the two shares is a fun extra.
+    MUST land: the perished-vs-survived counts AND percentages.
+    CHOOSE freely: table, pie, donut, gauge, a metric ring pair --
+    whatever dramatizes "fewer than half made it". (TIP: the student
+    should GUESS the split out loud first, so a reveal-style card works
+    nicely.)
     """
     raise NotImplementedError("Gate 3 is not built yet")
 
@@ -120,26 +130,14 @@ def step_3_survival_overview():
 def step_4_survival_by_sex():
     """Chart of survival counts split by male/female.
 
-    LOOK LIKE (web): an interactive chart plus one friendly caption
-    sentence. The page can draw eye-catching person-icon bars:
-
-        df = pd.read_csv(DATA_PATH)
-        by_sex = (
-            df.groupby(["Sex", "Survived"]).size()
-            .unstack(fill_value=0)
-            .rename(columns={0: "Perished", 1: "Survived"})
-            .reset_index()
-        )
-        return {
-            "text": "Women survived far more often ...",
-            "chart": workshop_steps.chart(
-                kind="pictorial", data=by_sex, x="Sex",
-                series=["Survived", "Perished"], stacked=True,
-                title="Survival by sex",
-            ),
-        }
-
-    (kind="bar" with the same data works too.)
+    MUST land: the female-vs-male survival comparison, plus ONE
+    plain-English takeaway sentence (the pattern itself, not a chart
+    description).
+    CHOOSE freely: person-icon pictorial bars, side-by-side or stacked
+    bars, percentages vs raw counts, a metric per group -- your call.
+    Data wrinkle if useful: Survived is 0/1, so a
+    groupby(["Sex","Survived"]).size().unstack() + renaming is the
+    standard shape-up; how you present it is up to you.
     """
     raise NotImplementedError("Gate 4 is not built yet")
 
@@ -148,9 +146,11 @@ def step_4_survival_by_sex():
 def step_5_survival_by_class():
     """Chart of survival counts split by Pclass 1/2/3.
 
-    LOOK LIKE (web): an interactive chart plus a caption sentence.
-    Group by ["Pclass", "Survived"], rename 0/1 to Perished/Survived,
-    and feed it to workshop_steps.chart(kind="bar", ..., stacked=True).
+    MUST land: survival compared across all three classes, plus a
+    caption of what stands out.
+    CHOOSE freely: stacked bars, grouped bars, a survival-rate-per-class
+    pictorial, percentages or counts. Data wrinkle: same 0/1 Survived
+    shape-up as the previous gate; rename 0/1 to Perished/Survived.
     """
     raise NotImplementedError("Gate 5 is not built yet")
 
@@ -159,27 +159,17 @@ def step_5_survival_by_class():
 def step_6_age_patterns():
     """Explore age as a survival pattern with one interactive chart.
 
-    LOOK LIKE (web): one chart of your choice about age plus one
-    plain-English takeaway sentence the class can discuss. A zoomable
-    scatter is a great choice -- students can brush into the crowd:
+    MUST land: one chart about age & survival, plus one plain-English
+    takeaway sentence the class can discuss.
+    CHOOSE freely: zoomable scatter (Age vs Fare, colored by survival),
+    age-group bars, overlaid age histograms, a "children vs adults"
+    pictorial -- pick what you think reads best for this crowd.
 
-        df = pd.read_csv(DATA_PATH)
-        points = df[["Age", "Fare", "Survived"]].dropna()
-        points["Outcome"] = points["Survived"].map({0: "Perished", 1: "Survived"})
-        return {
-            "text": "One plain-English takeaway ...",
-            "chart": workshop_steps.chart(
-                kind="scatter", data=points, x="Age", y="Fare",
-                color="Outcome", title="Age vs fare, colored by survival",
-            ),
-        }
-
-    IMPORTANT (data-literacy moment, keep even if the chart changes):
-    the scatter can look messy and crowded. The returned text MUST end
-    by inviting the class to judge the chart itself: ask them whether a
-    scatter is really the right picture for 891 people, and suggest
-    asking the AI Teaching Assistant to propose something easier to
-    read (e.g. a histogram or age-group bars) if it feels hard to
+    IMPORTANT (data-literacy moment, keep whatever you build): the
+    returned text MUST end by inviting the class to judge the chart
+    itself: ask them whether that chart type is really the right
+    picture for 891 people, and suggest asking the AI Teaching
+    Assistant to propose something easier to read if it feels hard to
     interpret. Changing the chart type afterwards is encouraged -- it
     teaches that a graph is a design choice, not a given.
     """
@@ -223,6 +213,15 @@ STEPS = [
             "tell me how many passengers it holds and what details we know "
             "about each person, and show me the first few rows as a table."
         ),
+        "reference_alt": (
+            "Load data/titanic.csv with pandas and show me the number of "
+            "passengers, the column names, and a preview of the first "
+            "five rows."
+        ),
+        "experiment": (
+            "Ask the AI to show the LAST few rows instead of the first "
+            "few — does anything at the end of the list surprise you?"
+        ),
         "fn": "step_1_open_the_list",
     },
     {
@@ -244,6 +243,18 @@ STEPS = [
             "look!",
             "Ask for the emptiest column to jump out of the table.",
         ],
+        "context": pd.DataFrame(
+            [
+                {"PassengerId": 1, "Name": "Braund, Mr. Owen Harris",
+                 "Age": 22.0, "Cabin": None, "Embarked": "S"},
+                {"PassengerId": 3, "Name": "Heikkinen, Miss. Laina",
+                 "Age": 26.0, "Cabin": None, "Embarked": "S"},
+                {"PassengerId": 6, "Name": "Moran, Mr. James",
+                 "Age": None, "Cabin": None, "Embarked": "Q"},
+                {"PassengerId": 18, "Name": "Williams, Mr. Charles Eugene",
+                 "Age": None, "Cabin": None, "Embarked": "S"},
+            ]
+        ),
         "guide": (
             "**Real data is messy: Age is missing for ~177 passengers and "
             "Cabin for ~687.** Holes happen — unfinished records, lost "
@@ -256,6 +267,15 @@ STEPS = [
         "reference": (
             "Check data/titanic.csv for missing values in every column and "
             "show me a table of how many holes each column has."
+        ),
+        "reference_alt": (
+            "Tell me which columns in data/titanic.csv have missing "
+            "values and how many, ordered from most incomplete to least."
+        ),
+        "experiment": (
+            "Ask the AI to double-check one column's hole count a second "
+            "way (e.g. counting the cells that ARE filled, 891 minus "
+            "that). Do both methods agree?"
         ),
         "fn": "step_2_find_missing_values",
     },
@@ -287,6 +307,16 @@ STEPS = [
         "reference": (
             "Count how many passengers perished and how many survived, and "
             "show me both numbers with their percentages."
+        ),
+        "reference_alt": (
+            "What fraction of passengers survived, according to "
+            "data/titanic.csv? Show me survivors and victims in numbers "
+            "and in percent."
+        ),
+        "experiment": (
+            "Ask the AI to show the same split as a donut instead of "
+            "numbers — does a picture change how the room FEELS about "
+            "38%?"
         ),
         "fn": "step_3_survival_overview",
     },
@@ -324,6 +354,16 @@ STEPS = [
             "person-icon bars -- and describe the pattern in one friendly "
             "sentence."
         ),
+        "reference_alt": (
+            "Compare survival rates for female and male passengers from "
+            "data/titanic.csv in one visual the whole class can read "
+            "from the back row, and state the pattern in one sentence."
+        ),
+        "experiment": (
+            "Ask the AI to redraw the exact same comparison in a "
+            "different style (person icons instead of bars, or bars "
+            "instead of icons) — which version tells the story better?"
+        ),
         "fn": "step_4_survival_by_sex",
     },
     {
@@ -355,6 +395,16 @@ STEPS = [
         "reference": (
             "Draw a chart of survival by ticket class (1, 2, 3) and tell "
             "me what stands out."
+        ),
+        "reference_alt": (
+            "Group data/titanic.csv by ticket class and show me the "
+            "survival percentage for each of the three classes in one "
+            "chart."
+        ),
+        "experiment": (
+            "Make the AI verify its own chart: ask it to print the exact "
+            "survival percentage for each class — does the survived "
+            "share really fall from 1st to 3rd?"
         ),
         "fn": "step_5_survival_by_class",
     },
@@ -393,6 +443,15 @@ STEPS = [
             "colored by survival), give me one plain-English takeaway, "
             "and tell me whether that chart type was a good choice for "
             "this data or suggest an easier-to-read alternative."
+        ),
+        "reference_alt": (
+            "Is age related to survival in data/titanic.csv? Show me one "
+            "clear chart and finish with a single takeaway sentence."
+        ),
+        "experiment": (
+            "Ask the AI for an easier-to-read age chart (say, age-group "
+            "bars instead of a scatter) — did changing the design change "
+            "what the class can actually see?"
         ),
         "fn": "step_6_age_patterns",
     },
