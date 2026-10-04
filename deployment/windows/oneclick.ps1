@@ -2505,10 +2505,12 @@ function New-SeedSession {
     Write-Section "Seeding the $SeedSessionTitle session"
 
     $base = "http://127.0.0.1:{0}" -f $Port
+    # Build the user:password pair in a variable: inside .NET method-call
+    # parentheses, a comma is an argument separator, NOT the -f operand
+    # array -- inlining it above crashed string formatting at runtime.
+    $userPasswordPair = "{0}:{1}" -f $Credentials.username, $Credentials.password
     $basicAuth = "Basic " + [Convert]::ToBase64String(
-        [Text.Encoding]::ASCII.GetBytes(
-            "{0}:{1}" -f $Credentials.username, $Credentials.password
-        )
+        [Text.Encoding]::ASCII.GetBytes($userPasswordPair)
     )
     $headers = @{ Authorization = $basicAuth }
 
