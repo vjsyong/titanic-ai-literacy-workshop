@@ -3,6 +3,7 @@ import {
   AlertTriangle,
   Check,
   CheckCircle2,
+  Compass,
   Copy,
   Lightbulb,
   Lock,
@@ -10,7 +11,7 @@ import {
   Unlock,
 } from "lucide-react";
 import type { StepState } from "../types";
-import { ResultBlocks } from "./ResultBlocks";
+import { ResultBlocks, Markdown } from "./ResultBlocks";
 
 // ---------------------------------------------------------------------------
 // Attempt-to-unlock: the reference prompt stays hidden until the student has
@@ -120,6 +121,16 @@ function PromptWorkshop({
         <p className="mt-1.5 text-sm leading-relaxed text-ink">
           {step.prompt}
         </p>
+        {step.hints.length > 0 && (
+          <div className="mt-2.5 border-t border-acc/20 pt-2.5">
+            <div className="micro-label text-dim">Stuck? Think about…</div>
+            <ul className="mt-1 list-disc space-y-0.5 pl-5 text-sm leading-relaxed text-[#3f3f46]">
+              {step.hints.map((hint, index) => (
+                <li key={index}>{hint}</li>
+              ))}
+            </ul>
+          </div>
+        )}
       </div>
 
       {unlocked ? (
@@ -231,6 +242,17 @@ export function StepCard({
         <ResultBlocks result={step.result} />
       ) : (
         <p className="text-sm text-faint">No output for this step.</p>
+      )}
+      {step.guide && !step.error && (
+        <div className="mt-4 border border-ok bg-tint-ok p-4">
+          <div className="micro-label flex items-center gap-1.5 text-ok">
+            <Compass className="h-3.5 w-3.5" />
+            What to notice — teacher's debrief
+          </div>
+          <div className="mt-1.5">
+            <Markdown text={step.guide} />
+          </div>
+        </div>
       )}
     </div>
   );

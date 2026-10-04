@@ -249,6 +249,8 @@ def _describe_script(script, module):
             "title": str(step.get("title", f"Step {number}")),
             "story": str(step.get("story", "")),
             "prompt": str(step.get("prompt", "")),
+            "hints": [str(hint) for hint in (step.get("hints") or [])],
+            "guide": str(step.get("guide", "")),
             "reference": str(step.get("reference", "")),
             "status": "locked",
             "result": None,

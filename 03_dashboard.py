@@ -155,11 +155,22 @@ STEPS = [
             "here and check that it gives sensible guesses."
         ),
         "prompt": (
-            "GOAL: wake the frozen brain from Step 2 (titanic_model.pkl) "
-            "and prove it still works on one fixed test passenger. Plan "
-            "for trouble too: the file only exists once Step 2 is "
-            "finished -- what should the page say if it's missing? (Hint: "
-            "something kinder than a crash.)"
+            "Ask the AI to wake the frozen brain from titanic_model.pkl "
+            "and prove it works on one fixed test passenger."
+        ),
+        "hints": [
+            "The file only exists once Stage 2's last checkpoint is done.",
+            "If it's missing, the page should say something kind — not "
+            "crash. Ask for that explicitly.",
+            "One fixed test passenger is enough proof of life.",
+        ],
+        "guide": (
+            "**Reusing a saved model is the industry norm: train once, "
+            "predict everywhere.** The brain on disk is exactly the one "
+            "that scored ~80% on its hidden exam.\n\n"
+            "*Discuss:* what should an app do when a dependency is "
+            "missing? Crashing is easy; a kind message is design.\n\n"
+            "*Next up:* design the form classmates will play with."
         ),
         "reference": (
             "Step 3 of the workshop, checkpoint 1: load the saved model "
@@ -178,12 +189,26 @@ STEPS = [
             "for the numbers) with human-friendly ranges."
         ),
         "prompt": (
-            "GOAL: design the passenger form the class will play with. "
-            "For every attribute of a passenger, decide the friendliest "
-            "control: a dropdown with which choices, or a slider over "
-            "which range? Think about what values make sense (ages 0-80? "
-            "classes 1/2/3?). The plan needs to be stored where the page "
-            "can find it."
+            "Ask the AI to design the passenger form: for each attribute, "
+            "which control (dropdown or slider) and which sensible "
+            "choices or range."
+        ),
+        "hints": [
+            "Ticket class and sex suit dropdowns/radios — age and fare "
+            "suit sliders.",
+            "Think about sensible ranges: ages 0–80? classes 1/2/3?",
+            "The plan must be stored where the page can find it — say so "
+            "in your request.",
+        ],
+        "guide": (
+            "**A good form hides the machinery: classmates will use it "
+            "without ever seeing a number pipeline.** Designing sensible "
+            "defaults (not ages 0–500!) is real product thinking.\n\n"
+            "*Discuss:* which attribute would you REMOVE from the form to "
+            "keep it friendly? Fewer, well-chosen inputs often beat "
+            "complete ones.\n\n"
+            "*Next up:* wire the form to the brain so Predict actually "
+            "predicts."
         ),
         "reference": (
             "Step 3, checkpoint 2: propose the passenger web form -- for "
@@ -203,12 +228,26 @@ STEPS = [
             "its coded digit before reaching the model."
         ),
         "prompt": (
-            "GOAL: connect the form to the brain so the Predict button "
-            "actually works. Careful: the form's words (female/male) must "
-            "be translated back to numbers EXACTLY the way Step 2 chose, "
-            "and the stored scaler must be applied before predicting. The "
-            "verdict should appear as a survival gauge plus one human "
-            "sentence. Decide how you'd prove it's live."
+            "Ask the AI to connect the form to the model so the Predict "
+            "button produces a live survival gauge plus a human sentence."
+        ),
+        "hints": [
+            "The form's words (female/male) must become numbers EXACTLY "
+            "the way Stage 2 chose.",
+            "The stored scaler must be applied before predicting — same "
+            "rule as training time.",
+            "Ask for one live example straight from the model to prove "
+            "it's real.",
+        ],
+        "guide": (
+            "**The full pipeline runs on every click: translate words → "
+            "scale → predict.** It's the exact journey of Stage 2, now "
+            "invisible and instant.\n\n"
+            "*Discuss:* what happens if the form's encoding drifts even "
+            "slightly from training-time encoding? (Garbage in, garbage "
+            "out — quietly.)\n\n"
+            "*Next up:* the raw probability can sting — time to choose "
+            "kinder words."
         ),
         "reference": (
             "Step 3, checkpoint 3: connect the form to the model so the "
@@ -228,11 +267,24 @@ STEPS = [
             "for low, medium and high probabilities."
         ),
         "prompt": (
-            "GOAL: soften the wording. A cold '0.34' can sting -- real "
-            "people, real names. Plan three friendly probability bands "
-            "(unlikely / close call / likely is one option) and reword "
-            "what the page says in each. How would you demonstrate the "
-            "gentler voice on the live model?"
+            "Ask the AI to soften the verdicts: three friendly "
+            "probability bands, demonstrated on the live model."
+        ),
+        "hints": [
+            "A cold '0.34' can sting — these were real people.",
+            "Unlikely / close call / likely is one set of bands; make "
+            "them your own.",
+            "Demonstrate on the live model so the class hears the "
+            "gentler voice.",
+        ],
+        "guide": (
+            "**Machine-learning output is a number; how you present it is "
+            "a human decision.** Same probability, very different "
+            "feel — wording is part of the interface, not decoration.\n\n"
+            "*Discuss:* could kinder wording mislead someone? Where's "
+            "the line between gentle and sugar-coated?\n\n"
+            "*Next up:* the final checkpoint — stress-test the whole "
+            "system like a scientist."
         ),
         "reference": (
             "Step 3, checkpoint 4: make the browser wording gentler -- "
@@ -251,13 +303,29 @@ STEPS = [
             "of its data, nothing more."
         ),
         "prompt": (
-            "GOAL: final checkpoint -- stress-test the model like a "
-            "scientist. Imagine at least six passengers who differ "
-            "sharply (young/old, women/men, 1st/3rd class), collect "
-            "their verdicts, and show them as both a table and a chart of "
-            "survival chances. Then step back: what can this model NOT "
-            "know? Prepare two or three fairness questions for the class "
-            "discussion."
+            "Ask the AI to test the model with at least six very "
+            "different imaginary passengers, shown as a table and a bar "
+            "chart of survival chances, plus discussion questions."
+        ),
+        "hints": [
+            "Make them differ sharply: young/old, women/men, 1st/3rd "
+            "class.",
+            "Ask for the verdicts as a table AND a chart of survival "
+            "chances.",
+            "Finish with 2–3 fairness questions the class can argue "
+            "about.",
+        ],
+        "guide": (
+            "**The model is a mirror of its data, nothing more.** It "
+            "rewarded the patterns of 1912 — including the unfair ones. "
+            "It cannot see courage, luck, or the lifeboat queue.\n\n"
+            "*Discuss:* is it fair to predict someone's survival from "
+            "their sex or ticket class? What does the model NOT know? "
+            "And where else in today's world do models quietly inherit "
+            "yesterday's biases?\n\n"
+            "**That's the whole workshop** — you met data, trained a "
+            "model, and interrogated it. This discussion is the real "
+            "graduation."
         ),
         "reference": (
             "Step 3, checkpoint 5 (final!): test the live model with at "

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Trophy } from "lucide-react";
+import { ArrowRight, Trophy } from "lucide-react";
 import { useWorkshopState } from "./api";
 import type { DashboardState, ScriptState } from "./types";
 import { Header } from "./components/Header";
@@ -13,11 +13,17 @@ function ScriptPanel({
   script,
   dashboard,
   allComplete,
+  nextTitle,
+  onNextStage,
 }: {
   script: ScriptState;
   dashboard: DashboardState;
   allComplete: boolean;
+  nextTitle?: string;
+  onNextStage?: () => void;
 }) {
+  const stageComplete = script.total > 0 && script.completed >= script.total;
+
   return (
     <section className="animate-rise space-y-3">
       <div className="border border-line bg-white p-5">
@@ -39,6 +45,26 @@ function ScriptPanel({
           </span>
         </div>
       </div>
+
+      {stageComplete && nextTitle && onNextStage && (
+        <div className="animate-rise flex flex-col gap-3 border border-ok bg-tint-ok p-5 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <div className="text-lg font-bold tracking-tight text-ink">
+              Stage complete — nice work!
+            </div>
+            <div className="text-sm text-dim">
+              All {script.total} checkpoints are done. Ready for “{nextTitle}”?
+            </div>
+          </div>
+          <button
+            onClick={onNextStage}
+            className="flex h-11 shrink-0 items-center gap-2 bg-black px-6 font-semibold text-white transition hover:bg-[#27272a]"
+          >
+            Continue to {nextTitle}
+            <ArrowRight className="h-5 w-5" />
+          </button>
+        </div>
+      )}
 
       {script.steps.map((step) => (
         <StepCard
@@ -106,6 +132,15 @@ export default function App() {
             script={activeScript}
             dashboard={state.dashboard}
             allComplete={state.all_complete}
+            nextTitle={state.scripts[activeIndex + 1]?.title}
+            onNextStage={
+              activeIndex + 1 < state.scripts.length
+                ? () => {
+                    setActive(activeIndex + 1);
+                    window.scrollTo({ top: 0 });
+                  }
+                : undefined
+            }
           />
         )}
         <footer className="pt-6 text-center text-xs text-faint">

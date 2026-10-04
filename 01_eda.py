@@ -40,7 +40,7 @@ DATA_PATH = os.path.join("data", "titanic.csv")
 # PROGRESS COUNTER -- the ONLY number the AI assistant bumps in class,
 # strictly one step at a time, AFTER it proved the step works.
 # ----------------------------------------------------------------------------
-STEPS_COMPLETED = 0
+STEPS_COMPLETED = 1
 
 
 # ============================================================================
@@ -76,7 +76,19 @@ def step_1_open_the_list():
             "dataframe": df.head(),
         }
     """
-    raise NotImplementedError("Gate 1 is not built yet")
+    df = pd.read_csv(DATA_PATH)
+
+    columns = ", ".join(df.columns)
+    text = (
+        f"The list holds **{len(df)} passengers**. "
+        f"For each person we know {len(df.columns)} details: {columns}. "
+        "Here are the first few rows:"
+    )
+
+    return {
+        "text": text,
+        "dataframe": df.head(),
+    }
 
 
 # === GATE 2 -- "Where are the holes?" =======================================
@@ -161,6 +173,15 @@ def step_6_age_patterns():
                 color="Outcome", title="Age vs fare, colored by survival",
             ),
         }
+
+    IMPORTANT (data-literacy moment, keep even if the chart changes):
+    the scatter can look messy and crowded. The returned text MUST end
+    by inviting the class to judge the chart itself: ask them whether a
+    scatter is really the right picture for 891 people, and suggest
+    asking the AI Teaching Assistant to propose something easier to
+    read (e.g. a histogram or age-group bars) if it feels hard to
+    interpret. Changing the chart type afterwards is encouraged -- it
+    teaches that a graph is a design choice, not a given.
     """
     raise NotImplementedError("Gate 6 is not built yet")
 
@@ -179,11 +200,23 @@ STEPS = [
             "data before you judge it!"
         ),
         "prompt": (
-            "GOAL: get the passenger list open and take a first look. "
-            "Figure out together: how many people are we dealing with, and "
-            "what do we actually know about each of them? All 891 rows is "
-            "too many to read -- how would you ask for just a small "
-            "preview?"
+            "Ask the AI to open the passenger list (data/titanic.csv) and "
+            "give you a small preview of it."
+        ),
+        "hints": [
+            "All 891 rows is too many to read at once — how would you ask "
+            "for just a peek at the first few?",
+            "Ask how many passengers the list holds in total.",
+            "Ask what details (columns) we know about each person.",
+        ],
+        "guide": (
+            "**891 real people, 12 facts each.** Every row is one passenger "
+            "who sailed in 1912; the columns (class, sex, age, fare…) are "
+            "what a data scientist calls *features*.\n\n"
+            "*Discuss:* which of these 12 facts do you think mattered most "
+            "for surviving that night? Keep your bet — the coming "
+            "checkpoints will test it.\n\n"
+            "*Next up:* before trusting the table, we'll check it for holes."
         ),
         "reference": (
             "Please open the Titanic passenger list (data/titanic.csv), "
@@ -201,11 +234,24 @@ STEPS = [
             "guess."
         ),
         "prompt": (
-            "GOAL: find out how complete this table really is before we "
-            "trust it. Think about: which columns might have gaps, how "
-            "would you count them, and how would you want the comparison "
-            "shown so the emptiest column jumps out? One column is almost "
-            "entirely empty -- can you guess which before you look?"
+            "Ask the AI to count how many missing values (holes) each "
+            "column has, shown as a table."
+        ),
+        "hints": [
+            "A missing value is an empty cell — the AI knows how to count "
+            "them per column.",
+            "One column is almost entirely empty. Guess which before you "
+            "look!",
+            "Ask for the emptiest column to jump out of the table.",
+        ],
+        "guide": (
+            "**Real data is messy: Age is missing for ~177 passengers and "
+            "Cabin for ~687.** Holes happen — unfinished records, lost "
+            "paperwork.\n\n"
+            "*Discuss:* why would cabin records be missing for so many? "
+            "And what should we do about holes before a model learns from "
+            "them — fill them in, or drop them?\n\n"
+            "*Next up:* the column every prediction cares about — Survived."
         ),
         "reference": (
             "Check data/titanic.csv for missing values in every column and "
@@ -222,11 +268,21 @@ STEPS = [
             "FEWER than half of the passengers survive?"
         ),
         "prompt": (
-            "GOAL: meet the outcome column. Say your guess out loud first, "
-            "then work out the real split: how many perished vs survived, "
-            "in people AND in percentages. What's the clearest way to show "
-            "two numbers side by side? (A chart of the shares is a nice "
-            "extra if you want one.)"
+            "Say your guess out loud first, then ask the AI to count "
+            "perished vs survived — in people and in percentages."
+        ),
+        "hints": [
+            "First guess: did MORE or FEWER than half survive? No peeking!",
+            "Ask for both the raw counts and the percentages.",
+            "A donut chart of the two shares is a nice extra to request.",
+        ],
+        "guide": (
+            "**Only ~38% survived — 342 of 891.** Most students guess "
+            "50/50, so the real split usually surprises the class.\n\n"
+            "*Discuss:* why might our gut guess be too optimistic? (Movies "
+            "center on the survivors!)\n\n"
+            "*Next up:* 38% overall hides the real story — the split gets "
+            "dramatic when we break it down by sex."
         ),
         "reference": (
             "Count how many passengers perished and how many survived, and "
@@ -242,11 +298,25 @@ STEPS = [
             "survive more often than male passengers?"
         ),
         "prompt": (
-            "GOAL: hunt our first pattern -- survival for female vs male "
-            "passengers. Decide what kind of picture would make the "
-            "difference obvious to the whole class (the page can even draw "
-            "person-icon bars), and don't forget the point of it all: one "
-            "plain-English sentence saying what the pattern IS."
+            "Ask the AI to draw a chart comparing survival for female and "
+            "male passengers, and describe the pattern in one sentence."
+        ),
+        "hints": [
+            "The page can draw eye-catching person-icon bars — try asking "
+            "for those.",
+            "Insist on one plain-English sentence saying what the pattern "
+            "IS, not just the chart.",
+            "Look at the two bars: roughly what share of each group made "
+            "it?",
+        ],
+        "guide": (
+            "**The single strongest pattern in the data: ~74% of women "
+            "survived vs ~19% of men.** 'Women and children first' was "
+            "real.\n\n"
+            "*Discuss:* if you had to bet on one passenger surviving with "
+            "only ONE fact allowed, which fact would you pick?\n\n"
+            "*Next up:* sex wasn't the only thing that mattered — check "
+            "the ticket classes."
         ),
         "reference": (
             "Draw a chart comparing survival for female and male "
@@ -264,11 +334,23 @@ STEPS = [
             "board. Did the deck you slept on decide your fate?"
         ),
         "prompt": (
-            "GOAL: test the wealth effect. Compare survival across ticket "
-            "classes 1, 2 and 3 in one chart, then decide what stands out "
-            "enough to tell the class. Bonus thought: 3rd class was near "
-            "the bottom of the ship -- does the chart alone prove that "
-            "mattered, or could something else explain it?"
+            "Ask the AI to draw survival by ticket class (1, 2, 3) and "
+            "tell you what stands out."
+        ),
+        "hints": [
+            "A stacked bar chart makes the three classes easy to compare.",
+            "1st class was the priciest deck — 3rd class was near the "
+            "bottom of the ship.",
+            "Watch whether the survived share shrinks as class goes down.",
+        ],
+        "guide": (
+            "**Wealth shows: ~63% of 1st class survived, ~47% of 2nd, "
+            "~24% of 3rd.** The lifeboats weren't evenly used.\n\n"
+            "*Discuss:* does the chart alone PROVE wealth was the cause, "
+            "or could something else explain it? (Careful: correlation "
+            "isn't causation — a big theme of this workshop.)\n\n"
+            "*Next up:* one more clue — age — then we hand all of this to "
+            "a model."
         ),
         "reference": (
             "Draw a chart of survival by ticket class (1, 2, 3) and tell "
@@ -284,16 +366,33 @@ STEPS = [
             "AGE -- this is the pattern the Step 2 model will learn from."
         ),
         "prompt": (
-            "GOAL: one last data picture before we train a model -- is age "
-            "connected to survival? Age against fare on a zoomable scatter "
-            "with survival as the colour is one way to see it. Whatever "
-            "you choose, end with a single takeaway sentence a 12-year-old "
-            "could understand."
+            "Ask the AI to make one chart about whether age is connected "
+            "to survival, plus a one-sentence takeaway."
+        ),
+        "hints": [
+            "Age versus fare on a zoomable scatter, colored by survival, "
+            "is one way to see it.",
+            "After you have the chart, judge it: is a scatter really the "
+            "clearest choice for 891 people?",
+            "If it looks messy, ask the AI to propose something easier to "
+            "read — a histogram or age-group bars.",
+        ],
+        "guide": (
+            "**Children had better odds; elderly passengers the worst — "
+            "but age is a much weaker pattern than sex or class.** And "
+            "notice the chart itself: with 891 dots it gets crowded.\n\n"
+            "*Discuss:* is a scatter the right graph here? Changing chart "
+            "type is a design choice, not cheating — ask the AI for an "
+            "easier-to-read alternative if this one feels noisy.\n\n"
+            "*Next up:* Stage 2 — a machine learns these patterns and "
+            "turns them into predictions."
         ),
         "reference": (
             "Make one chart that shows whether age is connected to "
             "survival (for example a zoomable scatter of age versus fare, "
-            "colored by survival) and give me one plain-English takeaway."
+            "colored by survival), give me one plain-English takeaway, "
+            "and tell me whether that chart type was a good choice for "
+            "this data or suggest an easier-to-read alternative."
         ),
         "fn": "step_6_age_patterns",
     },

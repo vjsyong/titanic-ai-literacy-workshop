@@ -186,13 +186,27 @@ STEPS = [
             "it for encoding)."
         ),
         "prompt": (
-            "GOAL: give the model a language it understands -- numbers "
-            "instead of the words female/male. You pick the numbering "
-            "scheme (any scheme is fine, as long as it's consistent and "
-            "you can explain it). Decide how you'd check the translation "
-            "worked -- seeing the old words and new numbers side by side "
-            "sounds useful -- and how the result gets kept for the "
-            "checkpoints ahead."
+            "Ask the AI to turn the Sex column's words (female/male) into "
+            "numbers, and show the translation side by side with the "
+            "original."
+        ),
+        "hints": [
+            "Any consistent numbering scheme is fine — 0/1, 1/2, whatever "
+            "you can explain.",
+            "Ask to see the old words and new numbers together so you can "
+            "check the translation.",
+            "The result must be kept for the checkpoints ahead — mention "
+            "that.",
+        ],
+        "guide": (
+            "**Models only do arithmetic, so words must become numbers.** "
+            "Which number means which is arbitrary — 0 = female and 1 = "
+            "male works just as well as the reverse, as long as it's "
+            "consistent.\n\n"
+            "*Discuss:* what could go wrong if you translated female/male "
+            "differently on different days?\n\n"
+            "*Next up:* the model can't look at everything — you decide "
+            "what it may see."
         ),
         "reference": (
             "Step 2 of the workshop, checkpoint 1: take the Sex column from "
@@ -213,12 +227,24 @@ STEPS = [
             "are person IDs, not survival clues."
         ),
         "prompt": (
-            "GOAL: decide what the model is allowed to look at, and what "
-            "it must predict. Not every column helps -- some are just "
-            "labels or free text a pattern-spotter can't use. Which "
-            "columns would you feed in, which one is the answer, and why "
-            "are things like Name useless? One trap: use the numeric sex "
-            "column you made last checkpoint, not the word version."
+            "Ask the AI to pick which columns the model may look at, and "
+            "which column it must predict."
+        ),
+        "hints": [
+            "The prediction target is always Survived (1 = made it).",
+            "Good clues: ticket class, sex (numeric!), age, family aboard, "
+            "fare.",
+            "Why are Name and PassengerId useless? Ask the AI to explain.",
+        ],
+        "guide": (
+            "**Garbage in, garbage out: you just made the model's first "
+            "big quality decision.** Name and PassengerId are labels, not "
+            "clues — every passenger has a unique one, so there's no "
+            "pattern to learn.\n\n"
+            "*Discuss:* is there any column you're UNSURE about? Dropping "
+            "a useful clue weakens the model; keeping noise confuses it.\n\n"
+            "*Next up:* a fair exam — hiding some passengers from the "
+            "model."
         ),
         "reference": (
             "Step 2, checkpoint 2: choose which columns the model may look "
@@ -238,12 +264,24 @@ STEPS = [
             "test material the model never sees during learning."
         ),
         "prompt": (
-            "GOAL: set up a fair exam for the model. Split the passengers "
-            "into a group it learns from and a hidden group it gets tested "
-            "on -- roughly 80/20 is the usual recipe. Be ready to answer "
-            "the classic question: why must the test group stay hidden "
-            "until the end? And how would you show the two group sizes so "
-            "the class trusts the split?"
+            "Ask the AI to split the passengers into a training group and "
+            "a hidden test group (about 80/20)."
+        ),
+        "hints": [
+            "Roughly 80% to learn from, 20% kept secret for the final "
+            "exam.",
+            "Ask how many passengers ended up in each group.",
+            "The test group must stay hidden until the very end — no "
+            "peeking.",
+        ],
+        "guide": (
+            "**A model tested on data it already saw is like a student "
+            "graded on the exact homework answers — the score is fake.** "
+            "The hidden 20% is the only honest measure.\n\n"
+            "*Discuss:* what would happen to the accuracy number if we "
+            "accidentally let the model peek?\n\n"
+            "*Next up:* the features live on wildly different scales — "
+            "that needs fixing before training."
         ),
         "reference": (
             "Step 2, checkpoint 3: split the data into a training set and "
@@ -262,13 +300,25 @@ STEPS = [
             "bigness for importance. Fix the tube sizes with standardization."
         ),
         "prompt": (
-            "GOAL: put every numeric feature on the same scale, so no "
-            "single column (fare can reach 500!) shouts louder than the "
-            "others. The golden rule: learn the scale from the training "
-            "group only -- no peeking at the test group. How would you "
-            "show one column before and after scaling so the class can "
-            "FEEL the change (means near zero, tight spread)? Keep the "
-            "scaler safe -- the dashboard will need it."
+            "Ask the AI to put every numeric feature on the same scale — "
+            "learning the scale from the training group only."
+        ),
+        "hints": [
+            "Fare reaches ~500; Age sits between 0 and 80. Bigness must "
+            "not look like importance.",
+            "Golden rule: the scale is learned from the training group "
+            "only — no peeking at the test group.",
+            "Ask to see one column before and after, so you can feel the "
+            "change (mean near 0).",
+        ],
+        "guide": (
+            "**After scaling, every feature speaks at the same volume — "
+            "mean ≈ 0, spread ≈ 1.** Without it, a model can mistake big "
+            "numbers (fare!) for important numbers.\n\n"
+            "*Discuss:* why is it cheating to learn the scale from the "
+            "test group too? (It leaks exam answers into study time.)\n\n"
+            "*Next up:* the main event — train the model and see its real "
+            "exam score."
         ),
         "reference": (
             "Step 2, checkpoint 4: scale the numeric features for training "
@@ -287,11 +337,27 @@ STEPS = [
             "the secret test passengers it was never shown."
         ),
         "prompt": (
-            "GOAL: training time! Pick a simple, explainable first model "
-            "-- logistic regression is the classic -- teach it on the "
-            "scaled training group, then let it sit the hidden exam. How "
-            "would you present its accuracy so the whole class can cheer "
-            "(the page can draw a big animated number/ring)?"
+            "Ask the AI to train a simple model (logistic regression is a "
+            "great first pick) and show its accuracy on the hidden test "
+            "group as a big animated number."
+        ),
+        "hints": [
+            "Logistic regression = a simple, explainable pattern-spotter. "
+            "Perfect for a first model.",
+            "The model learns from the scaled training group, then sits "
+            "the hidden exam.",
+            "Ask for the accuracy as a big ring/number the whole class "
+            "can cheer at.",
+        ],
+        "guide": (
+            "**Expect roughly 78–82% accuracy.** Sounds great — but a "
+            "model that always guessed 'perished' would score ~62% "
+            "(remember the split from Stage 1?). Accuracy alone can "
+            "flatter.\n\n"
+            "*Discuss:* is ~80% good enough to trust with someone's life "
+            "in 1912? Where do you think it gets things wrong?\n\n"
+            "*Next up:* open the box — ask the model WHICH clues it "
+            "actually used."
         ),
         "reference": (
             "Step 2, checkpoint 5: train a Logistic Regression model on "
@@ -311,13 +377,27 @@ STEPS = [
             "by eye in Step 1 with our own charts."
         ),
         "prompt": (
-            "GOAL: open the black box a crack. For a logistic regression, "
-            "each feature has a coefficient: its size says how much the "
-            "model leaned on it, its sign says which way it pushed "
-            "(toward survival or away). Plan a chart where positive and "
-            "negative pull in opposite directions, and think about how "
-            "you'd explain every row in words a 12-year-old gets -- no "
-            "statistics jargon allowed."
+            "Ask the AI to rank the model's features by how much it "
+            "leaned on each one, as a chart where positive and negative "
+            "pull in opposite directions."
+        ),
+        "hints": [
+            "Each feature gets a coefficient: size = how much the model "
+            "used it, sign = which way it pushed.",
+            "Positive should push toward survival, negative away — a "
+            "diverging bar chart shows this well.",
+            "Every row must be explainable in words a 12-year-old gets — "
+            "no statistics jargon.",
+        ],
+        "guide": (
+            "**The model confirms what WE saw by eye in Stage 1: sex "
+            "dominates, class next — and it never saw our charts.** That "
+            "is the magic: the same patterns, rediscovered by "
+            "arithmetic.\n\n"
+            "*Discuss:* did any coefficient surprise you? Anything you "
+            "expected that the model ignored?\n\n"
+            "*Next up:* freeze the finished brain so the dashboard can "
+            "use it."
         ),
         "reference": (
             "Step 2, checkpoint 6: rank the features by how much the model "
@@ -337,13 +417,26 @@ STEPS = [
             "on disk is what makes predictions reusable!"
         ),
         "prompt": (
-            "GOAL: freeze the trained brain into a file called "
-            "titanic_model.pkl so the dashboard step can wake it up later "
-            "-- model, scaler and feature list, packed in the shape the "
-            "next step expects. Then prove it's alive: invent one fresh "
-            "passenger (a 30-year-old woman in 1st class, say), predict "
-            "their chance of survival, and show it as a gauge with a "
-            "friendly, clear sentence."
+            "Ask the AI to save the trained brain to titanic_model.pkl, "
+            "then prove it's alive by predicting one fresh imaginary "
+            "passenger."
+        ),
+        "hints": [
+            "Everything needed must go in the file: model, scaler, and "
+            "the feature list.",
+            "Invent a fresh passenger to test — e.g. a 30-year-old woman "
+            "in 1st class.",
+            "Ask for the survival chance shown as a gauge with a friendly "
+            "sentence.",
+        ],
+        "guide": (
+            "**A saved model is a reusable brain: the file outlives this "
+            "notebook and can make predictions forever.** That's what "
+            "turns a school exercise into an app.\n\n"
+            "*Discuss:* your test passenger's odds — do they match your "
+            "gut feeling from Stage 1's charts?\n\n"
+            "*Next up:* Stage 3 — a web form anyone can use, no code "
+            "needed."
         ),
         "reference": (
             "Step 2, checkpoint 7 (last one!): save everything needed for "

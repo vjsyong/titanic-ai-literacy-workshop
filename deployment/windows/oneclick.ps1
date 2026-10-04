@@ -2458,6 +2458,129 @@ $($startResult.Output)
     }
 }
 
+# Students should not start from an empty chat box. The launcher creates
+# one shared session titled "CLICK ME TO BEGIN" and pre-runs a seed prompt
+# in it: the agent greets the class, works out the current checkpoint from
+# the scripts' STEPS_COMPLETED counters, and asks the checkpoint question.
+# The seed text is deliberately evergreen -- it never names a gate number,
+# so the same session setup works from checkpoint 1 to the last one.
+$SeedSessionTitle = "CLICK ME TO BEGIN"
+
+$SeedSessionPrompt = @"
+Hi! A first-year student has just sat down at this machine and knows nothing about coding yet. Before they type anything:
+
+1. Read AGENTS.md in the project and follow it exactly.
+2. Check STEPS_COMPLETED in 01_eda.py, 02_train.py and 03_dashboard.py to work out which workshop checkpoint comes next.
+3. Greet the student warmly, tell them which checkpoint they are on, and restate that checkpoint's question in your own friendly words.
+
+Do not modify any file until the student asks you to work on the current checkpoint.
+"@
+
+function New-SeedSessionPromptDelivery {
+    # POSTs the seed prompt into an existing session. The prompt endpoint
+    # admits the input and schedules agent execution without blocking, so
+    # launcher startup stays fast while the agent prepares its greeting.
+    param(
+        [int]$Port,
+        $Headers,
+        [string]$SessionId
+    )
+
+    Invoke-RestMethod `
+        -Method POST `
+        -Uri ("http://127.0.0.1:{0}/api/session/{1}/prompt" -f $Port, $SessionId) `
+        -Headers $Headers `
+        -ContentType "application/json" `
+        -Body (@{ text = $SeedSessionPrompt } | ConvertTo-Json) `
+        -TimeoutSec 10 |
+        Out-Null
+}
+
+function New-SeedSession {
+    param(
+        [int]$Port,
+        $Credentials
+    )
+
+    Write-Section "Seeding the $SeedSessionTitle session"
+
+    $base = "http://127.0.0.1:{0}" -f $Port
+    $basicAuth = "Basic " + [Convert]::ToBase64String(
+        [Text.Encoding]::ASCII.GetBytes(
+            "{0}:{1}" -f $Credentials.username, $Credentials.password
+        )
+    )
+    $headers = @{ Authorization = $basicAuth }
+
+    # Idempotency: if a previous launch already created the seed session,
+    # leave it alone (students may have made progress inside it).
+    try {
+        $existing = Invoke-RestMethod `
+            -Method GET `
+            -Uri "$base/api/session" `
+            -Headers $headers `
+            -TimeoutSec 10
+
+        $found = @($existing.data) |
+            Where-Object { $_.title -eq $SeedSessionTitle } |
+            Select-Object -First 1
+
+        if ($found) {
+            # A previous run may have created the session but died before
+            # delivering the seed prompt, leaving an empty shell. Detect
+            # that and finish the job; a properly seeded session is left
+            # untouched (students may have made progress inside it).
+            $needsPrompt = $true
+
+            try {
+                $messages = Invoke-RestMethod `
+                    -Method GET `
+                    -Uri "$base/api/session/$($found.id)/message" `
+                    -Headers $headers `
+                    -TimeoutSec 10
+
+                $items = @($messages.data)
+                if ($items.Count -eq 0) { $items = @($messages) }
+                if (($items | Where-Object { $null -ne $_ }).Count -gt 0) {
+                    $needsPrompt = $false
+                }
+            }
+            catch {}
+
+            if ($needsPrompt) {
+                New-SeedSessionPromptDelivery -Port $Port -Headers $headers -SessionId $found.id
+            }
+            else {
+                Write-OK "Seed session already exists -- leaving it untouched"
+            }
+            return
+        }
+    }
+    catch {
+        Write-Warn "Could not list sessions to check for the seed session ($($_.Exception.Message))."
+        return
+    }
+
+    try {
+        $created = Invoke-RestMethod `
+            -Method POST `
+            -Uri "$base/api/session" `
+            -Headers $headers `
+            -ContentType "application/json" `
+            -Body (@{ title = $SeedSessionTitle } | ConvertTo-Json) `
+            -TimeoutSec 10
+
+        $sessionId = $created.data.id
+
+        New-SeedSessionPromptDelivery -Port $Port -Headers $headers -SessionId $sessionId
+        Write-OK "Seed session created -- the agent greets the class by the time a student clicks it"
+    }
+    catch {
+        Write-Warn "Could not seed the starter session ($($_.Exception.Message))."
+        Write-Host "Students can still open OpenCode and start a new chat normally." -ForegroundColor Yellow
+    }
+}
+
 # ============================================================
 # MAIN
 # ============================================================
@@ -2890,6 +3013,8 @@ try {
         $ManagedPath `
         $Profile `
         $ClassroomConfigJson
+
+    New-SeedSession -Port $Port -Credentials $Credentials
 
     # ========================================================
     # Workshop page (React UI + workshop server, separate service)

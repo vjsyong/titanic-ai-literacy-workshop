@@ -67,6 +67,8 @@ export interface StepState {
   title: string;
   story: string;
   prompt: string;
+  hints: string[];
+  guide: string;
   reference: string;
   status: StepStatus;
   result: Result | null;
