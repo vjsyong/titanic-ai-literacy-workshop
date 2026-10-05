@@ -806,6 +806,16 @@ oc_probe_codes() {
     done
 }
 
+# This build's service ignores `service set port` and listens on an
+# ephemeral port, so discover the real one from lsof instead of assuming
+# a configured port.
+oc_listen_port() {
+    lsof -nP -iTCP -sTCP:LISTEN 2>/dev/null \
+        | grep -i 'opencode' \
+        | sed -n 's/.*:\([0-9][0-9]*\) (LISTEN).*/\1/p' \
+        | head -1
+}
+
 # Portable timeout (macOS has no coreutils `timeout`): run a command with
 # a hard limit so service-management calls can never wedge the launcher.
 run_limited() {
@@ -894,29 +904,30 @@ start_service() {
     port="$1"
     password="$2"
 
-    # A previous classroom server is often still running (the launcher
-    # window was closed without stopping it, or a second launch). Some
-    # OpenCode builds refuse to start a second instance -- the start
-    # command then just waits forever. Look for an already-answering
-    # classroom API first and reuse it instead.
-    existing_port=""
-    for candidate in $(seq "$PREFERRED_OPENCODE_PORT" "$LAST_OPENCODE_PORT"); do
-        if [ -n "$(oc_api_base "$candidate" || true)" ]; then
-            existing_port="$candidate"
-            break
-        fi
-    done
+    # An already-running classroom server can live on ANY port: this
+    # build's service starts on an ephemeral port and ignores
+    # `service set port`. Ask lsof which port an opencode process is
+    # listening on, then confirm the API answers with the classroom
+    # password. (Fallback: scan the preferred range for older builds.)
+    existing_port="$(oc_listen_port || true)"
 
-    if [ -n "$existing_port" ]; then
-        OPENCODE_PORT="$existing_port"
-        ok "OpenCode Web UI is already running on port $existing_port -- reusing it"
-        return 0
+    if [ -z "$existing_port" ]; then
+        for candidate in $(seq "$PREFERRED_OPENCODE_PORT" "$LAST_OPENCODE_PORT"); do
+            if [ -n "$(oc_api_base "$candidate" || true)" ]; then
+                existing_port="$candidate"
+                break
+            fi
+        done
     fi
 
-    info "No classroom API is answering on ports $PREFERRED_OPENCODE_PORT-$LAST_OPENCODE_PORT."
-    info "Probe results on $PREFERRED_OPENCODE_PORT (401 = auth needed, 404 = wrong path):"
-    oc_probe_codes "$PREFERRED_OPENCODE_PORT"
-    lsof -nP -iTCP:"$PREFERRED_OPENCODE_PORT" -sTCP:LISTEN 2>/dev/null || true
+    if [ -n "$existing_port" ]; then
+        if [ -n "$(oc_api_base "$existing_port" || true)" ]; then
+            OPENCODE_PORT="$existing_port"
+            ok "OpenCode Web UI is already running on port $existing_port -- reusing it"
+            return 0
+        fi
+        warn "An OpenCode process is listening on port $existing_port but its API rejected the classroom password."
+    fi
 
     info "Configuring the OpenCode service..."
 
@@ -945,22 +956,26 @@ start_service() {
     # Launch the service in the background. On builds where `service
     # start` daemonizes it returns at once; on builds where the server
     # stays in the foreground this background job *is* the classroom
-    # server. Either way the API health check below decides when we are
-    # up -- and start output is kept out of the console pipe so even a
-    # foreground server cannot wedge the launcher window.
+    # server. Either way we then discover whichever port it listens on.
     SERVICE_OUT="$DOWNLOAD_ROOT/opencode-service.out"
+
+    discover_api() {
+        discovery_port="$(oc_listen_port || true)"
+        if [ -n "$discovery_port" ] \
+            && [ -n "$(oc_api_base "$discovery_port" || true)" ]; then
+            OPENCODE_PORT="$discovery_port"
+            return 0
+        fi
+        return 1
+    }
 
     info "Starting the OpenCode service..."
     ( cd "$PROJECT_ROOT" && nohup "$OPENCODE_BIN" service start </dev/null ) \
         > "$SERVICE_OUT" 2>&1 &
 
-    api_ready() {
-        [ -n "$(oc_api_base "$port" || true)" ]
-    }
-
     healthy=0
-    for _ in $(seq 1 60); do
-        if api_ready; then
+    for _ in $(seq 1 120); do
+        if discover_api; then
             healthy=1
             break
         fi
@@ -975,8 +990,8 @@ start_service() {
         ( cd "$PROJECT_ROOT" && nohup "$OPENCODE_BIN" service start </dev/null ) \
             > "$SERVICE_OUT" 2>&1 &
 
-        for _ in $(seq 1 60); do
-            if api_ready; then
+        for _ in $(seq 1 120); do
+            if discover_api; then
                 healthy=1
                 break
             fi
@@ -987,10 +1002,19 @@ start_service() {
     if [ "$healthy" -ne 1 ]; then
         info "Last lines from the OpenCode service start:"
         tail -n 20 "$SERVICE_OUT" 2>/dev/null || true
+        live_port="$(oc_listen_port || true)"
+        if [ -n "$live_port" ]; then
+            info "A process is listening on port $live_port; API probe results:"
+            oc_probe_codes "$live_port"
+        else
+            info "No opencode process is listening."
+        fi
         info "OpenCode service status:"
         run_limited 15 "$OPENCODE_BIN" service status 2>&1 || true
         die "OpenCode service failed its API health check."
     fi
+
+    ok "OpenCode Web UI ready on port $OPENCODE_PORT"
 }
 
 get_web_password() {
