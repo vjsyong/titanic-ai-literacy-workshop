@@ -1038,9 +1038,9 @@ get_web_password
 OPENCODE_PORT="$(find_free_port "$PREFERRED_OPENCODE_PORT" "$LAST_OPENCODE_PORT")" \
     || die "No free port for the OpenCode Web UI."
 
-start_service "$OPENCODE_PORT"
+start_service "$OPENCODE_PORT" "$WEB_PASSWORD"
 
-seed_session "$OPENCODE_PORT" "$WEB_PASSWORD"
+seed_session "$OPENCODE_PORT"
 
 OPENCODE_URL="http://127.0.0.1:$OPENCODE_PORT"
 PAIRED=0
