@@ -64,7 +64,7 @@ MAX_RESULT_BYTES = 1_500_000
 MAX_PREDICT_BODY_BYTES = 64 * 1024
 
 SCRIPTS = [
-    {"id": "eda", "file": "01_eda.py", "module_name": "workshop_step_01_eda"},
+    {"id": "eda", "file": "01_eda.py", "module_name": "workshop_step_01_eda", "connect": True},
     {"id": "train", "file": "02_train.py", "module_name": "workshop_step_02_train"},
     {"id": "dashboard", "file": "03_dashboard.py", "module_name": "workshop_step_03_dashboard"},
 ]
@@ -241,7 +241,43 @@ def _describe_script(script, module):
     steps = list(getattr(module, "STEPS", None) or [])
     completed = int(getattr(module, "STEPS_COMPLETED", 0) or 0)
 
+    # Step 0 handshake: only scripts flagged `connect` get it. It is driven
+    # by a module flag the AI assistant sets when it first reaches the
+    # project, so Checkpoint 1 stays locked until the handshake is proven.
+    connect_spec = None
+    connected = True
+    if script.get("connect"):
+        connect_spec = getattr(workshop_steps, "CONNECT_STEP", None)
+        flag = getattr(workshop_steps, "CONNECT_FLAG", "")
+        if connect_spec is not None and flag:
+            connected = bool(getattr(module, flag, False))
+
     described = []
+
+    if connect_spec is not None:
+        described.append(
+            {
+                "number": int(connect_spec.get("number", 0)),
+                "title": str(connect_spec.get("title", "Connect your assistant")),
+                "story": str(connect_spec.get("story", "")),
+                "prompt": str(connect_spec.get("prompt", "")),
+                "hints": [str(hint) for hint in (connect_spec.get("hints") or [])],
+                "placeholder": str(connect_spec.get("placeholder", "")),
+                "guide": str(connect_spec.get("guide", "")),
+                "experiment": str(connect_spec.get("experiment", "")),
+                "context": workshop_steps.serialize_result(connect_spec.get("context")),
+                "reference": str(connect_spec.get("reference", "")),
+                "reference_alt": str(connect_spec.get("reference_alt", "")),
+                "status": "done" if connected else "current",
+                "result": (
+                    workshop_steps.serialize_result(connect_spec.get("guide", ""))
+                    if connected
+                    else None
+                ),
+                "error": None,
+            }
+        )
+
     for index, step in enumerate(steps):
         number = int(step.get("number", index + 1))
         entry = {
@@ -260,7 +296,9 @@ def _describe_script(script, module):
             "result": None,
             "error": None,
         }
-        if number <= completed:
+        if connect_spec is not None and not connected:
+            entry["status"] = "locked"
+        elif number <= completed:
             entry["status"] = "done"
             fn = getattr(module, str(step.get("fn", "")), None)
             if fn is None:
@@ -283,12 +321,19 @@ def _describe_script(script, module):
             entry["status"] = "current"
         described.append(entry)
 
+    if connect_spec is None:
+        shown_completed = completed
+    elif connected:
+        shown_completed = completed + 1
+    else:
+        shown_completed = 0
+
     return {
         "id": script["id"],
         "title": str(page.get("title", script["id"])),
         "intro": str(page.get("intro", "")),
-        "completed": completed,
-        "total": len(steps),
+        "completed": shown_completed,
+        "total": len(described),
         "steps": described,
     }
 

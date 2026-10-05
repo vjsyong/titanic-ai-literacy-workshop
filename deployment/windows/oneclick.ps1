@@ -2561,10 +2561,11 @@ $SeedSessionPrompt = @"
 Hi! A first-year student has just sat down at this machine and knows nothing about coding yet. Before they type anything:
 
 1. Read AGENTS.md in the project and follow it exactly.
-2. Check STEPS_COMPLETED in 01_eda.py, 02_train.py and 03_dashboard.py to work out which workshop checkpoint comes next.
-3. Greet the student warmly, tell them which checkpoint they are on, and restate that checkpoint's question in your own friendly words.
+2. Do Step 0 first (the connection handshake): in 01_eda.py set PAIRED = True inside the GATE 0 markers, then run python 01_eda.py. Stop only when it runs cleanly -- this proves you can reach the workshop and unlocks Checkpoint 1 on the page.
+3. Then check STEPS_COMPLETED in 01_eda.py, 02_train.py and 03_dashboard.py to work out which checkpoint comes next.
+4. Greet the student warmly, confirm the workshop connection, and restate the current checkpoint's question in your own friendly words.
 
-Do not modify any file until the student asks you to work on the current checkpoint.
+Step 0 is the only edit allowed before the student asks; do not change any other file or checkpoint.
 "@
 
 function New-SeedSessionPromptDelivery {

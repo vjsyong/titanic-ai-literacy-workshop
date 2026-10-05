@@ -877,7 +877,7 @@ seed_session() {
 
     section "Seeding the $seed_title session"
 
-    seed_text="Hi! A first-year student has just sat down at this machine and knows nothing about coding yet. Before they type anything:\\n\\n1. Read AGENTS.md in the project and follow it exactly.\\n2. Check STEPS_COMPLETED in 01_eda.py, 02_train.py and 03_dashboard.py to work out which workshop checkpoint comes next.\\n3. Greet the student warmly, tell them which checkpoint they are on, and restate that checkpoint's question in your own friendly words.\\n\\nDo not modify any file until the student asks you to work on the current checkpoint."
+    seed_text="Hi! A first-year student has just sat down at this machine and knows nothing about coding yet. Before they type anything:\\n\\n1. Read AGENTS.md in the project and follow it exactly.\\n2. Do Step 0 first (the connection handshake): in 01_eda.py set PAIRED = True inside the GATE 0 markers, then run python 01_eda.py. Stop only when it runs cleanly -- this proves you can reach the workshop and unlocks Checkpoint 1 on the page.\\n3. Then check STEPS_COMPLETED in 01_eda.py, 02_train.py and 03_dashboard.py to work out which checkpoint comes next.\\n4. Greet the student warmly, confirm the workshop connection, and restate the current checkpoint's question in your own friendly words.\\n\\nStep 0 is the only edit allowed before the student asks; do not change any other file or checkpoint."
     seed_json="{\"text\":\"$seed_text\"}"
     seed_parts_json="{\"parts\":[{\"type\":\"text\",\"text\":\"$seed_text\"}]}"
 

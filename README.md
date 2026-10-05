@@ -31,7 +31,9 @@ served by a small FastAPI process, in one classroom page.
    tears both down when its window closes). To (re)start it by hand:
    `python serve_workshop.py`.
    Students see one page, three tabs; each tab shows its next checkpoint as a
-   prompt-hint card, locked steps stay greyed out.
+   prompt-hint card, locked steps stay greyed out. Tab 1 opens with **Step 0**:
+   the AI Teaching Assistant has to prove it can reach the project (it sets
+   `PAIRED = True` in `01_eda.py`) before Checkpoint 1 unlocks.
 2. **Loop (the magic)**: each checkpoint card shows a *mission* (direction and
    goal, not a ready-made prompt) plus a box for the student's own request.
    Once they write a meaningful attempt (6+ words), the reference prompt

@@ -65,6 +65,15 @@ STEPS_COMPLETED = 1
 # ============================================================================
 
 
+# === GATE 0 -- "Connect your assistant" ====================================
+# Step 0 is the connection handshake. The AI Teaching Assistant's FIRST job
+# in a fresh session is to prove it can reach this project: set PAIRED to
+# True below, run `python 01_eda.py`, and the workshop page unlocks
+# Checkpoint 1. This is the ONE edit allowed before the student asks for
+# anything (see AGENTS.md "Step 0").
+PAIRED = False
+
+
 # === GATE 1 -- "Open the passenger list" ====================================
 def step_1_open_the_list():
     """Load data/titanic.csv with pandas, count and peek.

@@ -99,6 +99,48 @@ CHART_KINDS = (
 
 
 # ---------------------------------------------------------------------------
+# Step 0 -- the connection handshake
+# ---------------------------------------------------------------------------
+# Before Checkpoint 1 opens, the AI Teaching Assistant has to prove it can
+# actually reach the workshop project. Its only channel to the web page is
+# editing the gate scripts, so the handshake is a one-line flag in 01_eda.py
+# inside the GATE 0 markers. Setting PAIRED = True saves the file,
+# workshop_server.py notices within a second, the page shows Step 0 complete,
+# and Checkpoint 1 unlocks. Instructors may edit the card copy below;
+# students never touch it. (See AGENTS.md "Step 0" and the seed prompt.)
+
+CONNECT_FLAG = "PAIRED"
+
+CONNECT_STEP = {
+    "number": 0,
+    "title": "Connect your assistant",
+    "story": (
+        "Every session starts with a quick handshake. Your AI Teaching "
+        "Assistant has to prove it can reach this workshop project before "
+        "Checkpoint 1 opens, by flipping the connection flag in 01_eda.py "
+        "and saving the file. This very page refreshes the moment it does."
+    ),
+    "prompt": (
+        "Say hello to your AI Teaching Assistant and ask it to connect to "
+        "the workshop. It confirms the handshake in its own words -- and "
+        "Checkpoint 1 unlocks right here."
+    ),
+    "hints": [
+        "Your assistant does this once, the first time you say hello.",
+        "If nothing moves, ask it to run `python 01_eda.py` and read any error out loud.",
+    ],
+    "placeholder": "Hi! Are you connected to my workshop page?",
+    "guide": (
+        "Connection confirmed. The assistant can read and write this "
+        "project, so every checkpoint you unlock from here will appear on "
+        "this page by itself."
+    ),
+    "reference": "Hi! Please connect to my workshop project and confirm you are ready.",
+    "reference_alt": "Before we start, set up the connection so the page updates as we go.",
+}
+
+
+# ---------------------------------------------------------------------------
 # JSON-normalization helpers (numpy / NaN / dates -> plain JSON values)
 # ---------------------------------------------------------------------------
 

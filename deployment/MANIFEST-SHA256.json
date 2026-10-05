@@ -36,8 +36,8 @@
   },
   {
     "file": "windows/oneclick.ps1",
-    "sha256": "c1ec1b9eb1f382163c002980680336bfdb353adf13585e982c2cf5fccd2831e9",
-    "bytes": 103652
+    "sha256": "9f35ff7c165ee5bbeb144fd5668c2f0eeb0b2f98cc7571898725d5d658bbc8fd",
+    "bytes": 103907
   },
   {
     "file": "windows/reset_workshop.ps1",
@@ -81,13 +81,13 @@
   },
   {
     "file": "macos/vibe-macos.sh",
-    "sha256": "7625e84eca1da7a8fee2816a081dd7c365e47f893bf3ef43adcd0c670ddb2db5",
-    "bytes": 49830
+    "sha256": "d5a7837930be51b5774f6f284e318b29a4aa808ef4c36a62a04571bacd17017b",
+    "bytes": 50087
   },
   {
     "file": "baseline/01_eda.py",
-    "sha256": "67d595b9abae910c0e035260f75ee65dbd659f2d43251178ef14fa0debc6b6de",
-    "bytes": 28671
+    "sha256": "b2a29ae13fa2c7440f93b6b3a1c2217a2430b054dfc905889730280cecf5c4fb",
+    "bytes": 29094
   },
   {
     "file": "baseline/02_train.py",
