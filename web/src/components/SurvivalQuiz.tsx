@@ -275,17 +275,17 @@ export function SurvivalQuiz({ data }: { data: PersonasFile }) {
                     />
                   </div>
                 </div>
-                <div className="mt-4 flex flex-wrap gap-3">
+                <div className="mt-4 flex gap-3">
                   <button
                     onClick={() => reveal(1)}
-                    className="inline-flex h-12 items-center gap-2.5 bg-ok px-7 text-lg font-semibold text-white transition hover:brightness-95"
+                    className="inline-flex h-12 flex-1 items-center justify-center gap-2.5 bg-ok px-7 text-lg font-semibold text-white transition hover:brightness-95"
                   >
                     <Check className="h-5 w-5" />
                     Survived
                   </button>
                   <button
                     onClick={() => reveal(0)}
-                    className="inline-flex h-12 items-center gap-2.5 bg-black px-7 text-lg font-semibold text-white transition hover:bg-[#333]"
+                    className="inline-flex h-12 flex-1 items-center justify-center gap-2.5 bg-err px-7 text-lg font-semibold text-white transition hover:brightness-95"
                   >
                     <Skull className="h-5 w-5" />
                     Perished
