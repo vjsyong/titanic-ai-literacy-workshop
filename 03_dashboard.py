@@ -1,18 +1,18 @@
 """03_dashboard.py -- Step 3 "Survival Explorer" (AI Literacy Workshop)
 
 THE STEP-BY-STEP EXPERIENCE
-    Five progressive checkpoints (gates). The page starts as an empty
+    Three progressive checkpoints (gates). The page starts as an empty
     explorer; each student prompt to the AI Teaching Assistant unlocks
-    one gate: load the trained brain, design the passenger form, wire
-    the prediction, make the verdicts kind, then black-box test it.
+    one gate: wake the trained brain and design the form, wire the
+    prediction with kind verdicts, then black-box test it.
 
     The interactive part of the web page fills in as gates unlock:
 
-        Gate 1  -> "the brain woke up" card
-        Gate 2  -> the form plan (sliders/radios ranges) card
-        Gate 3  -> LIVE passenger form + working prediction button
-        Gate 4  -> kinder verdict wording
-        Gate 5  -> black-box test bench + graduation message
+        Gate 1  -> the form plan (sliders/radios ranges) card + a "brain is
+                   awake" sample prediction
+        Gate 2  -> LIVE passenger form + working prediction button + kinder
+                   verdict wording
+        Gate 3  -> black-box test bench + graduation message
 
     The workshop page (served by workshop_server.py) notices the saved
     file within a second and reveals the next checkpoint.
@@ -41,9 +41,9 @@ MODEL_PATH = "titanic_model.pkl"
 # ----------------------------------------------------------------------------
 ARTIFACTS = {}
 
-STEPS_COMPLETED = 5
+STEPS_COMPLETED = 3
 
-# The canonical live form, in order. Gate 2 stores its own version here;
+# The canonical live form, in order. Gate 1 stores its own version here;
 # the page renders whatever the gates produced (the workshop plumbing).
 DEFAULT_INPUT_SPEC = [
     {"label": "Ticket class", "kind": "radio", "choices": [1, 2, 3], "value": 3},
@@ -60,69 +60,54 @@ DEFAULT_INPUT_SPEC = [
 # ============================================================================
 # Rules for the AI assistant:
 #   * Implement ONE gate per student request, strictly inside the gate.
-#   * Gate 3 must expose the prediction function as:
+#   * Gate 2 must expose the prediction function as:
 #         ARTIFACTS["predict"](values_dict) -> dict
 #     where values_dict maps each form label -> its chosen value, and the
 #     returned dict is built with:
 #         workshop_steps.verdict(text, probability, band)
 #     "probability" is 0.0-1.0 (drives the animated gauge) and "band" is
 #     the kinder wording label (e.g. "likely", "close call", "unlikely").
-#   * Gate 2 must store the form definition as ARTIFACTS["input_spec"] =
+#   * Gate 1 must store the form definition as ARTIFACTS["input_spec"] =
 #     a list of dicts like DEFAULT_INPUT_SPEC above.
 #   * If a gate needs a missing prerequisite (e.g. no titanic_model.pkl),
 #     its function may return a friendly text card telling the student
 #     which earlier step to finish -- do NOT raise on missing files.
+#   * At most ONE "dataframe" and ONE "chart" per result.
 #   * Bump STEPS_COMPLETED (one at a time) after the web page shows the
 #     gate working.
+#   * The LOOK LIKE notes are the MINIMUM, not a blueprint. Compose each
+#     card your own way -- chart kind, text and metric mix are yours to
+#     choose, and two good assistants should NOT produce identical
+#     cards. Only the MUST/contract items (input_spec, predict, pkl)
+#     are rigid: the page plumbing depends on them.
 # ============================================================================
 
 
-# === GATE 1 -- "Wake the brain" ==============================================
-def step_1_wake_the_brain():
-    """Load titanic_model.pkl (trained in Step 2) and prove it works.
+# === GATE 1 -- "Wake the brain and design the form" ==========================
+def step_1_wake_and_design():
+    """Load titanic_model.pkl AND decide which attributes the form offers.
 
-    LOOK LIKE: a friendly 'the trained brain is awake' card, including
-    one example prediction on a fixed test passenger. If the trained
-    brain is missing, return a kind note telling the student to finish
-    Step 2 -- checkpoint 7 first (no crash!).
+    MUST land: (a) a friendly 'the trained brain is awake' card including
+    one example prediction on a fixed test passenger (a gauge is the
+    natural reveal), and (b) the form plan -- for each attribute whether
+    it is a radio/dropdown or slider, with sensible range/choices and a
+    default -- shown as a table.
+    Store: ARTIFACTS["input_spec"] (same shape as DEFAULT_INPUT_SPEC).
+    If the trained brain is missing, return a kind note telling the
+    student to finish Step 2 -- checkpoint 4 first (no crash!).
     """
     if not os.path.exists(MODEL_PATH):
         return (
             "The trained brain is not on disk yet. Finish **Step 2, "
-            "checkpoint 7** (save titanic_model.pkl) first, then come back!"
+            "checkpoint 4** (save titanic_model.pkl) first, then come back!"
         )
     with open(MODEL_PATH, "rb") as handle:
         artifact = pickle.load(handle)
     ARTIFACTS["artifact"] = artifact
-    sample = pd.DataFrame(
-        [[1, 1, 30, 0, 0, 100.0]], columns=artifact["feature_columns"]
-    )
-    probability = float(
-        artifact["model"].predict_proba(artifact["scaler"].transform(sample))[0][1]
-    )
-    return {
-        "text": (
-            "The brain is awake. A 30-year-old woman in first class would "
-            f"have had a **{probability:.0%}** chance of surviving."
-        ),
-        "chart": workshop_steps.chart(
-            kind="gauge", value=round(probability * 100, 1),
-            title="Sample passenger: survival chance",
-        ),
-    }
 
-
-# === GATE 2 -- "Design the passenger form" ===================================
-def step_2_design_the_form():
-    """Decide which passenger attributes the web form should offer.
-
-    LOOK LIKE: a small table describing each control (name, type,
-    sensible range/choices, default). Store the definition in
-    ARTIFACTS["input_spec"] (same shape as DEFAULT_INPUT_SPEC).
-    """
     spec = [dict(item) for item in DEFAULT_INPUT_SPEC]
     ARTIFACTS["input_spec"] = spec
-    table = pd.DataFrame(
+    form_table = pd.DataFrame(
         [
             {
                 "Control": item["label"],
@@ -137,24 +122,39 @@ def step_2_design_the_form():
             for item in spec
         ]
     )
+
+    sample = pd.DataFrame(
+        [[1, 1, 30, 0, 0, 100.0]], columns=artifact["feature_columns"]
+    )
+    probability = float(
+        artifact["model"].predict_proba(artifact["scaler"].transform(sample))[0][1]
+    )
     return {
         "text": (
-            "Six questions, all about things the model actually learned "
+            "The brain is awake -- a 30-year-old woman in first class would "
+            f"have had a **{probability:.0%}** chance of surviving. The form "
+            "asks six questions, all about things the model actually learned "
             "from -- nothing it never saw."
         ),
-        "dataframe": table,
+        "dataframe": form_table,
+        "chart": workshop_steps.chart(
+            kind="gauge",
+            value=round(probability * 100, 1),
+            title="Sample passenger: survival chance",
+        ),
     }
 
 
-# === GATE 3 -- "Wire the prediction" =========================================
-def step_3_wire_prediction():
-    """Make the form actually predict.
+# === GATE 2 -- "Wire the prediction, kindly" =================================
+def step_2_wire_and_kinder_verdicts():
+    """Make the form actually predict, with gentle wording.
 
     MUST (per the gate contract):
       * read and use ARTIFACTS["input_spec"] labels,
-      * encode 'Sex' back to numbers exactly like the model was trained
-        (word plain-fare floats are NOT welcome here),
+      * encode 'Sex' back to numbers exactly like the model was trained,
       * scale the numbers with the stored scaler BEFORE predicting,
+      * define three probability bands (e.g. unlikely / close call /
+        likely) and show them as a table,
       * store `ARTIFACTS["predict"] = my_predict_function`, where the
         function takes values_dict and returns
         workshop_steps.verdict(text, probability, band) -- the page then
@@ -191,36 +191,6 @@ def step_3_wire_prediction():
         frame = pd.DataFrame([[row[name] for name in features]], columns=features)
         return float(model.predict_proba(scaler.transform(frame))[0][1])
 
-    def _predict(values_dict):
-        probability = _score(values_dict)
-        return workshop_steps.verdict(
-            f"Model estimate: {probability:.0%} chance of surviving the Titanic.",
-            probability,
-            None,
-        )
-
-    ARTIFACTS["score"] = _score
-    ARTIFACTS["predict"] = _predict
-
-    example = _predict({item["label"]: item["value"] for item in spec})
-    return {
-        "text": example["text"],
-        "chart": workshop_steps.chart(
-            kind="gauge", value=round(example["probability"] * 100, 1),
-            title="Example passenger (the form defaults)",
-        ),
-    }
-
-
-# === GATE 4 -- "Kind verdicts" ===============================================
-def step_4_kind_verdicts():
-    """Reword the verdict so it is never scary: 3 probability bands.
-
-    LOOK LIKE: a small table bands -> wording tone. Re-place
-    ARTIFACTS["predict"] with a version that uses the kinder wording,
-    then re-run one example on the real model to show the new text.
-    The gauge color follows the band, so label them clearly.
-    """
     bands = pd.DataFrame(
         [
             {"Chance": "below 35%", "Band": "unlikely",
@@ -233,7 +203,7 @@ def step_4_kind_verdicts():
     )
 
     def _predict(values_dict):
-        probability = ARTIFACTS["score"](values_dict)
+        probability = _score(values_dict)
         if probability < 0.35:
             band = "unlikely"
         elif probability < 0.65:
@@ -247,31 +217,39 @@ def step_4_kind_verdicts():
             band,
         )
 
+    ARTIFACTS["score"] = _score
     ARTIFACTS["predict"] = _predict
 
-    spec = ARTIFACTS.get("input_spec", DEFAULT_INPUT_SPEC)
     example = _predict({item["label"]: item["value"] for item in spec})
     return {
-        "text": example["text"],
+        "text": (
+            example["text"]
+            + " The pipeline on every click: encode the form words exactly as "
+            "Stage 2 did, scale with the stored scaler, then predict."
+        ),
         "dataframe": bands,
         "chart": workshop_steps.chart(
-            kind="gauge", value=round(example["probability"] * 100, 1),
-            title="Example with the kinder wording",
+            kind="gauge",
+            value=round(example["probability"] * 100, 1),
+            title="Live example with the kinder wording",
         ),
     }
 
 
-# === GATE 5 -- "Black-box the brain" =========================================
-def step_5_black_box_tests():
+# === GATE 3 -- "Black-box the brain" =========================================
+def step_3_black_box_tests():
     """Probe the model with imaginary passengers and discuss unfairness.
 
-    LOOK LIKE: a table of at least 6 imaginary passengers, each with the
-    live verdict, PLUS an interactive bar chart comparing their survival
-    probabilities (0-100), plus 2-3 plain-English questions for class
+    MUST: at least 6 imaginary passengers who differ sharply, each with
+    their live verdict, plus 2-3 plain-English questions for class
     discussion (is any pattern unfair? what does the model NOT see?).
+    CHOOSE freely: table + bar chart of survival probabilities is one
+    strong shape; a "case files" style card, a comparison matrix, or
+    provocative pairs (same person, one attribute flipped) also work --
+    pick the staging that sparks the argument.
     """
     if "predict" not in ARTIFACTS:
-        return "Wire the prediction first (checkpoint 3)."
+        return "Wire the prediction first (checkpoint 2)."
 
     spec = ARTIFACTS.get("input_spec", DEFAULT_INPUT_SPEC)
     base = {item["label"]: item["value"] for item in spec}
@@ -306,14 +284,18 @@ def step_5_black_box_tests():
     )
     return {
         "text": (
-            "**Discussion:** is it fair that the model leans on sex and "
-            "class? The model never saw fairness -- it only mirrored 1912. "
-            "What could it NOT know (health, deck location, luck)?"
+            "**Discussion:** is it fair that the model leans on sex and class? "
+            "The model never saw fairness -- it only mirrored 1912. What could "
+            "it NOT know (health, deck location, luck)?"
         ),
         "dataframe": table,
         "chart": workshop_steps.chart(
-            kind="bar", data=chart_data, x="Passenger", y="Survival chance",
-            horizontal=True, y_label="Chance (%)",
+            kind="bar",
+            data=chart_data,
+            x="Passenger",
+            y="Survival chance",
+            horizontal=True,
+            y_label="Chance (%)",
             title="Survival chances of imaginary passengers",
         ),
     }
@@ -325,85 +307,226 @@ def step_5_black_box_tests():
 STEPS = [
     {
         "number": 1,
-        "title": "Wake the brain",
+        "title": "Wake the brain and design the form",
         "story": (
-            "Your Step 2 work saved a trained brain on disk. Wake it up "
-            "here and check that it gives sensible guesses."
+            "Your Step 2 work saved a trained brain on disk. Wake it up and "
+            "check it gives sensible guesses -- then design the passenger "
+            "form classmates will play with: radios for ticket class and sex, "
+            "sliders for the numbers, all with human-friendly ranges."
         ),
         "prompt": (
-            "Step 3 of the workshop, checkpoint 1: load the saved model "
-            "titanic_model.pkl and prove it is alive by predicting one "
-            "fixed test passenger. If the file is missing, tell me kindly "
-            "which Step 2 checkpoint to finish first instead of crashing."
+            "Bring one passenger to life in your head (their age, class, sex) "
+            "and describe them to the AI. Ask it to wake the frozen brain from "
+            "titanic_model.pkl, predict YOUR passenger, and show the chance as "
+            "a gauge -- and if the file is missing, have it explain kindly "
+            "which Step 2 checkpoint must come first instead of crashing. Then "
+            "sketch the form like a designer: which control suits each "
+            "attribute, and what sensible range? Ask the AI to build the form "
+            "to your design and store the plan where the page can find it."
         ),
-        "fn": "step_1_wake_the_brain",
+        "hints": [
+            "The file only exists once Stage 2's last checkpoint is done -- "
+            "the page should say so kindly, not crash.",
+            "Ticket class and sex suit dropdowns/radios; age and fare suit "
+            "sliders.",
+            "Think about sensible ranges: ages 0-80? classes 1/2/3?",
+            "The plan must be stored where the page can find it -- say so in "
+            "your request.",
+        ],
+        "context": pd.DataFrame(
+            [
+                {"Field": "Pclass", "Example value": "1, 2 or 3"},
+                {"Field": "Sex", "Example value": "male / female"},
+                {"Field": "Age", "Example value": "22.0 (babies to 80)"},
+                {"Field": "SibSp", "Example value": "0-8"},
+                {"Field": "Parch", "Example value": "0-6"},
+                {"Field": "Fare", "Example value": "7.25-512.33"},
+                {"Field": "Embarked", "Example value": "S / C / Q"},
+            ]
+        ),
+        "guide": (
+            "**Reusing a saved model is the industry norm: train once, predict "
+            "everywhere.** The brain on disk is exactly the one that scored "
+            "~80% on its hidden exam. And a good form hides the machinery: "
+            "classmates will use it without ever seeing a number pipeline.\n\n"
+            "*Discuss:* what should an app do when a dependency is missing? "
+            "Crashing is easy; a kind message is design. And which attribute "
+            "would you REMOVE from the form to keep it friendly?\n\n"
+            "*Next up:* wire the form to the brain so Predict actually "
+            "predicts."
+        ),
+        "reference": (
+            "Step 3 of the workshop, checkpoint 1: load the saved model "
+            "titanic_model.pkl and prove it is alive by predicting one fixed "
+            "test passenger, showing the survival chance as a gauge; if the "
+            "file is missing, tell me kindly which Step 2 checkpoint to finish "
+            "first instead of crashing. Then propose the passenger web form -- "
+            "for each attribute tell me if it should be a dropdown/radio or a "
+            "slider and what sensible range or choices to give it -- and store "
+            "this plan where the page can find it."
+        ),
+        "reference_alt": (
+            "Load titanic_model.pkl and predict one fixed passenger with it, "
+            "showing a gauge; if the file is missing, show a kind message "
+            "pointing to Stage 2's last checkpoint. Then propose the passenger "
+            "form: for each field pick a dropdown/radio or slider with "
+            "sensible ranges, and store the plan where the page can use it."
+        ),
+        "experiment": (
+            "Ask the AI to wake the brain twice and predict the same passenger "
+            "both times -- are the answers identical? Then ask what happens if "
+            "a user drags the age slider to 110. Should the form allow "
+            "impossible values?"
+        ),
+        "fn": "step_1_wake_and_design",
+        "placeholder": (
+            "e.g. “Wake the trained model and design the passenger form…”"
+        ),
     },
     {
         "number": 2,
-        "title": "Design the passenger form",
+        "title": "Wire the prediction, kindly",
         "story": (
-            "Before wiring anything: decide which controls the imaginary "
-            "passenger form gets (radios for ticket class and sex, sliders "
-            "for the numbers) with human-friendly ranges."
+            "Time to connect the form to the brain: press predict, and the "
+            "model's guess appears as an animated gauge. Remember the model "
+            "was trained on numbers, so 'female' must turn back into its coded "
+            "digit before reaching the model. Then choose gentle wording for "
+            "the verdict."
         ),
         "prompt": (
-            "Step 3, checkpoint 2: propose the passenger web form -- for "
-            "each attribute tell me if it should be a dropdown/slider and "
-            "what sensible range or choices to give it, and store this "
-            "plan where the page can find it."
+            "First say what could go WRONG if the form hands 'female' straight "
+            "to a model that expects Stage 2's digits. Then ask the AI to wire "
+            "the form to the brain -- encode exactly like Stage 2, apply the "
+            "stored scaler -- so Predict produces a live survival gauge, and "
+            "have it prove the pipeline with one live example. Finally, choose "
+            "three friendly bands (what should they be called, and where does "
+            "'close call' begin and end?) and have it reword the verdicts to "
+            "your bands."
         ),
-        "fn": "step_2_design_the_form",
+        "hints": [
+            "The form's words (female/male) must become numbers EXACTLY the "
+            "way Stage 2 chose.",
+            "The stored scaler must be applied before predicting -- same rule "
+            "as training time.",
+            "A cold '0.34' can sting -- these were real people. Unlikely / "
+            "close call / likely is one set; make them your own.",
+            "Ask for one live example straight from the model to prove it's "
+            "real.",
+        ],
+        "context": (
+            "**The pipeline that will run on every click (same three moves as "
+            "Stage 2, now automatic):**\n\n"
+            "1. **encode** -- form words -> the exact digits Stage 2 chose\n"
+            "2. **scale** -- squeeze the numbers with the SAME scaler from the "
+            "freezer\n"
+            "3. **predict** -- the model answers with a probability\n\n"
+            "One mismatched digit or unscaled number = quietly wrong answers. "
+            "Then translate that probability into human words: 0.34 -> 34% -> "
+            "roughly one passenger in three."
+        ),
+        "guide": (
+            "**The full pipeline runs on every click: translate words -> scale "
+            "-> predict.** It's the exact journey of Stage 2, now invisible "
+            "and instant. Machine-learning output is a number; how you present "
+            "it is a human decision -- wording is part of the interface, not "
+            "decoration.\n\n"
+            "*Discuss:* what happens if the form's encoding drifts even "
+            "slightly from training-time encoding? Could kinder wording ever "
+            "mislead someone?\n\n"
+            "*Next up:* the final checkpoint -- stress-test the whole system "
+            "like a scientist."
+        ),
+        "reference": (
+            "Step 3, checkpoint 2: connect the form to the model so the "
+            "prediction button works. Encode the Sex choices back to numbers "
+            "exactly like Step 2 did, use the stored scaler, and show the "
+            "survival probability as a gauge with a human sentence. Show me "
+            "one live example straight from the model. Then make the wording "
+            "gentler -- define three probability bands (e.g. unlikely, close "
+            "call, likely) and reword the verdicts, re-running one example to "
+            "show the friendlier message."
+        ),
+        "reference_alt": (
+            "Connect the form to the saved model: encode sex exactly as "
+            "trained, apply the scaler, and show each prediction as a gauge "
+            "with one human sentence. Then sort the chances into three "
+            "friendly bands, reword the verdicts, and demo one on the live "
+            "model."
+        ),
+        "experiment": (
+            "Predict the same passenger twice through the form -- identical "
+            "gauge both times? If not, ask the AI what's leaking. Then ask it "
+            "to show the SAME probability worded in all three bands -- where "
+            "does 'close call' start and end?"
+        ),
+        "fn": "step_2_wire_and_kinder_verdicts",
+        "placeholder": (
+            "e.g. “Wire the form to the model, then soften the verdict "
+            "wording…”"
+        ),
     },
     {
         "number": 3,
-        "title": "Wire the prediction",
-        "story": (
-            "Time to connect the form to the brain: press predict, and "
-            "the model's guess appears as an animated gauge. Remember the "
-            "model was trained on numbers, so 'female' must turn back into "
-            "its coded digit before reaching the model."
-        ),
-        "prompt": (
-            "Step 3, checkpoint 3: connect the form to the model so the "
-            "prediction button works. Encode the Sex choices back to "
-            "numbers exactly like Step 2 did, use the stored scaler, and "
-            "show the survival probability as a gauge with a human "
-            "sentence. Show me one live example straight from the model."
-        ),
-        "fn": "step_3_wire_prediction",
-    },
-    {
-        "number": 4,
-        "title": "Kind verdicts",
-        "story": (
-            "Nobody dies twice -- the passengers in the data are already "
-            "history. Trainings models must speak gently: soft wording "
-            "for low, medium and high probabilities."
-        ),
-        "prompt": (
-            "Step 3, checkpoint 4: make the browser wording gentler -- "
-            "define three probability bands (e.g. unlikely, close call, "
-            "likely) and reword the verdicts. Re-run one example on the "
-            "live model to show the friendlier message."
-        ),
-        "fn": "step_4_kind_verdicts",
-    },
-    {
-        "number": 5,
         "title": "Black-box the brain",
         "story": (
             "Final curiosity run: feed the brain imaginary passengers and "
-            "discuss whether the patterns are FAIR. A model is a mirror "
-            "of its data, nothing more."
+            "discuss whether the patterns are FAIR. A model is a mirror of its "
+            "data, nothing more."
         ),
         "prompt": (
-            "Step 3, checkpoint 5 (final!): test the live model with at "
-            "least six imaginary passengers (young/old, women/men, 1st/3rd "
-            "class), show their verdicts in a table AND as a bar chart of "
-            "their survival chances, and give me two or three discussion "
-            "questions about fairness and what the data cannot tell us."
+            "Pick the unfairness you most want the class to SEE (a 1912 "
+            "pattern that rings wrong today). Design six imaginary passengers "
+            "around it -- which attributes to vary, which to hold still -- "
+            "then ask the AI to run them through the live model as a table "
+            "plus a bar chart of survival chances, ending with fairness "
+            "questions to argue about."
         ),
-        "fn": "step_5_black_box_tests",
+        "hints": [
+            "Make them differ sharply: young/old, women/men, 1st/3rd class.",
+            "Change ONE thing at a time so a fairness argument stays clean.",
+            "Ask for the verdicts as a table AND a chart of survival chances.",
+            "Finish with 2-3 fairness questions the class can argue about.",
+        ],
+        "context": (
+            "**Scientist's trick for this checkpoint -- change ONE thing at a "
+            "time.** The dials your imaginary passengers can vary:\n\n"
+            "- sex - ticket class - age (young/old) - fare (cheap/expensive) "
+            "- family aboard (yes/no)\n\n"
+            "If you change two things at once and the verdict moves, you can't "
+            "tell which one did it. Fairness arguments need clean comparisons."
+        ),
+        "guide": (
+            "**The model is a mirror of its data, nothing more.** It rewarded "
+            "the patterns of 1912 -- including the unfair ones. It cannot see "
+            "courage, luck, or the lifeboat queue.\n\n"
+            "*Discuss:* is it fair to predict someone's survival from their "
+            "sex or ticket class? What does the model NOT know? And where else "
+            "in today's world do models quietly inherit yesterday's biases?\n\n"
+            "**That's the whole workshop** -- you met data, trained a model, "
+            "and interrogated it. This discussion is the real graduation."
+        ),
+        "reference": (
+            "Step 3, checkpoint 3 (final!): test the live model with at least "
+            "six imaginary passengers (young/old, women/men, 1st/3rd class), "
+            "show their verdicts in a table AND as a bar chart of their "
+            "survival chances, and give me two or three discussion questions "
+            "about fairness and what the data cannot tell us."
+        ),
+        "reference_alt": (
+            "Test the model with six or more very different imaginary "
+            "passengers, chart their survival odds, and give the class 2-3 "
+            "fairness questions to argue about."
+        ),
+        "experiment": (
+            "Flip ONE attribute at a time (same person, female->male, then "
+            "1st->3rd class) -- how far does the verdict move? Which single "
+            "attribute moves it most?"
+        ),
+        "fn": "step_3_black_box_tests",
+        "placeholder": (
+            "e.g. “Test the model with very different imaginary passengers and "
+            "help us judge it fairly…”"
+        ),
     },
 ]
 
