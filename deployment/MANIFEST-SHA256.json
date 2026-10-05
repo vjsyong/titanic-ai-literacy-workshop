@@ -36,8 +36,8 @@
   },
   {
     "file": "windows/oneclick.ps1",
-    "sha256": "81a9ff3609b8a2ce448d98de00ce040ad435a28702223878062ad38f4b81344a",
-    "bytes": 104310
+    "sha256": "180b7a8bc892a5c2e0a497974e07e25927f7a7a762fffd121f3b6cc0e33596c8",
+    "bytes": 104531
   },
   {
     "file": "windows/reset_workshop.ps1",

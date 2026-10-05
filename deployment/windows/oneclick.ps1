@@ -2642,7 +2642,7 @@ function New-SeedSession {
 
                 $items = @($messages.data)
                 if ($items.Count -eq 0) { $items = @($messages) }
-                if (($items | Where-Object { $null -ne $_ }).Count -gt 0) {
+                if (@($items | Where-Object { $null -ne $_ }).Count -gt 0) {
                     $needsPrompt = $false
                 }
             }
@@ -2714,7 +2714,10 @@ try {
         Write-Host "Everything is fine -- you can keep using it."
         Write-Host ""
 
-        $existingSessions = Get-VibeLauncherProcesses
+        # @() is required: a PowerShell function unrolls its returned
+        # array, so with exactly one running launcher this would be a
+        # scalar (no .Count) and StrictMode 2.0 would abort the launcher.
+        $existingSessions = @(Get-VibeLauncherProcesses)
 
         if ($existingSessions.Count -gt 0) {
             Write-Host ("It has been running since {0}." -f $existingSessions[0].StartedAt) -ForegroundColor DarkGray
@@ -2736,7 +2739,7 @@ try {
 
         if ($stopExisting) {
             Write-Host "Stopping the other session..." -ForegroundColor DarkGray
-            $stoppedParts = Stop-VibeSession $existingSessions
+            $stoppedParts = @(Stop-VibeSession $existingSessions)
 
             if ($existingSessions.Count -eq 0) {
                 Write-Warn "Could not identify the other window automatically -- if it is still open, close it manually."
