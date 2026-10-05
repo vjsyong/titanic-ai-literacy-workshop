@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import type { StepState } from "../types";
 import { ResultBlocks, Markdown } from "./ResultBlocks";
+import { BehindTheScenes } from "./BehindTheScenes";
 
 // ---------------------------------------------------------------------------
 // Attempt-to-unlock: the reference prompt stays hidden until the student has
@@ -326,6 +327,9 @@ export function StepCard({
             <ResultBlocks result={step.context} />
           </div>
         )}
+        <div className="mt-3">
+          <BehindTheScenes scriptId={scriptId} number={step.number} />
+        </div>
         <PromptWorkshop step={step} scriptId={scriptId} />
       </div>
     );
@@ -338,6 +342,13 @@ export function StepCard({
         <h3 className="font-semibold tracking-tight text-ink">
           Step {step.number} of {total} — {step.title}
         </h3>
+      </div>
+      <div className="mb-3">
+        <BehindTheScenes
+          scriptId={scriptId}
+          number={step.number}
+          dimmed
+        />
       </div>
       {step.error ? (
         <ErrorNote text={step.error} />

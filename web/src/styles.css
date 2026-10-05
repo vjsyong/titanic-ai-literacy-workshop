@@ -133,3 +133,77 @@ textarea.draft {
   font-size: 0.86rem;
   line-height: 1.5;
 }
+
+/* ---------------------------------------------------------------------------
+   "Under the hood" explainer flows: a dashed line with packets travelling
+   from one node to the next, so data visibly "ports out" into its new form.
+--------------------------------------------------------------------------- */
+
+.behind-flow {
+  scrollbar-width: thin;
+}
+
+.behind-arrow {
+  position: relative;
+  height: 2px;
+  width: 2.4rem;
+  min-width: 2.4rem;
+}
+
+.behind-line {
+  position: absolute;
+  inset: 0;
+  background-image: repeating-linear-gradient(
+    90deg,
+    var(--color-line2) 0 5px,
+    transparent 5px 10px
+  );
+  animation: behind-dash 0.8s linear infinite;
+}
+
+.behind-dot {
+  position: absolute;
+  top: -2px;
+  left: 0;
+  height: 6px;
+  width: 6px;
+  background: var(--color-acc);
+  animation: behind-travel 1.6s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+}
+
+@keyframes behind-dash {
+  from {
+    background-position-x: 0;
+  }
+  to {
+    background-position-x: -10px;
+  }
+}
+
+@keyframes behind-travel {
+  0% {
+    left: 0;
+    opacity: 0;
+  }
+  15% {
+    opacity: 1;
+  }
+  85% {
+    opacity: 1;
+  }
+  100% {
+    left: calc(100% - 6px);
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .behind-line,
+  .behind-dot {
+    animation: none;
+  }
+  .behind-dot {
+    left: calc(50% - 3px);
+    opacity: 0.7;
+  }
+}
