@@ -822,6 +822,28 @@ oc_listen_port() {
     oc_listen_ports | head -1
 }
 
+# This build's `service stop` does not always reap an already-running
+# server (e.g. one started by an earlier run), and such a stale process
+# keeps its old password. Terminate any opencode listener outright so a
+# fresh server can be spawned with the classroom password.
+kill_opencode_servers() {
+    stale_pids="$(lsof -nP -iTCP -sTCP:LISTEN 2>/dev/null \
+        | grep -i 'opencode' | awk '{print $2}' | sort -u)"
+    [ -n "$stale_pids" ] || return 0
+
+    info "Stopping leftover OpenCode server process(es)..."
+    for stale_pid in $stale_pids; do
+        kill "$stale_pid" 2>/dev/null || true
+    done
+    sleep 1
+    for stale_pid in $stale_pids; do
+        if kill -0 "$stale_pid" 2>/dev/null; then
+            kill -9 "$stale_pid" 2>/dev/null || true
+        fi
+    done
+    sleep 1
+}
+
 # Portable timeout (macOS has no coreutils `timeout`): run a command with
 # a hard limit so service-management calls can never wedge the launcher.
 run_limited() {
@@ -946,6 +968,7 @@ start_service() {
     info "Configuring the OpenCode service..."
 
     run_limited 20 "$OPENCODE_BIN" service stop >/dev/null 2>&1 || true
+    kill_opencode_servers
     run_limited 20 "$OPENCODE_BIN" service unset disabled >/dev/null 2>&1 || true
 
     "$OPENCODE_BIN" service set hostname 127.0.0.1 >/dev/null 2>&1 \
@@ -1004,6 +1027,7 @@ start_service() {
     if [ "$healthy" -ne 1 ]; then
         warn "OpenCode API did not answer yet. Trying one clean restart."
         run_limited 20 "$OPENCODE_BIN" service stop >/dev/null 2>&1 || true
+        kill_opencode_servers
         sleep 1
 
         ( cd "$PROJECT_ROOT" \
