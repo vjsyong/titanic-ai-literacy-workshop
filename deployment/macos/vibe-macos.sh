@@ -1020,10 +1020,10 @@ start_service() {
     service_env NPM_CONFIG_PREFIX "$NPM_GLOBAL"
     service_env NPM_CONFIG_CACHE "$NPM_CACHE"
 
-    # Launch the service in the background. On builds where `service
-    # start` daemonizes it returns at once; on builds where the server
-    # stays in the foreground this background job *is* the classroom
-    # server. Either way we then discover whichever port it listens on.
+    # Start the web server ourselves on the chosen port. This build's
+    # `service start` ignores `service set port` and binds an ephemeral
+    # port (the CLI default is --port 0), which changes the URL on every
+    # launch. Fall back to the service only if a direct start fails.
     SERVICE_OUT="$DOWNLOAD_ROOT/opencode-service.out"
     : > "$SERVICE_OUT"
 
@@ -1037,51 +1037,45 @@ start_service() {
         return 1
     }
 
-    info "Starting the OpenCode service..."
+    info "Starting the OpenCode web server on port $port..."
     ( cd "$PROJECT_ROOT" \
-        && OPENCODE_SERVER_PASSWORD="$password" \
+        && XDG_DATA_HOME="$PROFILE_DATA" \
+           XDG_CONFIG_HOME="$PROFILE_CONFIG" \
+           XDG_CACHE_HOME="$PROFILE_CACHE" \
+           XDG_STATE_HOME="$PROFILE_STATE" \
+           TMPDIR="$PROFILE_TEMP" \
+           OPENCODE_DISABLE_AUTOUPDATE=1 \
+           OPENCODE_CONFIG_CONTENT="$CLASSROOM_CONFIG" \
+           OPENCODE_SERVER_PASSWORD="$password" \
            OPENCODE_SERVER_USERNAME="$OPENCODE_USERNAME" \
-           nohup "$OPENCODE_BIN" service start </dev/null ) \
+           nohup "$OPENCODE_BIN" serve --hostname 127.0.0.1 --port "$port" </dev/null ) \
         > "$SERVICE_OUT" 2>&1 &
-    service_start_pid=$!
-    debug "service start launched (pid $service_start_pid)"
-
-    sleep 2
-    debug "service status after start: $(run_limited 15 "$OPENCODE_BIN" service status 2>&1 | tr '\n' '|')"
+    server_pid=$!
+    debug "web server launched (pid $server_pid)"
 
     healthy=0
-    _ticks=0
-    for _ in $(seq 1 120); do
-        if discover_api; then
+    for _ in $(seq 1 60); do
+        if [ -n "$(oc_api_base "$port" || true)" ]; then
             healthy=1
+            OPENCODE_PORT="$port"
             break
-        fi
-        _ticks=$((_ticks + 1))
-        if [ $((_ticks % 8)) -eq 0 ]; then
-            _loop_listeners="$(oc_listen_ports 2>/dev/null | tr '\n' ' ')"
-            if kill -0 "$service_start_pid" 2>/dev/null; then
-                _alive="yes"
-            else
-                _alive="no"
-            fi
-            debug "waiting ${_ticks}/120; listeners: ${_loop_listeners:-none}; start-cmd alive: $_alive; output: $(tr '\n' '|' < "$SERVICE_OUT" 2>/dev/null)"
         fi
         sleep 0.5
     done
 
     if [ "$healthy" -ne 1 ]; then
-        warn "OpenCode API did not answer yet. Trying one clean restart."
-        run_limited 20 "$OPENCODE_BIN" service stop >/dev/null 2>&1 || true
+        debug "direct web server output: $(tr '\n' '|' < "$SERVICE_OUT" 2>/dev/null)"
+        warn "Direct web server did not answer on port $port; falling back to the service."
         kill_opencode_servers
-        sleep 1
+        run_limited 20 "$OPENCODE_BIN" service stop >/dev/null 2>&1 || true
 
         ( cd "$PROJECT_ROOT" \
             && OPENCODE_SERVER_PASSWORD="$password" \
                OPENCODE_SERVER_USERNAME="$OPENCODE_USERNAME" \
                nohup "$OPENCODE_BIN" service start </dev/null ) \
             > "$SERVICE_OUT" 2>&1 &
-        service_start_pid=$!
-        debug "restart launched (pid $service_start_pid)"
+        server_pid=$!
+        debug "service start launched (pid $server_pid)"
 
         _ticks=0
         for _ in $(seq 1 120); do
@@ -1092,7 +1086,7 @@ start_service() {
             _ticks=$((_ticks + 1))
             if [ $((_ticks % 8)) -eq 0 ]; then
                 _loop_listeners="$(oc_listen_ports 2>/dev/null | tr '\n' ' ')"
-                debug "waiting (restart) ${_ticks}/120; listeners: ${_loop_listeners:-none}; output: $(tr '\n' '|' < "$SERVICE_OUT" 2>/dev/null)"
+                debug "waiting (service fallback) ${_ticks}/120; listeners: ${_loop_listeners:-none}; output: $(tr '\n' '|' < "$SERVICE_OUT" 2>/dev/null)"
             fi
             sleep 0.5
         done
