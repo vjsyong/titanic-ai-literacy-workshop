@@ -964,6 +964,12 @@ WATCHDOG
 ensure_credential
 ensure_python
 ensure_node
+
+# npm and OpenCode's launcher both run via "#!/usr/bin/env node", so the
+# private Node.js must be on PATH from here on (npm install, the opencode
+# shim, and every direct CLI call below).
+export PATH="$(managed_path)"
+
 ensure_opencode
 
 write_classroom_config
