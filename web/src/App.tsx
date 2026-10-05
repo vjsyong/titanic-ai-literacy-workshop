@@ -1,12 +1,13 @@
 import { useState } from "react";
 import { ArrowRight, Trophy } from "lucide-react";
-import { useWorkshopState } from "./api";
+import { usePersonas, useWorkshopState } from "./api";
 import type { DashboardState, ScriptState } from "./types";
 import { Header } from "./components/Header";
 import { TabBar } from "./components/TabBar";
 import { StepCard } from "./components/StepCard";
 import { PredictPanel } from "./components/PredictPanel";
 import { ErrorBanner } from "./components/ErrorBanner";
+import { Onboarding } from "./components/Onboarding";
 import { useCompletionCelebration } from "./components/Celebration";
 
 function StageCompleteBanner({
@@ -83,6 +84,8 @@ function ScriptPanel({
         onNextStage={onNextStage}
       />
 
+      {script.id === "dashboard" && <PredictPanel dashboard={dashboard} />}
+
       {script.steps.map((step) => (
         <StepCard
           key={step.number}
@@ -91,8 +94,6 @@ function ScriptPanel({
           scriptId={script.id}
         />
       ))}
-
-      {script.id === "dashboard" && <PredictPanel dashboard={dashboard} />}
 
       {/* Students read top-down: repeat the continue button at the bottom
           so it waits for them where they finished scrolling. */}
@@ -122,7 +123,9 @@ function ScriptPanel({
 
 export default function App() {
   const { state, connected } = useWorkshopState();
+  const { data: personas } = usePersonas();
   const [active, setActive] = useState(0);
+  const [view, setView] = useState<"intro" | "workshop">("intro");
 
   useCompletionCelebration(state?.all_complete ?? false);
 
@@ -142,9 +145,28 @@ export default function App() {
   const activeIndex = Math.min(active, Math.max(state.scripts.length - 1, 0));
   const activeScript = state.scripts[activeIndex];
 
+  if (view === "intro") {
+    return (
+      <div className="min-h-screen bg-bg">
+        <Header
+          done={done}
+          total={total}
+          connected={connected}
+          onHome={() => setView("intro")}
+        />
+        <Onboarding personas={personas} onStart={() => setView("workshop")} />
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-bg">
-      <Header done={done} total={total} connected={connected} />
+      <Header
+        done={done}
+        total={total}
+        connected={connected}
+        onHome={() => setView("intro")}
+      />
       <main className="mx-auto max-w-6xl space-y-4 px-4 pb-24 pt-6">
         <ErrorBanner errors={state.import_errors} />
         <TabBar

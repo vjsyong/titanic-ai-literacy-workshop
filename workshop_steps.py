@@ -15,7 +15,7 @@ HOW THE STEP-BY-STEP EXPERIENCE WORKS
     `workshop_server.py` notices the saved file within a fraction of a
     second, re-imports the script and pushes the new state to the open
     page: the finished step becomes a result card and the NEXT prompt
-    hint appears. Repeat until all 18 checkpoints are done.
+    hint appears. Repeat until all 10 checkpoints are done.
 
     Nobody types any code in class. The only trigger that moves the
     workshop forward is the student asking for intent, e.g.

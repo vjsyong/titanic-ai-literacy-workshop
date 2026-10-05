@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Loader2, Lock, Sparkles } from "lucide-react";
 import type {
   DashboardState,
@@ -95,6 +95,7 @@ export function PredictPanel({ dashboard }: { dashboard: DashboardState }) {
   const [values, setValues] = useState<Record<string, string | number>>({});
   const [response, setResponse] = useState<PredictResponse | null>(null);
   const [loading, setLoading] = useState(false);
+  const debounce = useRef<number | null>(null);
 
   useEffect(() => {
     const initial: Record<string, string | number> = {};
@@ -103,34 +104,52 @@ export function PredictPanel({ dashboard }: { dashboard: DashboardState }) {
     setResponse(null);
   }, [specJson]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  const run = useCallback(
+    async (nextValues: Record<string, string | number>) => {
+      setLoading(true);
+      const result = await predict(nextValues);
+      setResponse(result);
+      setLoading(false);
+    },
+    [],
+  );
+
+  // Live feedback: once prediction is wired, re-score shortly after any
+  // control changes (debounced so dragging a slider stays smooth).
+  useEffect(() => {
+    if (!dashboard.predict_ready || spec.length === 0) return;
+    if (Object.keys(values).length !== spec.length) return;
+    if (debounce.current) window.clearTimeout(debounce.current);
+    debounce.current = window.setTimeout(() => run(values), 400);
+    return () => {
+      if (debounce.current) window.clearTimeout(debounce.current);
+    };
+  }, [values, dashboard.predict_ready, spec.length, run]); // eslint-disable-line react-hooks/exhaustive-deps
+
   if (!dashboard.predict_ready) {
     return (
       <div className="flex items-center gap-3 border border-dashed border-line2 bg-white/60 px-4 py-6 text-faint">
         <Lock className="h-4 w-4 shrink-0" />
         <span className="text-sm font-medium">
           {spec.length > 0
-            ? "The form is designed — the prediction wiring comes with checkpoint 3."
-            : "The live passenger form appears after checkpoint 3 — keep going!"}
+            ? "The form is designed — the prediction wiring comes with checkpoint 2."
+            : "The live passenger form appears after checkpoint 1 — keep going!"}
         </span>
       </div>
     );
   }
 
-  const run = async () => {
-    setLoading(true);
-    const result = await predict(values);
-    setResponse(result);
-    setLoading(false);
-  };
-
   return (
-    <div className="border border-line bg-white p-5">
-      <div className="mb-4 flex items-center gap-2">
+    <div className="border border-acc bg-white p-5">
+      <div className="mb-1 flex items-center gap-2">
         <Sparkles className="h-5 w-5 text-acc" />
         <h3 className="text-lg font-bold tracking-tight text-ink">
           Try your own imaginary passenger
         </h3>
       </div>
+      <p className="mb-4 text-sm text-dim">
+        Drag the controls — the model re-guesses in real time.
+      </p>
 
       <div className="grid gap-4 sm:grid-cols-2">
         {spec.map((item) => (
@@ -146,7 +165,7 @@ export function PredictPanel({ dashboard }: { dashboard: DashboardState }) {
       </div>
 
       <button
-        onClick={run}
+        onClick={() => run(values)}
         disabled={loading}
         className="mt-5 inline-flex h-9 items-center gap-2 bg-black px-4 text-sm font-semibold text-white transition hover:bg-[#333] disabled:opacity-60"
       >

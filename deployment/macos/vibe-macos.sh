@@ -466,6 +466,40 @@ strip_ansi() {
     LC_ALL=C sed "s/${esc}\[[0-9;?]*[ -/]*[@-~]//g"
 }
 
+# Campus Macs commonly export HTTP_PROXY/HTTPS_PROXY (or a PAC that
+# surfaces as env vars). If loopback is not excluded, every localhost
+# request -- the launcher's health probes, the browser, and OpenCode's
+# own loopback calls -- is sent to the proxy, where it hangs until it
+# times out. The launcher then believes the server never came up.
+# Mirror the Windows launcher: always exempt loopback, preserving any
+# exclusions the student already has.
+ensure_loopback_no_proxy() {
+    _result=""
+    set -f
+    _tokens="$(printf '%s\n' localhost 127.0.0.1 ::1 ${NO_PROXY:-} | tr ', ' '\n\n')"
+    for _entry in $_tokens; do
+        [ -n "$_entry" ] || continue
+        case ",$_result," in
+            *",$_entry,"*) ;;
+            *) _result="${_result:+$_result,}$_entry" ;;
+        esac
+    done
+    set +f
+
+    NO_PROXY="$_result"
+    no_proxy="$_result"
+    export NO_PROXY no_proxy
+
+    if [ -n "${http_proxy:-}" ] && [ -z "${HTTP_PROXY:-}" ]; then
+        HTTP_PROXY="$http_proxy"
+        export HTTP_PROXY
+    fi
+    if [ -n "${https_proxy:-}" ] && [ -z "${HTTPS_PROXY:-}" ]; then
+        HTTPS_PROXY="$https_proxy"
+        export HTTPS_PROXY
+    fi
+}
+
 ensure_credential() {
     section "Checking OpenRouter classroom credential"
 
@@ -638,7 +672,8 @@ ensure_opencode() {
 
     OPENCODE_BIN="$NPM_GLOBAL/bin/opencode"
 
-    if [ "$REPAIR" -eq 0 ] && [ -x "$OPENCODE_BIN" ]; then
+    if [ "$REPAIR" -eq 0 ] && [ -x "$OPENCODE_BIN" ] \
+        && "$OPENCODE_BIN" --version >/dev/null 2>&1; then
         version="$("$OPENCODE_BIN" --version 2>/dev/null | tr -d '\r')"
         ok "OpenCode $version"
         return 0
@@ -649,11 +684,34 @@ ensure_opencode() {
     export NPM_CONFIG_FUND="false"
     export NPM_CONFIG_AUDIT="false"
     export NPM_CONFIG_UPDATE_NOTIFIER="false"
+    # @opencode/cli's postinstall is what places the real server binary;
+    # without it npm leaves a placeholder bin/opencode that exits at once
+    # (so `serve` never comes up). Node's bundled npm may skip the script
+    # under its new allow-scripts policy, and a student's ~/.npmrc with
+    # "ignore-scripts=true" definitely will. Force scripts on.
+    export NPM_CONFIG_IGNORE_SCRIPTS="false"
 
-    "$NPM_BIN" install -g "@opencode/cli@${OPENCODE_VERSION}" >/dev/null \
+    "$NPM_BIN" install -g "@opencode/cli@${OPENCODE_VERSION}" \
+        --allow-scripts=@opencode/cli >/dev/null 2>&1 \
+        || "$NPM_BIN" install -g "@opencode/cli@${OPENCODE_VERSION}" >/dev/null \
         || die "Could not install OpenCode with npm."
 
     [ -x "$OPENCODE_BIN" ] || die "OpenCode was installed but its launcher is missing."
+
+    if ! "$OPENCODE_BIN" --version >/dev/null 2>&1; then
+        # The postinstall was skipped, so bin/opencode is npm's stub.
+        # Run the package's own postinstall directly as a fallback.
+        npm_root="$("$NPM_BIN" root -g 2>/dev/null || true)"
+        if [ -n "$npm_root" ] && [ -f "$npm_root/@opencode/cli/postinstall.mjs" ]; then
+            ( cd "$npm_root/@opencode/cli" && "$NODE_BIN" ./postinstall.mjs ) >/dev/null 2>&1 || true
+        fi
+    fi
+
+    "$OPENCODE_BIN" --version >/dev/null 2>&1 || die "OpenCode installed, but its server binary is missing.
+This normally means npm install scripts were disabled (for example
+'ignore-scripts=true' in ~/.npmrc). Remove that setting and run
+REPAIR VIBE CODING."
+
     ok "OpenCode installed ($("$OPENCODE_BIN" --version 2>/dev/null | tr -d '\r'))"
 }
 
@@ -780,7 +838,7 @@ oc_api_base() {
     local probe_port="$1" probe_prefix probe_path probe_out probe_code probe_body
     for probe_prefix in "" "/api"; do
         for probe_path in /global/health /session; do
-            probe_out="$(curl -s -m 2 -w '\n%{http_code}' \
+            probe_out="$(curl -s --noproxy '*' -m 2 -w '\n%{http_code}' \
                 -u "$OPENCODE_USERNAME:$WEB_PASSWORD" \
                 "http://127.0.0.1:$probe_port$probe_prefix$probe_path" 2>/dev/null || true)"
             probe_code="${probe_out##*$'\n'}"
@@ -804,7 +862,7 @@ oc_api_base() {
 oc_probe_codes() {
     local diag_port="$1" diag_path diag_code
     for diag_path in /global/health /session /api/global/health /api/session; do
-        diag_code="$(curl -s -o /dev/null -w '%{http_code}' -m 2 \
+        diag_code="$(curl -s --noproxy '*' -o /dev/null -w '%{http_code}' -m 2 \
             -u "$OPENCODE_USERNAME:$WEB_PASSWORD" \
             "http://127.0.0.1:$diag_port$diag_path" 2>/dev/null || true)"
         printf '    %s -> %s\n' "$diag_path" "${diag_code:-000}"
@@ -888,13 +946,13 @@ seed_session() {
         return 0
     fi
 
-    sessions="$(curl -sf -m 10 -u "$OPENCODE_USERNAME:$WEB_PASSWORD" "$seed_base/session" 2>/dev/null || true)"
+    sessions="$(curl -sf --noproxy '*' -m 10 -u "$OPENCODE_USERNAME:$WEB_PASSWORD" "$seed_base/session" 2>/dev/null || true)"
     existing_id="$(printf '%s' "$sessions" | tr '{' '\n' \
         | grep -F "\"title\":\"$seed_title\"" \
         | sed -n 's/.*"id":"\([^"]*\)".*/\1/p' | head -1)"
 
     if [ -n "$existing_id" ]; then
-        messages="$(curl -sf -m 10 -u "$OPENCODE_USERNAME:$WEB_PASSWORD" \
+        messages="$(curl -sf --noproxy '*' -m 10 -u "$OPENCODE_USERNAME:$WEB_PASSWORD" \
             "$seed_base/session/$existing_id/message" 2>/dev/null || true)"
 
         if printf '%s' "$messages" | grep -Fq '"id"'; then
@@ -905,7 +963,7 @@ seed_session() {
         # Created earlier but the greeting prompt never got delivered;
         # finish the job on the existing session.
     else
-        created="$(curl -sf -m 10 -u "$OPENCODE_USERNAME:$WEB_PASSWORD" \
+        created="$(curl -sf --noproxy '*' -m 10 -u "$OPENCODE_USERNAME:$WEB_PASSWORD" \
             -H "Content-Type: application/json" \
             -d "{\"title\":\"$seed_title\"}" \
             "$seed_base/session" 2>/dev/null || true)"
@@ -923,11 +981,11 @@ seed_session() {
     # Deliver the greeting without waiting for the reply. Newer builds
     # take {parts:[...]} at prompt_async; older ones take {text} at
     # prompt. Try both.
-    if curl -sf -m 10 -u "$OPENCODE_USERNAME:$WEB_PASSWORD" \
+    if curl -sf --noproxy '*' -m 10 -u "$OPENCODE_USERNAME:$WEB_PASSWORD" \
             -H "Content-Type: application/json" \
             -d "$seed_parts_json" \
             "$seed_base/session/$existing_id/prompt_async" >/dev/null 2>&1 \
-        || curl -sf -m 10 -u "$OPENCODE_USERNAME:$WEB_PASSWORD" \
+        || curl -sf --noproxy '*' -m 10 -u "$OPENCODE_USERNAME:$WEB_PASSWORD" \
             -H "Content-Type: application/json" \
             -d "$seed_json" \
             "$seed_base/session/$existing_id/prompt" >/dev/null 2>&1; then
@@ -938,7 +996,7 @@ seed_session() {
 }
 
 service_env() {
-    "$OPENCODE_BIN" service set env "$1" "$2" >/dev/null 2>&1 \
+    run_limited 20 "$OPENCODE_BIN" service set env "$1" "$2" >/dev/null 2>&1 \
         || die "Could not set OpenCode service environment variable: $1"
 }
 
@@ -997,13 +1055,13 @@ start_service() {
     run_limited 20 "$OPENCODE_BIN" service unset disabled >/dev/null 2>&1 || true
 
     debug "running: service set hostname 127.0.0.1"
-    "$OPENCODE_BIN" service set hostname 127.0.0.1 >/dev/null 2>&1 \
+    run_limited 20 "$OPENCODE_BIN" service set hostname 127.0.0.1 >/dev/null 2>&1 \
         || die "Could not configure the OpenCode hostname."
     debug "running: service set port $port"
-    "$OPENCODE_BIN" service set port "$port" >/dev/null 2>&1 \
+    run_limited 20 "$OPENCODE_BIN" service set port "$port" >/dev/null 2>&1 \
         || die "Could not configure the OpenCode port."
     debug "running: service set password (<hidden>)"
-    "$OPENCODE_BIN" service set password "$password" >/dev/null 2>&1 \
+    run_limited 20 "$OPENCODE_BIN" service set password "$password" >/dev/null 2>&1 \
         || die "Could not configure the OpenCode Web UI password."
 
     service_env PATH "$(managed_path)"
@@ -1019,6 +1077,8 @@ start_service() {
     service_env PYTHONUTF8 1
     service_env NPM_CONFIG_PREFIX "$NPM_GLOBAL"
     service_env NPM_CONFIG_CACHE "$NPM_CACHE"
+    service_env NO_PROXY "$NO_PROXY"
+    service_env no_proxy "$NO_PROXY"
 
     # Start the web server ourselves on the chosen port. This build's
     # `service start` ignores `service set port` and binds an ephemeral
@@ -1048,6 +1108,8 @@ start_service() {
            OPENCODE_CONFIG_CONTENT="$CLASSROOM_CONFIG" \
            OPENCODE_SERVER_PASSWORD="$password" \
            OPENCODE_SERVER_USERNAME="$OPENCODE_USERNAME" \
+           NO_PROXY="$NO_PROXY" \
+           no_proxy="$NO_PROXY" \
            nohup "$OPENCODE_BIN" serve --hostname 127.0.0.1 --port "$port" </dev/null ) \
         > "$SERVICE_OUT" 2>&1 &
     server_pid=$!
@@ -1145,7 +1207,7 @@ open_pairing() {
     fi
 
     PAIRED=0
-    pair_output="$("$OPENCODE_BIN" pair --url "$base_url" 2>&1 || true)"
+    pair_output="$(run_limited 25 "$OPENCODE_BIN" pair --url "$base_url" 2>&1 || true)"
     login_url="$(printf '%s' "$pair_output" \
         | strip_ansi \
         | grep -oE 'https?://[^[:space:]]+' \
@@ -1200,7 +1262,7 @@ page_failures=0
 while [ "\$(date +%s)" -lt "\$deadline" ]; do
     sleep 10
 
-    if curl -sf -m 8 "http://127.0.0.1:\$PORT" >/dev/null 2>&1; then
+    if curl -sf --noproxy '*' -m 8 "http://127.0.0.1:\$PORT" >/dev/null 2>&1; then
         failures=0
     else
         failures=\$((failures + 1))
@@ -1211,7 +1273,7 @@ while [ "\$(date +%s)" -lt "\$deadline" ]; do
         fi
     fi
 
-    if curl -sf -m 8 "http://127.0.0.1:\$PAGE_PORT" >/dev/null 2>&1; then
+    if curl -sf --noproxy '*' -m 8 "http://127.0.0.1:\$PAGE_PORT" >/dev/null 2>&1; then
         page_failures=0
     else
         page_failures=\$((page_failures + 1))
@@ -1290,6 +1352,10 @@ teardown_session() {
 trap 'teardown_session; exit 1' HUP INT TERM
 trap 'teardown_session' EXIT
 
+# Exempt loopback from any campus proxy before any localhost probe or
+# server start, so the setup cannot hang waiting on a proxy.
+ensure_loopback_no_proxy
+
 ensure_credential
 ensure_python
 ensure_node
@@ -1307,6 +1373,11 @@ cd "$PROJECT_ROOT" || die "The workshop folder could not be accessed: $PROJECT_R
 test_provider
 
 get_web_password
+# `opencode pair` and any other direct CLI call authenticate with these;
+# the foreground `serve` gets them inline below, but the launcher shell
+# and the pair command must have them too.
+export OPENCODE_SERVER_PASSWORD="$WEB_PASSWORD"
+export OPENCODE_SERVER_USERNAME="$OPENCODE_USERNAME"
 OPENCODE_PORT="$(find_free_port "$PREFERRED_OPENCODE_PORT" "$LAST_OPENCODE_PORT")" \
     || die "No free port for the OpenCode Web UI."
 
@@ -1332,7 +1403,7 @@ fi
 
 PAGE_OK=0
 for _ in $(seq 1 10); do
-    if [ "$(curl -s -o /dev/null -w '%{http_code}' -m 5 "http://127.0.0.1:$PAGE_PORT/api/health" 2>/dev/null)" = "200" ]; then
+    if [ "$(curl -s --noproxy '*' -o /dev/null -w '%{http_code}' -m 5 "http://127.0.0.1:$PAGE_PORT/api/health" 2>/dev/null)" = "200" ]; then
         PAGE_OK=1
         break
     fi

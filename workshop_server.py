@@ -52,6 +52,8 @@ import workshop_steps
 
 HERE = Path(__file__).resolve().parent
 WEB_DIST = HERE / "web" / "dist"
+PERSONAS_JSON = HERE / "personas.json"
+PERSONAS_DIR = HERE / "personas"
 
 # How often the watcher checks for saved workshop files.
 REFRESH_INTERVAL = 0.5
@@ -551,6 +553,22 @@ def predict(payload: dict):
             "band": workshop_steps.json_ready(raw.get("band")),
         }
     return {"ok": True, "text": str(raw)[:2000], "probability": None, "band": None}
+
+
+@app.get("/api/personas")
+def get_personas():
+    """Serve the quiz roster (personas.json) for the front-page game."""
+    try:
+        return json.loads(PERSONAS_JSON.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {"personas": [], "error": "personas.json is missing or invalid"}
+
+
+# The portrait images live in the repo-root `personas/` folder so instructors
+# keep a single editable copy. Mounted before the web-dist catch-all so
+# `/personas/M1.jpg` resolves to the image, not the React app.
+if PERSONAS_DIR.is_dir():
+    app.mount("/personas", StaticFiles(directory=str(PERSONAS_DIR)), name="personas")
 
 
 # The API routes are registered above; the static mount catches the rest.

@@ -1124,14 +1124,21 @@ function Test-OpenCode {
 }
 
 function Get-OpenCodeCandidates {
-    # npm normally creates a global .cmd shim directly under the
-    # chosen prefix. Also check the package's native binary because
-    # it is a useful fallback on Windows if shim creation behaves
-    # differently across npm versions.
+    # Prefer the package's NATIVE binary over npm's .cmd shim.
+    #
+    # Windows PowerShell 5.1 hands arguments to a .cmd wrapper through
+    # cmd.exe, and the wrapper re-expands them with %*. The launcher passes
+    # the classroom config JSON (many embedded quotes) and semicolon-laden
+    # PATH values to `opencode service set env ...`; that double parsing
+    # mangles the arguments and aborts the pipeline with "The pipeline has
+    # been stopped". A native .exe receives the exact arguments.
+    #
+    # The .cmd shim stays as a fallback for installs where the package's
+    # postinstall script did not place the native binary.
     return @(
-        (Join-Path $OpenCodePrefix "opencode.cmd"),
-        (Join-Path $OpenCodePrefix "opencode.exe"),
         (Join-Path $OpenCodePrefix "node_modules\@opencode\cli\bin\opencode.exe"),
+        (Join-Path $OpenCodePrefix "opencode.exe"),
+        (Join-Path $OpenCodePrefix "opencode.cmd"),
         (Join-Path $OpenCodePrefix "node_modules\@opencode\cli\bin\opencode")
     )
 }

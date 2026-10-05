@@ -1,0 +1,103 @@
+{
+  "dataset": "data/titanic.csv",
+  "portrait_dir": "personas",
+  "style_block": "Detailed Edwardian 1912 illustration, semi-realistic painted character portrait character art, warm amber and sepia colour grading, soft cinematic lighting, historically accurate early-1900s clothing, rich fabric textures, centered upper-body composition, shallow depth of field with a softly blurred background, high detail, square 1:1 format. Negative: modern clothing, anachronisms, text, logo, watermark, extra fingers, deformed hands.",
+  "classifier": {
+    "features": ["Pclass", "Sex", "Age", "SibSp", "Parch", "Fare", "Emb_C", "Emb_Q", "Emb_S"],
+    "sex_encoding": {"male": 1, "female": 0},
+    "age_imputation": "median",
+    "embarked_imputation": "mode (S)",
+    "scaler": "StandardScaler (fit on train)",
+    "model": "LogisticRegression(max_iter=1000)",
+    "split": "80/20 stratify=y random_state=42",
+    "test_accuracy": 0.804,
+    "persona_evaluation": "ten persona rows held out of training (honest, no leakage)",
+    "persona_hits": 8,
+    "coefficients": {
+      "Sex": -1.27, "Pclass": -0.928, "Age": -0.502, "SibSp": -0.262,
+      "Emb_S": -0.115, "Emb_Q": 0.114, "Fare": 0.099, "Parch": -0.067, "Emb_C": 0.052
+    }
+  },
+  "personas": [
+    {
+      "id": "M1", "title": "The First-Class Bachelor", "sex": "male", "age": 49,
+      "portrait": "personas/M1.jpg",
+      "pclass": 1, "sibsp": 0, "parch": 0, "fare": 79.2, "embarked": "C", "cabin": "B82",
+      "anchor_passenger_id": 790, "anchor_name": "Guggenheim, Mr. Benjamin",
+      "actual_survived": 0, "model_probability": 0.42, "model_prediction": 0, "match": true,
+      "prompt": "Portrait of a distinguished 49-year-old Edwardian gentleman, first-class Titanic passenger, single, no family. Tall, dark brown hair side-parted and pomaded, trimmed moustache and short beard, confident calm expression. Immaculate navy three-piece suit, patterned waistcoat, white stiff-collar shirt, dark red patterned cravat with gold tie pin, gold pocket-watch chain, small rose boutonnière. Background: opulent first-class lounge, carved mahogany panels, brass globe wall sconces, crystal chandeliers, white-clothed tables with blurred elegant diners."
+    },
+    {
+      "id": "M2", "title": "The Third-Class Emigrant", "sex": "male", "age": 21,
+      "portrait": "personas/M2.jpg",
+      "pclass": 3, "sibsp": 0, "parch": 0, "fare": 16.1, "embarked": "S", "cabin": null,
+      "anchor_passenger_id": 625, "anchor_name": "Bowen, Mr. David John",
+      "actual_survived": 0, "model_probability": 0.123, "model_prediction": 0, "match": true,
+      "prompt": "Portrait of a 21-year-old working-class Welsh emigrant man, third-class Titanic passenger, travelling alone. Slim, tousled sandy-brown hair, clean-shaven youthful face, tired hopeful eyes. Worn brown flat cap, coarse grey wool jacket over a collarless cotton shirt, suspenders, canvas satchel on one shoulder. Background: cramped third-class steerage common room, iron bunks and a porthole, blurred steerage passengers."
+    },
+    {
+      "id": "M3", "title": "The Second-Class Family Man", "sex": "male", "age": 36,
+      "portrait": "personas/M3.jpg",
+      "pclass": 2, "sibsp": 1, "parch": 2, "fare": 27.75, "embarked": "S", "cabin": null,
+      "anchor_passenger_id": 451, "anchor_name": "West, Mr. Edwy Arthur",
+      "actual_survived": 0, "model_probability": 0.125, "model_prediction": 0, "match": true,
+      "prompt": "Portrait of a 36-year-old middle-class English father, second-class Titanic passenger, married with a wife and two young children. Receding brown hair, thick moustache, warm but worried expression. Tweed three-piece suit, brown bowler hat, striped tie, silver pocket watch. Background: tidy second-class stairway and lounge, oak panelling, linoleum floor, blurred well-dressed families."
+    },
+    {
+      "id": "M4", "title": "The Steerage Child", "sex": "male", "age": 3,
+      "portrait": "personas/M4.jpg",
+      "pclass": 3, "sibsp": 4, "parch": 2, "fare": 31.3875, "embarked": "S", "cabin": null,
+      "anchor_passenger_id": 262, "anchor_name": "Asplund, Master. Edvin Rojj Felix",
+      "actual_survived": 1, "model_probability": 0.055, "model_prediction": 0, "match": false,
+      "prompt": "Portrait of a 3-year-old Swedish immigrant boy, third-class Titanic passenger, youngest of a large family. Small, round-faced, short light-blond hair, big curious blue eyes, rosy cheeks. Patched brown wool coat, knitted scarf, flat cap, clutching a tiny wooden toy horse. Background: crowded third-class steerage berth, small porthole, blurred older siblings."
+    },
+    {
+      "id": "M5", "title": "The First-Class Newlywed", "sex": "male", "age": 25,
+      "portrait": "personas/M5.jpg",
+      "pclass": 1, "sibsp": 1, "parch": 0, "fare": 91.0792, "embarked": "C", "cabin": "B49",
+      "anchor_passenger_id": 485, "anchor_name": "Bishop, Mr. Dickinson H",
+      "actual_survived": 1, "model_probability": 0.56, "model_prediction": 1, "match": true,
+      "prompt": "Portrait of a handsome 25-year-old first-class newlywed gentleman, Titanic passenger, on honeymoon with his young bride. Dark wavy hair neatly combed, light moustache, warm confident smile, bright eyes. Impeccable black evening tailcoat with silk waistcoat, high starched collar, white bow tie, white kid gloves, top hat under one arm, gold cufflinks, polished shoes. Background: first-class grand staircase with glass dome and carved oak balustrade, blurred elegantly dressed couple."
+    },
+    {
+      "id": "F1", "title": "The Society Wife", "sex": "female", "age": 38,
+      "portrait": "personas/F1.jpg",
+      "pclass": 1, "sibsp": 1, "parch": 0, "fare": 71.2833, "embarked": "C", "cabin": "C85",
+      "anchor_passenger_id": 2, "anchor_name": "Cumings, Mrs. John Bradley (Florence Briggs Thayer)",
+      "actual_survived": 1, "model_probability": 0.92, "model_prediction": 1, "match": true,
+      "prompt": "Portrait of an elegant 38-year-old wealthy American society woman, first-class Titanic passenger, married with her husband aboard. Dark hair in a soft Edwardian updo under a wide-brimmed feathered hat, gentle composed smile, pearl earrings. Cream lace-trimmed silk gown, fur stole, long white gloves, pearl necklace, small beaded purse. Background: grand first-class dining saloon, gold-framed mirrors, chandeliers, blurred gentlemen in evening dress."
+    },
+    {
+      "id": "F2", "title": "The Irish Immigrant Girl", "sex": "female", "age": 18,
+      "portrait": "personas/F2.jpg",
+      "pclass": 3, "sibsp": 0, "parch": 0, "fare": 6.75, "embarked": "Q", "cabin": null,
+      "anchor_passenger_id": 655, "anchor_name": "Hegarty, Miss Hanora \"Nora\"",
+      "actual_survived": 0, "model_probability": 0.778, "model_prediction": 1, "match": false,
+      "prompt": "Portrait of an 18-year-old Irish immigrant girl, third-class Titanic passenger, travelling alone from Queenstown. Dark hair in a simple loose bun, freckles, determined grey eyes, slightly windswept. Plain grey-blue dress with a heavy knitted shawl, small wooden rosary, cloth bundle. Background: crowded third-class open deck leaving Queenstown harbour, blurred emigrant families and ship rigging."
+    },
+    {
+      "id": "F3", "title": "The Second-Class Mother", "sex": "female", "age": 33,
+      "portrait": "personas/F3.jpg",
+      "pclass": 2, "sibsp": 0, "parch": 2, "fare": 26.0, "embarked": "S", "cabin": null,
+      "anchor_passenger_id": 507, "anchor_name": "Quick, Mrs. Frederick Charles (Jane Richards)",
+      "actual_survived": 1, "model_probability": 0.777, "model_prediction": 1, "match": true,
+      "prompt": "Portrait of a 33-year-old English mother, second-class Titanic passenger, travelling with her two young children. Soft brown hair pinned up, modest ribboned hat, tired loving expression, a small child clutching her skirt and a toddler on her hip. Modest burgundy wool dress, lace collar, cameo brooch. Background: second-class promenade deck, wooden benches, railing and open sea, blurred passengers."
+    },
+    {
+      "id": "F4", "title": "The First-Class Spinster", "sex": "female", "age": 58,
+      "portrait": "personas/F4.jpg",
+      "pclass": 1, "sibsp": 0, "parch": 0, "fare": 26.55, "embarked": "S", "cabin": "C103",
+      "anchor_passenger_id": 12, "anchor_name": "Bonnell, Miss Elizabeth",
+      "actual_survived": 1, "model_probability": 0.824, "model_prediction": 1, "match": true,
+      "prompt": "Portrait of a dignified 58-year-old English gentlewoman, first-class Titanic passenger, unmarried and travelling alone. Silver-grey hair in a neat bun, wire-rimmed spectacles, stern refined expression. High-collared black-and-lilac Edwardian dress with lace trim, jet brooch, black lace gloves, ebony walking cane. Background: first-class reading room, potted palms, wicker chairs, brass fixtures, blurred elderly passengers."
+    },
+    {
+      "id": "F5", "title": "The Third-Class Mother", "sex": "female", "age": 43,
+      "portrait": "personas/F5.jpg",
+      "pclass": 3, "sibsp": 1, "parch": 6, "fare": 46.9, "embarked": "S", "cabin": null,
+      "anchor_passenger_id": 679, "anchor_name": "Goodwin, Mrs. Frederick (Augusta Tyler)",
+      "actual_survived": 0, "model_probability": 0.304, "model_prediction": 0, "match": true,
+      "prompt": "Portrait of a 43-year-old third-class immigrant mother, Titanic passenger, travelling with her husband and six children. Dark hair pulled back under a simple dark bonnet, careworn gentle face, deep tired eyes, faint worry lines. Plain patched dark cotton dress, heavy knitted grey shawl drawn around her, a small child held close, plain wedding band. Background: cramped steerage quarters with iron bunks and a small porthole, blurred children."
+    }
+  ]
+}

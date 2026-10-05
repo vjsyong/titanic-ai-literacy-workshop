@@ -119,3 +119,36 @@ export interface PredictResponse {
   band?: string | null;
   error?: string;
 }
+
+export interface Persona {
+  id: string;
+  title: string;
+  sex: "male" | "female";
+  age: number;
+  portrait: string;
+  pclass: number;
+  sibsp: number;
+  parch: number;
+  fare: number;
+  embarked: string;
+  cabin: string | null;
+  anchor_passenger_id: number;
+  anchor_name: string;
+  actual_survived: 0 | 1;
+  model_probability: number;
+  model_prediction: 0 | 1;
+  match: boolean;
+}
+
+export interface PersonasFile {
+  dataset: string;
+  portrait_dir: string;
+  classifier: {
+    test_accuracy: number;
+    persona_hits: number;
+    model: string;
+    features: string[];
+    [key: string]: unknown;
+  };
+  personas: Persona[];
+}

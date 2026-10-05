@@ -36,8 +36,8 @@
   },
   {
     "file": "windows/oneclick.ps1",
-    "sha256": "9f35ff7c165ee5bbeb144fd5668c2f0eeb0b2f98cc7571898725d5d658bbc8fd",
-    "bytes": 103907
+    "sha256": "81a9ff3609b8a2ce448d98de00ce040ad435a28702223878062ad38f4b81344a",
+    "bytes": 104310
   },
   {
     "file": "windows/reset_workshop.ps1",
@@ -81,23 +81,23 @@
   },
   {
     "file": "macos/vibe-macos.sh",
-    "sha256": "d5a7837930be51b5774f6f284e318b29a4aa808ef4c36a62a04571bacd17017b",
-    "bytes": 50087
+    "sha256": "abc4d1ced8ab5600bbe863eaa77ffbbd86140c89f9bcc26e23fa7bf93aded9d2",
+    "bytes": 53362
   },
   {
     "file": "baseline/01_eda.py",
-    "sha256": "b2a29ae13fa2c7440f93b6b3a1c2217a2430b054dfc905889730280cecf5c4fb",
-    "bytes": 29094
+    "sha256": "d876731e89b3cad872351161e81de88ed0e560275981fdf768bb638a33bb0174",
+    "bytes": 20670
   },
   {
     "file": "baseline/02_train.py",
-    "sha256": "19164b682d6e188564b2067ff564d3e61e422750821543909319c3c60d82977f",
-    "bytes": 33121
+    "sha256": "e6c0c73c53bb4b0d9d1bbafcef57dc3341867ae19cdb2bae4b7964973ab6f63e",
+    "bytes": 24613
   },
   {
     "file": "baseline/03_dashboard.py",
-    "sha256": "e341c4fc1ec2af10725ca85cc8469ace55249cd45c69350d8e4a9143b72213f6",
-    "bytes": 23878
+    "sha256": "77de3b214c5b5a8d29bc06b78d5171d956136a4c6b23ae0fe9d1573fe58371af",
+    "bytes": 20252
   },
   {
     "file": "baseline/data/titanic.csv",

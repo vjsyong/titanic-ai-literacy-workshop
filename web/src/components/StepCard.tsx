@@ -3,6 +3,7 @@ import {
   AlertTriangle,
   Check,
   CheckCircle2,
+  ClipboardPaste,
   Compass,
   Copy,
   Lightbulb,
@@ -125,7 +126,9 @@ function ReferencePanel({
         </div>
       )}
       <p className="mt-2 text-xs text-dim">
-        Yours counts too — send whichever you prefer (or your own words).
+        Copy this prompt and paste it straight into the OpenCode chat window
+        (the other side of your screen) — don't retype it. The page updates
+        itself when the checkpoint is done.
       </p>
     </div>
   );
@@ -179,6 +182,18 @@ function PromptWorkshop({
             </ul>
           </div>
         )}
+      </div>
+
+      <div className="mt-3 flex items-start gap-2 border border-line bg-card2 px-3 py-2 text-xs leading-relaxed text-dim">
+        <ClipboardPaste className="mt-0.5 h-3.5 w-3.5 shrink-0 text-acc" />
+        <span>
+          Read the mission, then{" "}
+          <strong className="font-semibold text-ink">
+            copy the prompt and paste it into the OpenCode chat
+          </strong>{" "}
+          — don't type it out by hand. Your assistant does the work; you
+          supply the intent.
+        </span>
       </div>
 
       {unlocked ? (

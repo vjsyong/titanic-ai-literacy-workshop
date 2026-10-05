@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import confetti from "canvas-confetti";
 
-/** Fire a short celebration the first time all 18 checkpoints are done. */
+/** Fire a short celebration the first time all checkpoints are done. */
 export function useCompletionCelebration(allComplete: boolean) {
   useEffect(() => {
     if (!allComplete) return;

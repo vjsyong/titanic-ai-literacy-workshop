@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import type { PredictResponse, WorkshopState } from "./types";
+import type { PersonasFile, PredictResponse, WorkshopState } from "./types";
 
 /**
  * Live workshop state: an initial fetch plus a Server-Sent Events stream
@@ -53,4 +53,30 @@ export async function predict(
   } catch {
     return { ok: false, error: "The workshop server is not answering." };
   }
+}
+
+/** The quiz roster (personas.json), fetched once for the front-page game. */
+export function usePersonas() {
+  const [data, setData] = useState<PersonasFile | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let active = true;
+    fetch("/api/personas")
+      .then((response) => response.json())
+      .then((payload: PersonasFile) => {
+        if (active) setData(payload);
+      })
+      .catch(() => {
+        if (active) setData(null);
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  return { data, loading };
 }

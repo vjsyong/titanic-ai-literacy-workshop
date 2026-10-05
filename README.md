@@ -9,14 +9,15 @@ served by a small FastAPI process, in one classroom page.
 
 | Path | Purpose |
 |---|---|
-| `01_eda.py` | Step 1 - Meet the Data: **6 checkpoint gates** (list, holes, survival, sex/class charts, age) |
-| `02_train.py` | Step 2 - Train the Model: **7 checkpoint gates** (encode -> save model) |
-| `03_dashboard.py` | Step 3 - Survival Explorer: **5 checkpoint gates**, live form appears at gate 3 |
+| `01_eda.py` | Step 1 - Meet the Data: **3 checkpoint gates** (load + holes, survival + sex, class + age) |
+| `02_train.py` | Step 2 - Train the Model: **4 checkpoint gates** (encode + features -> split + scale -> train -> explain + save) |
+| `03_dashboard.py` | Step 3 - Survival Explorer: **3 checkpoint gates**, live form appears after gate 1, prediction after gate 2 |
 | `workshop_server.py` | Instructor-managed FastAPI server: checkpoint state, SSE auto-refresh, prediction endpoint, serves `web/dist` |
 | `serve_workshop.py` | Instructor-managed launcher: free port, background server, browser, reuse of a running page |
 | `workshop_steps.py` | Instructor-managed shared machinery: result serialization + `chart()` / `metric()` / `verdict()` helpers |
 | `web/` | The React + TypeScript + Tailwind UI (ECharts charts); `web/dist` is committed so students never need Node. Styled on the mail-triage design system (self-hosted Geist fonts in `web/public/fonts`) |
 | `data/titanic.csv` | The original 1912 passenger list (holes and all — that's the point) |
+| `personas.json` / `personas/` | The 10-persona survival-quiz roster and its Edwardian portrait images, served to the front page |
 | `AGENTS.md` | Persistent system prompt for the students' AI Teaching Assistant |
 | `deployment/windows/` | Windows one-click OpenCode classroom environment (PowerShell + `.bat` launchers) |
 | `deployment/macos/` | macOS one-click classroom environment (`.command` launchers + shell launcher) |
@@ -24,6 +25,12 @@ served by a small FastAPI process, in one classroom page.
 
 ## How the class works (checkpoint flow)
 
+0. **Front page**: the page opens on a short guide — what students will
+   build and why, a side-by-side setup screenshot
+   (`web/public/onboarding/setup.png`, drop-in), a "what happens under the
+   hood" diagram, and an interactive **survival challenge** (10 real
+   passenger personas with portraits and a countdown timer). A "Start the
+   workshop" button enters the three tabs.
 1. **Once**: the launcher serves the workshop page automatically
    (`deployment/windows/START VIBE CODING.bat` or
    `deployment/macos/START VIBE CODING.command` starts it on port 4097; a
@@ -42,7 +49,7 @@ served by a small FastAPI process, in one classroom page.
    bumps the script's `STEPS_COMPLETED`, saves the file. The server notices
    within a second: the open page refreshes itself, the finished checkpoint
    becomes an animated result card (tables, interactive charts, gauges), and
-   the NEXT mission appears. Repeat until all 18 checkpoints are done.
+   the NEXT mission appears. Repeat until all 10 checkpoints are done.
 
 ## Instructor development
 
@@ -61,7 +68,7 @@ python serve_workshop.py --no-browser
 
 **After changing the UI, rebuild the committed bundle:** `cd web && npm run build`.
 
-The `demo` branch holds the full reference implementation (all 18 gates
+The `demo` branch holds the full reference implementation (all 10 gates
 implemented with the fancy payloads) matching the student scaffolds.
 
 ## Instructor testing / student quick start (Windows)
@@ -98,7 +105,7 @@ Other launchers (Windows in `deployment/windows/`, macOS in
   without touching student project files.
 - `RESET WORKSHOP.bat` — restores the three workshop scripts and
   `data/titanic.csv` to their originals and deletes generated artifacts, so
-  the 18 checkpoints lock again. The classroom runtime and API key stay.
+  the 10 checkpoints lock again. The classroom runtime and API key stay.
 - `RESET VIBE CODING.bat` — removes only `%LOCALAPPDATA%\VibeCoding`
   and `%USERPROFILE%\.vibecoding`; system installs and student projects stay.
 
@@ -157,10 +164,14 @@ instructions:
    - When distributing a ZIP, include `key.txt` — it is inside the zip,
      never in the git history.
 2. Build the UI once (`cd web && npm run build`) so `web/dist` is current.
-3. Optional: pre-bake big downloads into `deployment/windows/payload/`
+3. Put the 10 quiz portraits in `personas/` (named `M1.jpg` … `F5.jpg`) and,
+   optionally, a side-by-side OpenCode + workshop-page screenshot at
+   `web/public/onboarding/setup.png` (both are drop-in; placeholders show
+   until they exist).
+4. Optional: pre-bake big downloads into `deployment/windows/payload/`
    (python-3.12.10 installer, node-v24.21.0 zip, SHASUMS256.txt) to reduce
    classroom Wi-Fi traffic — see `deployment/windows/README-FIRST.txt`.
-4. Keep the whole `deployment/` folder (both platform folders and the
+5. Keep the whole `deployment/` folder (both platform folders and the
    shared `baseline/`) next to the workshop files when zipping.
 
 ## Updating launcher files

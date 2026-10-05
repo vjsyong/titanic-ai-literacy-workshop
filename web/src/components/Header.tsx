@@ -1,13 +1,15 @@
-import { Ship } from "lucide-react";
+import { BookOpen, Ship } from "lucide-react";
 
 export function Header({
   done,
   total,
   connected,
+  onHome,
 }: {
   done: number;
   total: number;
   connected: boolean;
+  onHome?: () => void;
 }) {
   const percent = total > 0 ? Math.round((done / total) * 100) : 0;
 
@@ -27,6 +29,15 @@ export function Header({
         </div>
 
         <div className="ml-auto flex items-center gap-4">
+          {onHome && (
+            <button
+              onClick={onHome}
+              className="hidden h-8 items-center gap-1.5 border border-line bg-white px-3 text-xs font-medium text-[#3f3f46] transition hover:border-black hover:text-black sm:inline-flex"
+            >
+              <BookOpen className="h-3.5 w-3.5" />
+              Guide
+            </button>
+          )}
           <div className="hidden items-center gap-2 sm:flex">
             <div className="h-1.5 w-40 border border-line bg-card2">
               <div
