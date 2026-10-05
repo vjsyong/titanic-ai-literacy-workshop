@@ -771,21 +771,50 @@ test_provider() {
 # The OpenCode HTTP API is mounted at the site root (e.g. /session,
 # /global/health) in the documented builds and under /api in some
 # classroom builds. Probe the common shapes on a port and echo the base
-# URL that answers (no trailing slash), or nothing when none does.
+# URL that answers with JSON (200), or nothing when none does. A JSON
+# body is required so an SPA/login HTML page is never mistaken for the
+# API.
 oc_api_base() {
-    local probe_port="$1" probe_prefix probe_path probe_code
+    local probe_port="$1" probe_prefix probe_path probe_out probe_code probe_body
     for probe_prefix in "" "/api"; do
         for probe_path in /global/health /session; do
-            probe_code="$(curl -s -o /dev/null -w '%{http_code}' -m 2 \
+            probe_out="$(curl -s -m 2 -w '\n%{http_code}' \
                 -u "$OPENCODE_USERNAME:$WEB_PASSWORD" \
                 "http://127.0.0.1:$probe_port$probe_prefix$probe_path" 2>/dev/null || true)"
-            if [ "$probe_code" = "200" ]; then
+            probe_code="${probe_out##*$'\n'}"
+            probe_body="${probe_out%$'\n'*}"
+            if [ "$probe_code" = "200" ] \
+                && { [ "${probe_body#\{}" != "$probe_body" ] \
+                     || [ "${probe_body#\[}" != "$probe_body" ]; }; then
                 printf 'http://127.0.0.1:%s%s' "$probe_port" "$probe_prefix"
                 return 0
             fi
         done
     done
     return 1
+}
+
+# Print the HTTP status each known API path returns on a port. Used as a
+# diagnostic when no running classroom server can be found.
+oc_probe_codes() {
+    local diag_port="$1" diag_path diag_code
+    for diag_path in /global/health /session /api/global/health /api/session; do
+        diag_code="$(curl -s -o /dev/null -w '%{http_code}' -m 2 \
+            -u "$OPENCODE_USERNAME:$WEB_PASSWORD" \
+            "http://127.0.0.1:$diag_port$diag_path" 2>/dev/null || true)"
+        printf '    %s -> %s\n' "$diag_path" "${diag_code:-000}"
+    done
+}
+
+# Portable timeout (macOS has no coreutils `timeout`): run a command with
+# a hard limit so service-management calls can never wedge the launcher.
+run_limited() {
+    _rl_secs="$1"; shift
+    if command -v perl >/dev/null 2>&1; then
+        perl -e 'alarm shift; exec @ARGV' "$_rl_secs" "$@"
+    else
+        "$@"
+    fi
 }
 
 seed_session() {
@@ -884,10 +913,15 @@ start_service() {
         return 0
     fi
 
+    info "No classroom API is answering on ports $PREFERRED_OPENCODE_PORT-$LAST_OPENCODE_PORT."
+    info "Probe results on $PREFERRED_OPENCODE_PORT (401 = auth needed, 404 = wrong path):"
+    oc_probe_codes "$PREFERRED_OPENCODE_PORT"
+    lsof -nP -iTCP:"$PREFERRED_OPENCODE_PORT" -sTCP:LISTEN 2>/dev/null || true
+
     info "Configuring the OpenCode service..."
 
-    "$OPENCODE_BIN" service stop >/dev/null 2>&1 || true
-    "$OPENCODE_BIN" service unset disabled >/dev/null 2>&1 || true
+    run_limited 20 "$OPENCODE_BIN" service stop >/dev/null 2>&1 || true
+    run_limited 20 "$OPENCODE_BIN" service unset disabled >/dev/null 2>&1 || true
 
     "$OPENCODE_BIN" service set hostname 127.0.0.1 >/dev/null 2>&1 \
         || die "Could not configure the OpenCode hostname."
@@ -935,7 +969,7 @@ start_service() {
 
     if [ "$healthy" -ne 1 ]; then
         warn "OpenCode API did not answer yet. Trying one clean restart."
-        "$OPENCODE_BIN" service stop >/dev/null 2>&1 || true
+        run_limited 20 "$OPENCODE_BIN" service stop >/dev/null 2>&1 || true
         sleep 1
 
         ( cd "$PROJECT_ROOT" && nohup "$OPENCODE_BIN" service start </dev/null ) \
@@ -954,7 +988,7 @@ start_service() {
         info "Last lines from the OpenCode service start:"
         tail -n 20 "$SERVICE_OUT" 2>/dev/null || true
         info "OpenCode service status:"
-        "$OPENCODE_BIN" service status 2>&1 || true
+        run_limited 15 "$OPENCODE_BIN" service status 2>&1 || true
         die "OpenCode service failed its API health check."
     fi
 }
