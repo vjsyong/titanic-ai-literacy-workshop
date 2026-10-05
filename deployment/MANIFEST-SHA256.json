@@ -36,8 +36,8 @@
   },
   {
     "file": "windows/oneclick.ps1",
-    "sha256": "3a4ae62f70c6866dbdd6762dd9672d618140db051f80d8be81d07e936335a927",
-    "bytes": 99999
+    "sha256": "bebd81a97bde1bc99b03377d005638453f68019f5590acfd8f0005525f9057cc",
+    "bytes": 100083
   },
   {
     "file": "windows/reset_workshop.ps1",
@@ -81,8 +81,8 @@
   },
   {
     "file": "macos/vibe-macos.sh",
-    "sha256": "05b08bfaca789c7235037997a5b44185d78f38ed51b6682410f724c82f4c8af3",
-    "bytes": 38714
+    "sha256": "7720710fb985db655d01726d63933dc29a28afbae6073dc6645c4d51ca5b5765",
+    "bytes": 38754
   },
   {
     "file": "baseline/01_eda.py",

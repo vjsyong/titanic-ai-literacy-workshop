@@ -1395,14 +1395,15 @@ function New-OpenCodeClassroomConfig {
                     timeout = 600000
                     chunkTimeout = 120000
 
-                    # Merged into every request body, so the classroom
-                    # model never spends time on extended thinking -- the
-                    # workshop prompts are intentionally simple.
+                    # Merged into every request body: reasoning runs at
+                    # medium effort so the model thinks briefly but
+                    # classroom answers still stay snappy.
                     # Verified against OpenCode 2.0.20: options.body is
                     # passed through to the provider runtime.
                     body = [ordered]@{
                         reasoning = [ordered]@{
-                            enabled = $false
+                            enabled = $true
+                            effort = "medium"
                         }
                     }
                 }
@@ -1631,7 +1632,8 @@ function Test-OpenRouterAPI {
     # Deliberately use only fields shown in the supplied OpenRouter
     # Chat Completions example, minimizing compatibility assumptions.
     # The provider preference pins routing to the Relace endpoint and
-    # reasoning is off -- the smoke test just needs a fast OK.
+    # reasoning runs at medium effort -- the smoke test just needs a
+    # fast OK.
     $body = @{
         model = $OpenRouterModelId
         messages = @(
@@ -1642,7 +1644,8 @@ function Test-OpenRouterAPI {
         )
         stream = $false
         reasoning = @{
-            enabled = $false
+            enabled = $true
+            effort = "medium"
         }
         provider = @{
             only = @("relace")

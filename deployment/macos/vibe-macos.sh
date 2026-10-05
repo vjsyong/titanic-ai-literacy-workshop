@@ -501,7 +501,7 @@ ensure_credential() {
         -X POST "$OPENROUTER_BASE_URL/chat/completions" \
         -H "Authorization: Bearer $key" \
         -H "Content-Type: application/json" \
-        -d "{\"model\":\"$OPENROUTER_MODEL\",\"messages\":[{\"role\":\"user\",\"content\":\"Reply with exactly OK.\"}],\"stream\":false,\"reasoning\":{\"enabled\":false},\"provider\":{\"only\":[\"relace\"],\"allow_fallbacks\":false}}" \
+        -d "{\"model\":\"$OPENROUTER_MODEL\",\"messages\":[{\"role\":\"user\",\"content\":\"Reply with exactly OK.\"}],\"stream\":false,\"reasoning\":{\"enabled\":true,\"effort\":\"medium\"},\"provider\":{\"only\":[\"relace\"],\"allow_fallbacks\":false}}" \
         2>/dev/null || echo "000")"
 
     if [ "$http_code" != "200" ]; then
@@ -697,7 +697,7 @@ write_classroom_config() {
         "apiKey": "{file:~/.vibecoding/openrouter-key.txt}",
         "timeout": 600000,
         "chunkTimeout": 120000,
-        "body": { "reasoning": { "enabled": false } }
+        "body": { "reasoning": { "enabled": true, "effort": "medium" } }
       },
       "models": {
         "z-ai/glm-5.3-flash": {
