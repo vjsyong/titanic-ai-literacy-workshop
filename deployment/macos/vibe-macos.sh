@@ -9,7 +9,8 @@
 #   3. prepares a private Node.js
 #   4. installs and pins OpenCode 2.0.20
 #   5. starts the OpenCode Web UI + the workshop web page
-#   6. starts a watchdog that keeps both pages alive for 8 hours
+#   6. starts a watchdog that restarts either page if it crashes; the
+#      whole classroom is torn down when this window closes
 #
 # Everything private lives in:
 #   ~/Library/Application Support/VibeCoding
@@ -1237,12 +1238,58 @@ WATCHDOG
     nohup "$watchdog_script" >> "$LATEST_LOG" 2>&1 &
     echo "$!" > "$WATCHDOG_PID_FILE"
 
-    ok "Watchdog running (keeps both classroom pages alive for the next 8 hours)"
+    ok "Watchdog running (restarts either page if it stops answering; stops with this window)"
+}
+
+# Tear the whole classroom down. Runs when the launcher exits, or when
+# the terminal window is closed (SIGHUP), so nothing keeps running behind
+# your back once this window is gone.
+teardown_session() {
+    if [ "${CLEANUP_DONE:-0}" = "1" ]; then
+        return 0
+    fi
+    CLEANUP_DONE=1
+    trap - EXIT HUP INT TERM
+
+    printf '\n%sShutting the classroom down...%s\n' "$C_DIM" "$C_RESET" >&2
+
+    # 1. The watchdog first, so it cannot restart what we stop next.
+    if [ -f "$WATCHDOG_PID_FILE" ]; then
+        guardian="$(cat "$WATCHDOG_PID_FILE" 2>/dev/null || true)"
+        if [ -n "$guardian" ]; then
+            kill "$guardian" 2>/dev/null || true
+        fi
+        rm -f "$WATCHDOG_PID_FILE" 2>/dev/null || true
+    fi
+    pkill -f "$APP_ROOT/watchdog.sh" 2>/dev/null || true
+
+    # 2. The workshop page server (detached from us by serve_workshop.py).
+    if [ -n "${PAGE_PORT:-}" ]; then
+        for page_pid in $(lsof -nP -iTCP:"$PAGE_PORT" -sTCP:LISTEN -t 2>/dev/null || true); do
+            kill "$page_pid" 2>/dev/null || true
+        done
+    fi
+    pkill -f "workshop_server.py" 2>/dev/null || true
+
+    # 3. The OpenCode service and any lingering server process.
+    if [ -n "${OPENCODE_BIN:-}" ] && [ -x "${OPENCODE_BIN:-}" ]; then
+        run_limited 20 "$OPENCODE_BIN" service stop >/dev/null 2>&1 || true
+    fi
+    kill_opencode_servers
+
+    # 4. Release the launcher lock (the pre-existing lock cleanup).
+    cleanup
+
+    printf '%sClassroom stopped -- this window can be closed safely.%s\n' \
+        "$C_DIM" "$C_RESET" >&2
 }
 
 # ============================================================
 # Main flow
 # ============================================================
+
+trap 'teardown_session; exit 1' HUP INT TERM
+trap 'teardown_session' EXIT
 
 ensure_credential
 ensure_python
@@ -1320,7 +1367,7 @@ fi
 printf '\nIf a page keeps loading:\n'
 printf '  1. Refresh the browser, or open: %s\n' "$OPENCODE_URL"
 printf '  2. Username: %s   Password: %s\n' "$OPENCODE_USERNAME" "$WEB_PASSWORD"
-printf '  3. A hidden watchdog restarts both servers automatically if they stop answering.\n'
+printf '  3. A watchdog restarts either page if it stops answering, while this window is open.\n'
 
 start_watchdog "$OPENCODE_BIN" "$OPENCODE_PORT" "$CLASS_PYTHON" "$PAGE_PORT" \
     "$PROJECT_ROOT" "$LATEST_LOG"
@@ -1328,8 +1375,9 @@ start_watchdog "$OPENCODE_BIN" "$OPENCODE_PORT" "$CLASS_PYTHON" "$PAGE_PORT" \
 cp -f "$LOG_FILE" "$LATEST_LOG" 2>/dev/null || true
 
 printf '\nSupport log:\n  %s\n\n' "$LOG_FILE"
-printf 'It is safe to close this window.\n'
-printf 'Press ENTER to close this window (read the notes above first).\n'
+printf 'This classroom runs only while this window is open.\n'
+printf 'Closing it (or pressing ENTER) shuts down OpenCode and the workshop page.\n'
+printf 'Press ENTER to stop the classroom and close this window.\n'
 tty_read ""
 
 exit 0

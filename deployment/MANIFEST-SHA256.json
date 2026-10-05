@@ -51,8 +51,8 @@
   },
   {
     "file": "macos/MAC-README-FIRST.txt",
-    "sha256": "592fd66de8c6e9280c9ff72e253bc0b3b82bba3aa42599b19dcfba09398ff390",
-    "bytes": 2284
+    "sha256": "672afbbe0d6f2b02c2c29ba2986ee75a749bd57067521c8ef72ff4038fa6730c",
+    "bytes": 2329
   },
   {
     "file": "macos/START VIBE CODING.command",
@@ -81,8 +81,8 @@
   },
   {
     "file": "macos/vibe-macos.sh",
-    "sha256": "c46aa5476a0007b6c20a0b4b57fddf2cb737acdd77eb87017fc6e09cbd117f48",
-    "bytes": 47882
+    "sha256": "63086c28b10dec1b59566b4e67c2bf0c4502216eebffd285365f4a5d064285a2",
+    "bytes": 49695
   },
   {
     "file": "baseline/01_eda.py",

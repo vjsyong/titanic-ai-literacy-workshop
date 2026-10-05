@@ -28,12 +28,12 @@ VIBE CODING CLASSROOM -- macOS QUICK START
 
 3. What opens
 
-   - OpenCode chat (the AI Teaching Assistant): http://127.0.0.1:4096
-   - Workshop page (tabs 1/2/3):                http://127.0.0.1:4097
+   - OpenCode chat (the AI Teaching Assistant): the launcher prints its URL
+   - Workshop page (tabs 1/2/3):                the launcher prints its URL
 
-   Keep the launcher window open until it says READY TO VIBE CODE.
-   After that you can close it; a hidden watchdog keeps both pages
-   alive for 8 hours.
+   Keep the launcher window open while the class is working. The
+   classroom runs only while that window is open -- closing it (or
+   pressing ENTER) stops OpenCode and the workshop page.
 
 4. Other launchers
 
