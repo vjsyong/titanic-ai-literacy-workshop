@@ -91,6 +91,16 @@ export function Onboarding({
         </div>
       </section>
 
+      <div ref={quizRef}>
+        {personas ? (
+          <SurvivalQuiz data={personas} />
+        ) : (
+          <div className="border border-dashed border-line2 bg-white/60 p-5 text-sm text-faint">
+            Loading the survival challenge…
+          </div>
+        )}
+      </div>
+
       <section className="grid gap-3 md:grid-cols-3">
         {STAGES.map((stage) => {
           const Icon = stage.icon;
@@ -115,16 +125,6 @@ export function Onboarding({
 
       <SetupGuide />
       <ProcessDiagram />
-
-      <div ref={quizRef}>
-        {personas ? (
-          <SurvivalQuiz data={personas} />
-        ) : (
-          <div className="border border-dashed border-line2 bg-white/60 p-5 text-sm text-faint">
-            Loading the survival challenge…
-          </div>
-        )}
-      </div>
 
       <section className="flex flex-col items-start justify-between gap-4 border border-acc bg-tint-acc p-6 sm:flex-row sm:items-center">
         <div>

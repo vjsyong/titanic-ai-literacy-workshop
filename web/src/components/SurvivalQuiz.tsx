@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Check,
   Clock,
+  Play,
   RotateCcw,
   Skull,
   Sparkles,
@@ -66,9 +67,9 @@ function Portrait({ persona }: { persona: Persona }) {
 
 function Attribute({ label, value }: { label: string; value: string }) {
   return (
-    <div className="border border-line bg-white px-2.5 py-1.5">
+    <div className="border border-line bg-white px-3 py-2">
       <div className="micro-label text-faint">{label}</div>
-      <div className="mt-0.5 text-sm font-medium text-ink">{value}</div>
+      <div className="mt-0.5 text-base font-medium text-ink">{value}</div>
     </div>
   );
 }
@@ -89,6 +90,9 @@ export function SurvivalQuiz({ data }: { data: PersonasFile }) {
     saved.length >= personas.length && personas.length > 0 ? "done" : "guess",
   );
   const [seconds, setSeconds] = useState(TIMER_SECONDS);
+  // The clock never runs until the student presses Start, including after a
+  // reload that resumes a saved run.
+  const [started, setStarted] = useState(false);
 
   const persona = personas[index];
   const lastAnswer = answers[answers.length - 1];
@@ -119,21 +123,26 @@ export function SurvivalQuiz({ data }: { data: PersonasFile }) {
   );
 
   useEffect(() => {
-    if (phase !== "guess" || !persona) return;
+    if (!started || phase !== "guess" || !persona) return;
     setSeconds(TIMER_SECONDS);
     const interval = window.setInterval(() => {
       setSeconds((value) => Math.max(0, value - 1));
     }, 1000);
     return () => window.clearInterval(interval);
-  }, [phase, index, persona]);
+  }, [started, phase, index, persona]);
 
   useEffect(() => {
-    if (phase === "guess" && seconds === 0) reveal(null);
-  }, [seconds, phase, reveal]);
+    if (started && phase === "guess" && seconds === 0) reveal(null);
+  }, [started, seconds, phase, reveal]);
 
   useEffect(() => {
     if (answers.length > 0) persist(answers);
   }, [answers]);
+
+  const begin = () => {
+    setSeconds(TIMER_SECONDS);
+    setStarted(true);
+  };
 
   const next = () => {
     phaseRef.current = "guess";
@@ -152,6 +161,7 @@ export function SurvivalQuiz({ data }: { data: PersonasFile }) {
     phaseRef.current = "guess";
     setPhase("guess");
     setSeconds(TIMER_SECONDS);
+    setStarted(false);
   };
 
   if (personas.length === 0) {
@@ -166,29 +176,29 @@ export function SurvivalQuiz({ data }: { data: PersonasFile }) {
     const total = personas.length;
     const modelHits = data.classifier.persona_hits;
     return (
-      <div className="border border-acc bg-tint-acc p-6">
-        <div className="flex items-center gap-3">
-          <Trophy className="h-7 w-7 text-warn" />
+      <div className="border border-acc bg-tint-acc p-6 sm:p-8">
+        <div className="flex items-center gap-4">
+          <Trophy className="h-10 w-10 text-warn" />
           <div>
-            <div className="text-lg font-bold tracking-tight text-ink">
+            <div className="text-2xl font-bold tracking-tight text-ink">
               Your guess score: {correctCount} / {total}
             </div>
-            <div className="text-sm text-dim">
+            <div className="text-base text-dim">
               The workshop model got {modelHits} / {total} on these same
               passengers — you were both working from the same 1912 patterns.
             </div>
           </div>
         </div>
-        <p className="mt-3 text-sm leading-relaxed text-ink">
+        <p className="mt-4 text-base leading-relaxed text-ink">
           Notice how often “women and children first” steered your gut. That is
           the exact signal the model learns — and the fairness question the
           workshop ends on.
         </p>
         <button
           onClick={restart}
-          className="mt-4 inline-flex h-9 items-center gap-2 border border-line bg-white px-4 text-sm font-semibold text-ink transition hover:border-black"
+          className="mt-5 inline-flex h-11 items-center gap-2 border border-line bg-white px-5 text-base font-semibold text-ink transition hover:border-black"
         >
-          <RotateCcw className="h-4 w-4" />
+          <RotateCcw className="h-5 w-5" />
           Play again
         </button>
       </div>
@@ -200,43 +210,43 @@ export function SurvivalQuiz({ data }: { data: PersonasFile }) {
   const timeRatio = seconds / TIMER_SECONDS;
 
   return (
-    <div className="border border-line bg-white p-5">
+    <div className="border border-line bg-white p-6 sm:p-8">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-2">
-          <Sparkles className="h-5 w-5 text-acc" />
-          <h3 className="text-lg font-bold tracking-tight text-ink">
+        <div className="flex items-center gap-2.5">
+          <Sparkles className="h-6 w-6 text-acc" />
+          <h3 className="text-xl font-bold tracking-tight text-ink sm:text-2xl">
             Survival challenge
           </h3>
         </div>
         <div className="flex items-center gap-3">
-          <span className="font-mono text-xs text-dim">
+          <span className="font-mono text-sm text-dim">
             {index + 1} / {personas.length}
           </span>
-          <span className="border border-line bg-white px-2 py-1 font-mono text-xs font-semibold text-ink">
+          <span className="border border-line bg-white px-3 py-1.5 font-mono text-sm font-semibold text-ink">
             Score {correctCount}
           </span>
         </div>
       </div>
-      <p className="mt-1 text-sm leading-relaxed text-dim">
+      <p className="mt-1.5 text-base leading-relaxed text-dim">
         Read the passenger, then call it: did this person survive the Titanic?
       </p>
 
-      <div className="mt-3 h-1 w-full bg-card2">
+      <div className="mt-4 h-1.5 w-full bg-card2">
         <div
           className="h-full bg-black transition-all duration-300"
           style={{ width: `${progress}%` }}
         />
       </div>
 
-      <div className="mt-4 grid gap-4 sm:grid-cols-[180px_1fr]">
+      <div className="mt-5 grid gap-5 sm:grid-cols-[280px_1fr] lg:grid-cols-[400px_1fr] lg:gap-7">
         <div className="border border-line">
           <Portrait persona={persona} />
         </div>
         <div>
-          <div className="text-lg font-bold tracking-tight text-ink">
+          <div className="text-2xl font-bold tracking-tight text-ink sm:text-3xl">
             {persona.title}
           </div>
-          <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3">
+          <div className="mt-4 grid grid-cols-2 gap-2.5 sm:grid-cols-3">
             <Attribute label="Sex" value={persona.sex} />
             <Attribute label="Age" value={String(persona.age)} />
             <Attribute label="Ticket class" value={`${persona.pclass}`} />
@@ -249,53 +259,72 @@ export function SurvivalQuiz({ data }: { data: PersonasFile }) {
           </div>
 
           {phase === "guess" ? (
-            <div className="mt-4">
-              <div className="flex items-center gap-2 text-xs text-dim">
-                <Clock className="h-3.5 w-3.5" />
-                <span className="font-mono">
-                  {seconds}s to decide
-                </span>
-                <div className="ml-2 h-1.5 flex-1 bg-card2">
-                  <div
-                    className={`h-full transition-all duration-1000 ease-linear ${
-                      timeRatio < 0.34 ? "bg-err" : "bg-acc"
-                    }`}
-                    style={{ width: `${timeRatio * 100}%` }}
-                  />
+            started ? (
+              <div className="mt-5">
+                <div className="flex items-center gap-2.5 text-sm text-dim">
+                  <Clock className="h-4 w-4" />
+                  <span className="font-mono text-base font-semibold text-ink">
+                    {seconds}s to decide
+                  </span>
+                  <div className="ml-2 h-2 flex-1 bg-card2">
+                    <div
+                      className={`h-full transition-all duration-1000 ease-linear ${
+                        timeRatio < 0.34 ? "bg-err" : "bg-acc"
+                      }`}
+                      style={{ width: `${timeRatio * 100}%` }}
+                    />
+                  </div>
+                </div>
+                <div className="mt-4 flex flex-wrap gap-3">
+                  <button
+                    onClick={() => reveal(1)}
+                    className="inline-flex h-12 items-center gap-2.5 bg-ok px-7 text-lg font-semibold text-white transition hover:brightness-95"
+                  >
+                    <Check className="h-5 w-5" />
+                    Survived
+                  </button>
+                  <button
+                    onClick={() => reveal(0)}
+                    className="inline-flex h-12 items-center gap-2.5 bg-black px-7 text-lg font-semibold text-white transition hover:bg-[#333]"
+                  >
+                    <Skull className="h-5 w-5" />
+                    Perished
+                  </button>
                 </div>
               </div>
-              <div className="mt-3 flex flex-wrap gap-3">
+            ) : (
+              <div className="mt-5 border border-dashed border-line2 bg-card2/50 p-5">
+                <div className="text-base font-semibold text-ink">
+                  Ready? The clock starts when you do.
+                </div>
+                <p className="mt-1 text-sm leading-relaxed text-dim">
+                  You get {TIMER_SECONDS} seconds for each passenger — call it
+                  before the timer runs out.
+                </p>
                 <button
-                  onClick={() => reveal(1)}
-                  className="inline-flex h-10 items-center gap-2 bg-ok px-5 font-semibold text-white transition hover:brightness-95"
+                  onClick={begin}
+                  className="mt-4 inline-flex h-12 items-center gap-2.5 bg-black px-7 text-lg font-semibold text-white transition hover:bg-[#27272a]"
                 >
-                  <Check className="h-4 w-4" />
-                  Survived
-                </button>
-                <button
-                  onClick={() => reveal(0)}
-                  className="inline-flex h-10 items-center gap-2 bg-black px-5 font-semibold text-white transition hover:bg-[#333]"
-                >
-                  <Skull className="h-4 w-4" />
-                  Perished
+                  <Play className="h-5 w-5" />
+                  Start the challenge
                 </button>
               </div>
-            </div>
+            )
           ) : (
-            <div className="mt-4">
+            <div className="mt-5">
               <div
-                className={`flex flex-wrap items-center gap-2 border p-3 ${
+                className={`flex flex-wrap items-center gap-2.5 border p-4 ${
                   lastAnswer?.correct
                     ? "border-ok bg-tint-ok"
                     : "border-warn bg-tint-warn"
                 }`}
               >
                 {lastAnswer?.correct ? (
-                  <Check className="h-4 w-4 text-ok" />
+                  <Check className="h-5 w-5 text-ok" />
                 ) : (
-                  <X className="h-4 w-4 text-warn" />
+                  <X className="h-5 w-5 text-warn" />
                 )}
-                <span className="text-sm font-semibold text-ink">
+                <span className="text-base font-semibold text-ink">
                   {lastAnswer?.guess === null
                     ? "Time’s up — "
                     : lastAnswer?.correct
@@ -305,7 +334,7 @@ export function SurvivalQuiz({ data }: { data: PersonasFile }) {
                   .
                 </span>
               </div>
-              <div className="mt-2 text-sm text-dim">
+              <div className="mt-3 text-base leading-relaxed text-dim">
                 The model gave them a{" "}
                 <strong className="font-mono text-ink">
                   {Math.round(persona.model_probability * 100)}%
@@ -317,7 +346,7 @@ export function SurvivalQuiz({ data }: { data: PersonasFile }) {
               </div>
               <button
                 onClick={next}
-                className="mt-3 inline-flex h-9 items-center gap-2 bg-black px-4 text-sm font-semibold text-white transition hover:bg-[#333]"
+                className="mt-4 inline-flex h-11 items-center gap-2 bg-black px-5 text-base font-semibold text-white transition hover:bg-[#333]"
               >
                 {index + 1 < personas.length ? "Next passenger" : "See your score"}
               </button>
