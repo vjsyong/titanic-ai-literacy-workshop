@@ -18,15 +18,15 @@ export function SetupGuide() {
         </h3>
       </div>
       <p className="mt-1 text-sm leading-relaxed text-dim">
-        Put the <strong className="font-semibold text-ink">OpenCode chat</strong>{" "}
-        on one side of your screen and{" "}
-        <strong className="font-semibold text-ink">this workshop page</strong> on
-        the other, so you can copy a prompt, paste it into the chat, and watch
-        the page change without switching windows.
+        Copy a prompt from here, paste it into the chat on the other side, and
+        this page refreshes itself — no window-switching.
       </p>
+      <div className="mt-3 border border-acc bg-tint-acc px-3 py-2 text-sm font-semibold text-ink">
+        OpenCode on one side — the workshop page on the other.
+      </div>
 
       {missing ? (
-        <div className="mt-4 flex min-h-[180px] flex-col items-center justify-center gap-2 border border-dashed border-line2 bg-[#fafafa] p-6 text-center">
+        <div className="mt-4 flex min-h-[280px] w-full flex-col items-center justify-center gap-2 border border-dashed border-line2 bg-[#fafafa] p-6 text-center">
           <ImageOff className="h-6 w-6 text-faint" />
           <div className="text-sm font-semibold text-dim">
             Screenshot placeholder
@@ -43,7 +43,7 @@ export function SetupGuide() {
         <img
           src="/onboarding/setup.png"
           alt="OpenCode chat window beside the workshop page"
-          className="mt-4 max-h-96 w-full border border-line object-contain"
+          className="mt-4 block w-full border border-line"
           onError={() => setMissing(true)}
         />
       )}
