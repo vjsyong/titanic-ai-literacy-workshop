@@ -189,9 +189,10 @@ STEPS = [
             "age, family aboard, fare, and where they embarked. Meet the "
             "data before you judge it!"
         ),
-        "prompt": (
-            "Ask the AI to open the passenger list (data/titanic.csv) and "
-            "give you a small preview of it."
+                "prompt": (
+            "First write down a guess: how many people do you expect on a 1912 passenger list? Now "
+            "have the AI open data/titanic.csv and show you a small preview - how close was your "
+            "guess? Did the real list hold more or fewer?"
         ),
         "hints": [
             "All 891 rows is too many to read at once — how would you ask "
@@ -253,9 +254,10 @@ STEPS = [
             "values), a learning model can stumble -- or worse, silently "
             "guess."
         ),
-        "prompt": (
-            "Ask the AI to count how many missing values (holes) each "
-            "column has, shown as a table."
+                "prompt": (
+            "Which column do YOU suspect is almost completely empty? Say your suspect out loud, "
+            "then ask the AI to count the holes in every column and reveal the emptiest. Was your "
+            "hunch right - and either way, ask why those cells went missing."
         ),
         "hints": [
             "A missing value is an empty cell — the AI knows how to count "
@@ -329,9 +331,10 @@ STEPS = [
             "not). Before seeing the answer, make a guess: did MORE or "
             "FEWER than half of the passengers survive?"
         ),
-        "prompt": (
-            "Say your guess out loud first, then ask the AI to count "
-            "perished vs survived — in people and in percentages."
+                "prompt": (
+            "First finish this sentence out loud: 'I think about ___ % of the passengers made it.' "
+            "Then ask the AI to check your guess with the real survival count, shown in people AND "
+            "in percentages."
         ),
         "hints": [
             "First guess: did MORE or FEWER than half survive? No peeking!",
@@ -394,9 +397,10 @@ STEPS = [
             "Now we look for our FIRST pattern: did female passengers "
             "survive more often than male passengers?"
         ),
-        "prompt": (
-            "Ask the AI to draw a chart comparing survival for female and "
-            "male passengers, and describe the pattern in one sentence."
+                "prompt": (
+            "You placed a bet in checkpoint 1 about which detail decided survival. Have the AI draw "
+            "the female-vs-male survival comparison and see whether your bet would have paid off - "
+            "then describe the pattern in ONE sentence in your own words, not the AI's."
         ),
         "hints": [
             "The page can draw eye-catching person-icon bars — try asking "
@@ -465,9 +469,10 @@ STEPS = [
             "Ticket class was a proxy for wealth and cabin location on "
             "board. Did the deck you slept on decide your fate?"
         ),
-        "prompt": (
-            "Ask the AI to draw survival by ticket class (1, 2, 3) and "
-            "tell you what stands out."
+                "prompt": (
+            "Rank the three ticket classes yourself first: which do you think survived best, and "
+            "which worst? Then ask the AI to draw survival by class (1, 2, 3) and compare its "
+            "picture with your ranking - what stands out to you first?"
         ),
         "hints": [
             "A stacked bar chart makes the three classes easy to compare.",
@@ -530,9 +535,11 @@ STEPS = [
             "Kids first? Older folks last? Build one more picture about "
             "AGE -- this is the pattern the Step 2 model will learn from."
         ),
-        "prompt": (
-            "Ask the AI to make one chart about whether age is connected "
-            "to survival, plus a one-sentence takeaway."
+                "prompt": (
+            "Decide what you most want to learn about age (kids first? the middle-aged crowd?). Ask "
+            "the AI to build exactly ONE chart connecting age to survival, then judge it together: "
+            "is it easy to read for 891 people? If it feels crowded, ask for an easier-to-read "
+            "alternative - and end with the takeaway in YOUR words."
         ),
         "hints": [
             "Age versus fare on a zoomable scatter, colored by survival, "

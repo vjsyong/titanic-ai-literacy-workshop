@@ -164,9 +164,11 @@ STEPS = [
             "Your Step 2 work saved a trained brain on disk. Wake it up "
             "here and check that it gives sensible guesses."
         ),
-        "prompt": (
-            "Ask the AI to wake the frozen brain from titanic_model.pkl "
-            "and prove it works on one fixed test passenger."
+                "prompt": (
+            "Bring one passenger to life in your head (their age, class, sex) and describe them to "
+            "the AI. Ask it to wake the frozen brain from titanic_model.pkl and predict YOUR "
+            "passenger - and if the file is missing, have it explain kindly which Step 2 checkpoint "
+            "must come first instead of crashing."
         ),
         "hints": [
             "The file only exists once Stage 2's last checkpoint is done.",
@@ -219,10 +221,11 @@ STEPS = [
             "passenger form gets (radios for ticket class and sex, sliders "
             "for the numbers) with human-friendly ranges."
         ),
-        "prompt": (
-            "Ask the AI to design the passenger form: for each attribute, "
-            "which control (dropdown or slider) and which sensible "
-            "choices or range."
+                "prompt": (
+            "Sketch the form like a designer: which control suits ticket class and sex, what "
+            "sensible range suits age and fare - and pick ONE field you would drop to keep the form "
+            "friendly. Ask the AI to build the form to your design and store the plan where the "
+            "page can find it."
         ),
         "hints": [
             "Ticket class and sex suit dropdowns/radios — age and fare "
@@ -283,9 +286,11 @@ STEPS = [
             "model was trained on numbers, so 'female' must turn back into "
             "its coded digit before reaching the model."
         ),
-        "prompt": (
-            "Ask the AI to connect the form to the model so the Predict "
-            "button produces a live survival gauge plus a human sentence."
+                "prompt": (
+            "First say what could go WRONG if the form hands 'female' straight to a model that "
+            "expects Stage 2's digits. Then ask the AI to wire the form to the brain - encode "
+            "exactly like Stage 2, apply the stored scaler - so Predict produces a live survival "
+            "gauge, and have it prove the pipeline with one live example."
         ),
         "hints": [
             "The form's words (female/male) must become numbers EXACTLY "
@@ -347,9 +352,10 @@ STEPS = [
             "history. Trainings models must speak gently: soft wording "
             "for low, medium and high probabilities."
         ),
-        "prompt": (
-            "Ask the AI to soften the verdicts: three friendly "
-            "probability bands, demonstrated on the live model."
+                "prompt": (
+            "Choose the wording first: what should the three bands be called, and where should "
+            "'close call' begin and end? Ask the AI to reword the verdicts into YOUR bands and "
+            "demonstrate one on the live model."
         ),
         "hints": [
             "A cold '0.34' can sting — these were real people.",
@@ -406,10 +412,11 @@ STEPS = [
             "discuss whether the patterns are FAIR. A model is a mirror "
             "of its data, nothing more."
         ),
-        "prompt": (
-            "Ask the AI to test the model with at least six very "
-            "different imaginary passengers, shown as a table and a bar "
-            "chart of survival chances, plus discussion questions."
+                "prompt": (
+            "Pick the unfairness you most want the class to SEE (a 1912 pattern that rings wrong "
+            "today). Design six imaginary passengers around it - which attributes to vary, which to "
+            "hold still - then ask the AI to run them through the live model as a table plus a bar "
+            "chart of survival chances, ending with fairness questions to argue about."
         ),
         "hints": [
             "Make them differ sharply: young/old, women/men, 1st/3rd "

@@ -187,10 +187,10 @@ STEPS = [
             "arbitrary, and that's OK -- tell your assistant to only use "
             "it for encoding)."
         ),
-        "prompt": (
-            "Ask the AI to turn the Sex column's words (female/male) into "
-            "numbers, and show the translation side by side with the "
-            "original."
+                "prompt": (
+            "The mapping is YOUR call to make: pick which digit stands for female and which for "
+            "male, then tell the AI your decision and have it translate the Sex column, showing the "
+            "old words next to your new numbers so you can check the translation."
         ),
         "hints": [
             "Any consistent numbering scheme is fine — 0/1, 1/2, whatever "
@@ -263,9 +263,10 @@ STEPS = [
             "family aboard, fare) but NOT at Name or PassengerId -- those "
             "are person IDs, not survival clues."
         ),
-        "prompt": (
-            "Ask the AI to pick which columns the model may look at, and "
-            "which column it must predict."
+                "prompt": (
+            "Name the column you personally suspect is useless for predicting survival - and say "
+            "WHY out loud first. Then ask the AI to state which columns the model may look at, "
+            "which one it must predict, and whether your suspect made the cut."
         ),
         "hints": [
             "The prediction target is always Survived (1 = made it).",
@@ -342,9 +343,10 @@ STEPS = [
             "cheat. Keep about a fifth of the passengers aside as secret "
             "test material the model never sees during learning."
         ),
-        "prompt": (
-            "Ask the AI to split the passengers into a training group and "
-            "a hidden test group (about 80/20)."
+                "prompt": (
+            "Design the split yourself: how big should the hidden exam group be? Tell the AI your "
+            "chosen ratio and have it split the passengers your way - then check how many ended up "
+            "in each group."
         ),
         "hints": [
             "Roughly 80% to learn from, 20% kept secret for the final "
@@ -410,9 +412,10 @@ STEPS = [
             "and 80. A model that mixes such different scales can mistake "
             "bigness for importance. Fix the tube sizes with standardization."
         ),
-        "prompt": (
-            "Ask the AI to put every numeric feature on the same scale — "
-            "learning the scale from the training group only."
+                "prompt": (
+            "Guess which single feature would SHOUT the loudest if left unscaled (peek at the "
+            "ranges in the example table). Then ask the AI to put every numeric feature on the same "
+            "scale - learned from the training group only - and show one column before and after."
         ),
         "hints": [
             "Fare reaches ~500; Age sits between 0 and 80. Bigness must "
@@ -470,10 +473,11 @@ STEPS = [
             "of survivors and non-survivors, learn its pattern, then face "
             "the secret test passengers it was never shown."
         ),
-        "prompt": (
-            "Ask the AI to train a simple model (logistic regression is a "
-            "great first pick) and show its accuracy on the hidden test "
-            "group as a big animated number."
+                "prompt": (
+            "Commit to a forecast before training: what accuracy do you expect on the hidden exam, "
+            "and which kind of passenger do you think the model will get WRONG? Then have the AI "
+            "train the model (logistic regression is a fine first pick) and show its test accuracy "
+            "as the big animated score."
         ),
         "hints": [
             "Logistic regression = a simple, explainable pattern-spotter. "
@@ -531,10 +535,11 @@ STEPS = [
             "did you actually use? Watch the answer confirm what WE saw "
             "by eye in Step 1 with our own charts."
         ),
-        "prompt": (
-            "Ask the AI to rank the model's features by how much it "
-            "leaned on each one, as a chart where positive and negative "
-            "pull in opposite directions."
+                "prompt": (
+            "Write down your ranking first: which clue do you think the model leaned on the most, "
+            "and which the least? Then ask the AI to draw the feature-importance chart - positive "
+            "and negative pulling in opposite directions, explained with zero jargon - and compare "
+            "it with your list."
         ),
         "hints": [
             "Each feature gets a coefficient: size = how much the model "
@@ -600,10 +605,11 @@ STEPS = [
             "load it whenever a new imaginary passenger walks in. Brains "
             "on disk is what makes predictions reusable!"
         ),
-        "prompt": (
-            "Ask the AI to save the trained brain to titanic_model.pkl, "
-            "then prove it's alive by predicting one fresh imaginary "
-            "passenger."
+                "prompt": (
+            "Invent one imaginary passenger of your own first (their age, class, sex - and your gut "
+            "prediction about them). Then ask the AI to freeze the finished brain into "
+            "titanic_model.pkl and prove it is alive by predicting YOUR passenger, with the "
+            "survival chance shown as a gauge."
         ),
         "hints": [
             "Everything needed must go in the file: model, scaler, and "
