@@ -762,6 +762,63 @@ test_provider() {
     ok "OpenCode -> OpenRouter provider request succeeded"
 }
 
+# Students should not start from an empty chat box. Create one shared
+# session titled "CLICK ME TO BEGIN" and pre-run an evergreen seed prompt
+# in it (parity with the Windows launcher): the agent greets the class,
+# works out the current checkpoint from the STEPS_COMPLETED counters, and
+# asks the checkpoint question. Never names a gate number, so the same
+# setup works from checkpoint 1 to the last one.
+seed_session() {
+    seed_port="$1"
+    seed_base="http://127.0.0.1:$seed_port"
+    seed_title="CLICK ME TO BEGIN"
+
+    section "Seeding the $seed_title session"
+
+    seed_json="{\"text\":\"Hi! A first-year student has just sat down at this machine and knows nothing about coding yet. Before they type anything:\\n\\n1. Read AGENTS.md in the project and follow it exactly.\\n2. Check STEPS_COMPLETED in 01_eda.py, 02_train.py and 03_dashboard.py to work out which workshop checkpoint comes next.\\n3. Greet the student warmly, tell them which checkpoint they are on, and restate that checkpoint's question in your own friendly words.\\n\\nDo not modify any file until the student asks you to work on the current checkpoint.\"}"
+
+    sessions="$(curl -sf -m 10 -u "$OPENCODE_USERNAME:$WEB_PASSWORD" "$seed_base/api/session" 2>/dev/null || true)"
+    existing_id="$(printf '%s' "$sessions" | tr '{' '\n' \
+        | grep -F "\"title\":\"$seed_title\"" \
+        | sed -n 's/.*"id":"\([^"]*\)".*/\1/p' | head -1)"
+
+    if [ -n "$existing_id" ]; then
+        messages="$(curl -sf -m 10 -u "$OPENCODE_USERNAME:$WEB_PASSWORD" \
+            "$seed_base/api/session/$existing_id/message" 2>/dev/null || true)"
+
+        if printf '%s' "$messages" | grep -Fq '"id"'; then
+            ok "Seed session already exists -- leaving it untouched"
+            return 0
+        fi
+
+        # Created earlier but the greeting prompt never got delivered;
+        # finish the job on the existing session.
+    else
+        created="$(curl -sf -m 10 -u "$OPENCODE_USERNAME:$WEB_PASSWORD" \
+            -H "Content-Type: application/json" \
+            -d "{\"title\":\"$seed_title\"}" \
+            "$seed_base/api/session" 2>/dev/null || true)"
+
+        existing_id="$(printf '%s' "$created" | tr ',' '\n' \
+            | sed -n 's/.*"id":"\([^"]*\)".*/\1/p' | head -1)"
+    fi
+
+    if [ -z "$existing_id" ]; then
+        warn "Could not seed the starter session."
+        info "Students can still open OpenCode and start a new chat normally."
+        return 0
+    fi
+
+    if curl -sf -m 10 -u "$OPENCODE_USERNAME:$WEB_PASSWORD" \
+            -H "Content-Type: application/json" \
+            -d "$seed_json" \
+            "$seed_base/api/session/$existing_id/prompt" >/dev/null 2>&1; then
+        ok "Seed session created -- the agent greets the class by the time a student clicks it"
+    else
+        warn "Created the starter session but could not deliver the greeting prompt."
+    fi
+}
+
 service_env() {
     "$OPENCODE_BIN" service set env "$1" "$2" >/dev/null 2>&1 \
         || die "Could not set OpenCode service environment variable: $1"
@@ -981,7 +1038,9 @@ get_web_password
 OPENCODE_PORT="$(find_free_port "$PREFERRED_OPENCODE_PORT" "$LAST_OPENCODE_PORT")" \
     || die "No free port for the OpenCode Web UI."
 
-start_service "$OPENCODE_PORT" "$WEB_PASSWORD"
+start_service "$OPENCODE_PORT"
+
+seed_session "$OPENCODE_PORT" "$WEB_PASSWORD"
 
 OPENCODE_URL="http://127.0.0.1:$OPENCODE_PORT"
 PAIRED=0
