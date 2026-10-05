@@ -808,12 +808,18 @@ oc_probe_codes() {
 
 # This build's service ignores `service set port` and listens on an
 # ephemeral port, so discover the real one from lsof instead of assuming
-# a configured port.
-oc_listen_port() {
+# a configured port. There may be more than one listener (a stale server
+# plus a fresh one), so callers should try each and keep the one that
+# answers.
+oc_listen_ports() {
     lsof -nP -iTCP -sTCP:LISTEN 2>/dev/null \
         | grep -i 'opencode' \
         | sed -n 's/.*:\([0-9][0-9]*\) (LISTEN).*/\1/p' \
-        | head -1
+        | sort -u
+}
+
+oc_listen_port() {
+    oc_listen_ports | head -1
 }
 
 # Portable timeout (macOS has no coreutils `timeout`): run a command with
@@ -909,7 +915,13 @@ start_service() {
     # `service set port`. Ask lsof which port an opencode process is
     # listening on, then confirm the API answers with the classroom
     # password. (Fallback: scan the preferred range for older builds.)
-    existing_port="$(oc_listen_port || true)"
+    existing_port=""
+    for candidate in $(oc_listen_ports); do
+        if [ -n "$(oc_api_base "$candidate" || true)" ]; then
+            existing_port="$candidate"
+            break
+        fi
+    done
 
     if [ -z "$existing_port" ]; then
         for candidate in $(seq "$PREFERRED_OPENCODE_PORT" "$LAST_OPENCODE_PORT"); do
@@ -921,12 +933,14 @@ start_service() {
     fi
 
     if [ -n "$existing_port" ]; then
-        if [ -n "$(oc_api_base "$existing_port" || true)" ]; then
-            OPENCODE_PORT="$existing_port"
-            ok "OpenCode Web UI is already running on port $existing_port -- reusing it"
-            return 0
-        fi
-        warn "An OpenCode process is listening on port $existing_port but its API rejected the classroom password."
+        OPENCODE_PORT="$existing_port"
+        ok "OpenCode Web UI is already running on port $existing_port -- reusing it"
+        return 0
+    fi
+
+    stale_port="$(oc_listen_port || true)"
+    if [ -n "$stale_port" ]; then
+        warn "An OpenCode process is listening on port $stale_port but its API rejected the classroom password."
     fi
 
     info "Configuring the OpenCode service..."
@@ -949,6 +963,8 @@ start_service() {
     service_env TMPDIR "$PROFILE_TEMP"
     service_env OPENCODE_DISABLE_AUTOUPDATE 1
     service_env OPENCODE_CONFIG_CONTENT "$CLASSROOM_CONFIG"
+    service_env OPENCODE_SERVER_PASSWORD "$password"
+    service_env OPENCODE_SERVER_USERNAME "$OPENCODE_USERNAME"
     service_env PYTHONUTF8 1
     service_env NPM_CONFIG_PREFIX "$NPM_GLOBAL"
     service_env NPM_CONFIG_CACHE "$NPM_CACHE"
@@ -960,17 +976,20 @@ start_service() {
     SERVICE_OUT="$DOWNLOAD_ROOT/opencode-service.out"
 
     discover_api() {
-        discovery_port="$(oc_listen_port || true)"
-        if [ -n "$discovery_port" ] \
-            && [ -n "$(oc_api_base "$discovery_port" || true)" ]; then
-            OPENCODE_PORT="$discovery_port"
-            return 0
-        fi
+        for discovery_port in $(oc_listen_ports); do
+            if [ -n "$(oc_api_base "$discovery_port" || true)" ]; then
+                OPENCODE_PORT="$discovery_port"
+                return 0
+            fi
+        done
         return 1
     }
 
     info "Starting the OpenCode service..."
-    ( cd "$PROJECT_ROOT" && nohup "$OPENCODE_BIN" service start </dev/null ) \
+    ( cd "$PROJECT_ROOT" \
+        && OPENCODE_SERVER_PASSWORD="$password" \
+           OPENCODE_SERVER_USERNAME="$OPENCODE_USERNAME" \
+           nohup "$OPENCODE_BIN" service start </dev/null ) \
         > "$SERVICE_OUT" 2>&1 &
 
     healthy=0
@@ -987,7 +1006,10 @@ start_service() {
         run_limited 20 "$OPENCODE_BIN" service stop >/dev/null 2>&1 || true
         sleep 1
 
-        ( cd "$PROJECT_ROOT" && nohup "$OPENCODE_BIN" service start </dev/null ) \
+        ( cd "$PROJECT_ROOT" \
+            && OPENCODE_SERVER_PASSWORD="$password" \
+               OPENCODE_SERVER_USERNAME="$OPENCODE_USERNAME" \
+               nohup "$OPENCODE_BIN" service start </dev/null ) \
             > "$SERVICE_OUT" 2>&1 &
 
         for _ in $(seq 1 120); do
