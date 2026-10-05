@@ -830,6 +830,8 @@ start_service() {
     port="$1"
     password="$2"
 
+    info "Configuring the OpenCode service..."
+
     "$OPENCODE_BIN" service stop >/dev/null 2>&1 || true
     "$OPENCODE_BIN" service unset disabled >/dev/null 2>&1 || true
 
@@ -852,15 +854,26 @@ start_service() {
     service_env NPM_CONFIG_PREFIX "$NPM_GLOBAL"
     service_env NPM_CONFIG_CACHE "$NPM_CACHE"
 
-    if ! ( cd "$PROJECT_ROOT" && "$OPENCODE_BIN" service start ) >/dev/null 2>&1; then
-        warn "OpenCode service start failed. Trying one restart."
-        ( cd "$PROJECT_ROOT" && "$OPENCODE_BIN" service restart ) >/dev/null 2>&1 \
-            || die "OpenCode service could not start."
-    fi
+    # Launch the service in the background. On builds where `service
+    # start` daemonizes it returns at once; on builds where the server
+    # stays in the foreground this background job *is* the classroom
+    # server. Either way the API health check below decides when we are
+    # up -- and start output is kept out of the console pipe so even a
+    # foreground server cannot wedge the launcher window.
+    SERVICE_OUT="$DOWNLOAD_ROOT/opencode-service.out"
+
+    info "Starting the OpenCode service..."
+    ( cd "$PROJECT_ROOT" && nohup "$OPENCODE_BIN" service start </dev/null ) \
+        > "$SERVICE_OUT" 2>&1 &
+
+    api_ready() {
+        curl -sf -m 4 -u "$OPENCODE_USERNAME:$password" \
+            "http://127.0.0.1:$port/api/session" >/dev/null 2>&1
+    }
 
     healthy=0
     for _ in $(seq 1 60); do
-        if opencode_env; "$OPENCODE_BIN" api GET /api/session >/dev/null 2>&1; then
+        if api_ready; then
             healthy=1
             break
         fi
@@ -868,12 +881,15 @@ start_service() {
     done
 
     if [ "$healthy" -ne 1 ]; then
+        warn "OpenCode API did not answer yet. Trying one clean restart."
         "$OPENCODE_BIN" service stop >/dev/null 2>&1 || true
         sleep 1
-        ( cd "$PROJECT_ROOT" && "$OPENCODE_BIN" service start ) >/dev/null 2>&1 || true
 
-        for _ in $(seq 1 30); do
-            if opencode_env; "$OPENCODE_BIN" api GET /api/session >/dev/null 2>&1; then
+        ( cd "$PROJECT_ROOT" && nohup "$OPENCODE_BIN" service start </dev/null ) \
+            > "$SERVICE_OUT" 2>&1 &
+
+        for _ in $(seq 1 60); do
+            if api_ready; then
                 healthy=1
                 break
             fi
@@ -881,7 +897,13 @@ start_service() {
         done
     fi
 
-    [ "$healthy" -eq 1 ] || die "OpenCode service failed its API health check."
+    if [ "$healthy" -ne 1 ]; then
+        info "Last lines from the OpenCode service start:"
+        tail -n 20 "$SERVICE_OUT" 2>/dev/null || true
+        info "OpenCode service status:"
+        "$OPENCODE_BIN" service status 2>&1 || true
+        die "OpenCode service failed its API health check."
+    fi
 }
 
 get_web_password() {
