@@ -43,7 +43,7 @@ INSTRUCTOR CHECKLIST BEFORE DISTRIBUTION
    install (the React UI is prebuilt in web\dist, no Node needed) --
    the first run can still take a few minutes on slow links (progress
    streams live in the console).
-3. The launcher pins OpenCode 2.0.20 and provides xiaomi/mimo-v2.6-flash by
+3. The launcher pins OpenCode 2.0.20 and provides z-ai/glm-5.3-flash by
    OpenRouter - that is the default and only permitted provider.
 
 MANIFEST

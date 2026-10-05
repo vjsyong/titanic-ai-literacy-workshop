@@ -86,7 +86,7 @@ OPENCODE_VERSION="2.0.20"
 BOOTSTRAP_VERSION="2026-10-02.1-macos"
 
 OPENROUTER_BASE_URL="https://openrouter.ai/api/v1"
-OPENROUTER_MODEL="xiaomi/mimo-v2.6-flash"
+OPENROUTER_MODEL="z-ai/glm-5.3-flash"
 OPENROUTER_MODEL_REF="openrouter/$OPENROUTER_MODEL"
 
 PREFERRED_OPENCODE_PORT=4096
@@ -501,7 +501,7 @@ ensure_credential() {
         -X POST "$OPENROUTER_BASE_URL/chat/completions" \
         -H "Authorization: Bearer $key" \
         -H "Content-Type: application/json" \
-        -d "{\"model\":\"$OPENROUTER_MODEL\",\"messages\":[{\"role\":\"user\",\"content\":\"Reply with exactly OK.\"}],\"stream\":false,\"reasoning\":{\"enabled\":false},\"provider\":{\"only\":[\"xiaomi/fp8\"],\"allow_fallbacks\":false}}" \
+        -d "{\"model\":\"$OPENROUTER_MODEL\",\"messages\":[{\"role\":\"user\",\"content\":\"Reply with exactly OK.\"}],\"stream\":false,\"reasoning\":{\"enabled\":false},\"provider\":{\"only\":[\"relace\"],\"allow_fallbacks\":false}}" \
         2>/dev/null || echo "000")"
 
     if [ "$http_code" != "200" ]; then
@@ -516,7 +516,7 @@ Possible causes:
 The API key itself was not written to this log."
     fi
 
-    ok "Xiaomi MiMo v2.6 Flash API reachable via OpenRouter"
+    ok "GLM 5.3 Flash (Relace) reachable via OpenRouter"
     key=""
 }
 
@@ -661,7 +661,7 @@ write_classroom_config() {
     CLASSROOM_CONFIG="$(cat <<'JSON'
 {
   "$schema": "https://opencode.ai/config.json",
-  "model": "openrouter/xiaomi/mimo-v2.6-flash",
+  "model": "openrouter/z-ai/glm-5.3-flash",
   "enabled_providers": ["openrouter"],
   "permissions": [
     { "action": "read", "resource": "*", "effect": "allow" },
@@ -700,9 +700,9 @@ write_classroom_config() {
         "body": { "reasoning": { "enabled": false } }
       },
       "models": {
-        "xiaomi/mimo-v2.6-flash": {
-          "name": "Xiaomi MiMo v2.6 Flash",
-          "limit": { "context": 1050000, "output": 131072 }
+        "z-ai/glm-5.3-flash": {
+          "name": "Z.ai GLM 5.3 Flash",
+          "limit": { "context": 1048576, "output": 131072 }
         }
       }
     }

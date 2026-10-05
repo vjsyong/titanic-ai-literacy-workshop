@@ -27,7 +27,7 @@ $ProgressPreference = "SilentlyContinue"
 #
 # OpenRouter:
 # - Endpoint: https://openrouter.ai/api/v1
-# - Model:    xiaomi/mimo-v2.6-flash
+# - Model:    z-ai/glm-5.3-flash (pinned to the Relace provider)
 # - key.txt beside this script is copied to:
 #       %USERPROFILE%\.vibecoding\openrouter-key.txt
 #   and referenced through OpenCode's {file:~...} substitution.
@@ -60,7 +60,7 @@ $WorkshopPackageSignature = "pandas,scikit-learn,fastapi,uvicorn"
 $OpenRouterBaseUrl = "https://openrouter.ai/api/v1"
 $OpenRouterCompletionUrl = "$OpenRouterBaseUrl/chat/completions"
 $OpenRouterProviderId = "openrouter"
-$OpenRouterModelId = "xiaomi/mimo-v2.6-flash"
+$OpenRouterModelId = "z-ai/glm-5.3-flash"
 $OpenRouterModelRef = "$OpenRouterProviderId/$OpenRouterModelId"
 
 # ----------------------------
@@ -1408,11 +1408,11 @@ function New-OpenCodeClassroomConfig {
                 }
 
                 models = [ordered]@{
-                    "xiaomi/mimo-v2.6-flash" = [ordered]@{
-                        name = "Xiaomi MiMo v2.6 Flash"
+                    "z-ai/glm-5.3-flash" = [ordered]@{
+                        name = "Z.ai GLM 5.3 Flash"
 
                         limit = [ordered]@{
-                            context = 1050000
+                            context = 1048576
                             output = 131072
                         }
                     }
@@ -1621,7 +1621,7 @@ function Test-OpenRouterAPI {
         catch {}
     }
 
-    Write-Host "Testing Xiaomi MiMo v2.6 Flash connectivity via OpenRouter..." -ForegroundColor DarkGray
+    Write-Host "Testing GLM 5.3 Flash (Relace) connectivity via OpenRouter..." -ForegroundColor DarkGray
 
     $headers = @{
         Authorization = "Bearer $ApiKey"
@@ -1630,7 +1630,7 @@ function Test-OpenRouterAPI {
 
     # Deliberately use only fields shown in the supplied OpenRouter
     # Chat Completions example, minimizing compatibility assumptions.
-    # The provider preference pins routing to Xiaomi's FP8 endpoint and
+    # The provider preference pins routing to the Relace endpoint and
     # reasoning is off -- the smoke test just needs a fast OK.
     $body = @{
         model = $OpenRouterModelId
@@ -1645,7 +1645,7 @@ function Test-OpenRouterAPI {
             enabled = $false
         }
         provider = @{
-            only = @("xiaomi/fp8")
+            only = @("relace")
             allow_fallbacks = $false
         }
     } | ConvertTo-Json -Depth 10 -Compress
@@ -1675,18 +1675,18 @@ function Test-OpenRouterAPI {
             ConvertTo-Json |
             Set-Content -LiteralPath $OpenRouterTestStateFile -Encoding UTF8
 
-        Write-OK "Xiaomi MiMo v2.6 Flash API reachable via OpenRouter"
+        Write-OK "GLM 5.3 Flash (Relace) reachable via OpenRouter"
     }
     catch {
         throw @"
-OpenRouter Xiaomi MiMo v2.6 Flash API test failed.
+OpenRouter GLM 5.3 Flash (Relace) API test failed.
 
 $($_.Exception.Message)
 
 Possible causes:
 - Invalid/expired key
 - OpenRouter credits or entitlement issue
-- Xiaomi/fp8 provider route unavailable (set allow_fallbacks to true to diagnose)
+- Relace provider route unavailable (set allow_fallbacks to true to diagnose)
 - Campus firewall/proxy
 - Captive portal
 - OpenRouter endpoint unavailable
