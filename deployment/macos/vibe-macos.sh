@@ -768,23 +768,51 @@ test_provider() {
 # works out the current checkpoint from the STEPS_COMPLETED counters, and
 # asks the checkpoint question. Never names a gate number, so the same
 # setup works from checkpoint 1 to the last one.
+# The OpenCode HTTP API is mounted at the site root (e.g. /session,
+# /global/health) in the documented builds and under /api in some
+# classroom builds. Probe the common shapes on a port and echo the base
+# URL that answers (no trailing slash), or nothing when none does.
+oc_api_base() {
+    local probe_port="$1" probe_prefix probe_path probe_code
+    for probe_prefix in "" "/api"; do
+        for probe_path in /global/health /session; do
+            probe_code="$(curl -s -o /dev/null -w '%{http_code}' -m 2 \
+                -u "$OPENCODE_USERNAME:$WEB_PASSWORD" \
+                "http://127.0.0.1:$probe_port$probe_prefix$probe_path" 2>/dev/null || true)"
+            if [ "$probe_code" = "200" ]; then
+                printf 'http://127.0.0.1:%s%s' "$probe_port" "$probe_prefix"
+                return 0
+            fi
+        done
+    done
+    return 1
+}
+
 seed_session() {
     seed_port="$1"
-    seed_base="http://127.0.0.1:$seed_port"
     seed_title="CLICK ME TO BEGIN"
 
     section "Seeding the $seed_title session"
 
-    seed_json="{\"text\":\"Hi! A first-year student has just sat down at this machine and knows nothing about coding yet. Before they type anything:\\n\\n1. Read AGENTS.md in the project and follow it exactly.\\n2. Check STEPS_COMPLETED in 01_eda.py, 02_train.py and 03_dashboard.py to work out which workshop checkpoint comes next.\\n3. Greet the student warmly, tell them which checkpoint they are on, and restate that checkpoint's question in your own friendly words.\\n\\nDo not modify any file until the student asks you to work on the current checkpoint.\"}"
+    seed_text="Hi! A first-year student has just sat down at this machine and knows nothing about coding yet. Before they type anything:\\n\\n1. Read AGENTS.md in the project and follow it exactly.\\n2. Check STEPS_COMPLETED in 01_eda.py, 02_train.py and 03_dashboard.py to work out which workshop checkpoint comes next.\\n3. Greet the student warmly, tell them which checkpoint they are on, and restate that checkpoint's question in your own friendly words.\\n\\nDo not modify any file until the student asks you to work on the current checkpoint."
+    seed_json="{\"text\":\"$seed_text\"}"
+    seed_parts_json="{\"parts\":[{\"type\":\"text\",\"text\":\"$seed_text\"}]}"
 
-    sessions="$(curl -sf -m 10 -u "$OPENCODE_USERNAME:$WEB_PASSWORD" "$seed_base/api/session" 2>/dev/null || true)"
+    seed_base="$(oc_api_base "$seed_port" || true)"
+    if [ -z "$seed_base" ]; then
+        warn "Could not reach the OpenCode API to seed the starter session."
+        info "Students can still open OpenCode and start a new chat normally."
+        return 0
+    fi
+
+    sessions="$(curl -sf -m 10 -u "$OPENCODE_USERNAME:$WEB_PASSWORD" "$seed_base/session" 2>/dev/null || true)"
     existing_id="$(printf '%s' "$sessions" | tr '{' '\n' \
         | grep -F "\"title\":\"$seed_title\"" \
         | sed -n 's/.*"id":"\([^"]*\)".*/\1/p' | head -1)"
 
     if [ -n "$existing_id" ]; then
         messages="$(curl -sf -m 10 -u "$OPENCODE_USERNAME:$WEB_PASSWORD" \
-            "$seed_base/api/session/$existing_id/message" 2>/dev/null || true)"
+            "$seed_base/session/$existing_id/message" 2>/dev/null || true)"
 
         if printf '%s' "$messages" | grep -Fq '"id"'; then
             ok "Seed session already exists -- leaving it untouched"
@@ -797,7 +825,7 @@ seed_session() {
         created="$(curl -sf -m 10 -u "$OPENCODE_USERNAME:$WEB_PASSWORD" \
             -H "Content-Type: application/json" \
             -d "{\"title\":\"$seed_title\"}" \
-            "$seed_base/api/session" 2>/dev/null || true)"
+            "$seed_base/session" 2>/dev/null || true)"
 
         existing_id="$(printf '%s' "$created" | tr ',' '\n' \
             | sed -n 's/.*"id":"\([^"]*\)".*/\1/p' | head -1)"
@@ -809,10 +837,17 @@ seed_session() {
         return 0
     fi
 
+    # Deliver the greeting without waiting for the reply. Newer builds
+    # take {parts:[...]} at prompt_async; older ones take {text} at
+    # prompt. Try both.
     if curl -sf -m 10 -u "$OPENCODE_USERNAME:$WEB_PASSWORD" \
             -H "Content-Type: application/json" \
+            -d "$seed_parts_json" \
+            "$seed_base/session/$existing_id/prompt_async" >/dev/null 2>&1 \
+        || curl -sf -m 10 -u "$OPENCODE_USERNAME:$WEB_PASSWORD" \
+            -H "Content-Type: application/json" \
             -d "$seed_json" \
-            "$seed_base/api/session/$existing_id/prompt" >/dev/null 2>&1; then
+            "$seed_base/session/$existing_id/prompt" >/dev/null 2>&1; then
         ok "Seed session created -- the agent greets the class by the time a student clicks it"
     else
         warn "Created the starter session but could not deliver the greeting prompt."
@@ -837,8 +872,7 @@ start_service() {
     # classroom API first and reuse it instead.
     existing_port=""
     for candidate in $(seq "$PREFERRED_OPENCODE_PORT" "$LAST_OPENCODE_PORT"); do
-        if curl -sf -m 1 -u "$OPENCODE_USERNAME:$password" \
-                "http://127.0.0.1:$candidate/api/session" >/dev/null 2>&1; then
+        if [ -n "$(oc_api_base "$candidate" || true)" ]; then
             existing_port="$candidate"
             break
         fi
@@ -887,8 +921,7 @@ start_service() {
         > "$SERVICE_OUT" 2>&1 &
 
     api_ready() {
-        curl -sf -m 4 -u "$OPENCODE_USERNAME:$password" \
-            "http://127.0.0.1:$port/api/session" >/dev/null 2>&1
+        [ -n "$(oc_api_base "$port" || true)" ]
     }
 
     healthy=0
