@@ -840,18 +840,23 @@ oc_listen_port() {
 kill_opencode_servers() {
     stale_pids="$(lsof -nP -iTCP -sTCP:LISTEN 2>/dev/null \
         | grep -i 'opencode' | awk '{print $2}' | sort -u)"
-    [ -n "$stale_pids" ] || return 0
 
-    info "Stopping leftover OpenCode server process(es)..."
-    for stale_pid in $stale_pids; do
-        kill "$stale_pid" 2>/dev/null || true
-    done
-    sleep 1
-    for stale_pid in $stale_pids; do
-        if kill -0 "$stale_pid" 2>/dev/null; then
-            kill -9 "$stale_pid" 2>/dev/null || true
-        fi
-    done
+    if [ -n "$stale_pids" ]; then
+        info "Stopping leftover OpenCode server process(es)..."
+        for stale_pid in $stale_pids; do
+            kill "$stale_pid" 2>/dev/null || true
+        done
+        sleep 1
+        for stale_pid in $stale_pids; do
+            if kill -0 "$stale_pid" 2>/dev/null; then
+                kill -9 "$stale_pid" 2>/dev/null || true
+            fi
+        done
+    fi
+
+    # Hard sweep for any opencode server process the listener scan missed
+    # (matches the "opencode." process name this build shows in lsof/ps).
+    pkill -9 -f "opencode\." 2>/dev/null || true
     sleep 1
 }
 
