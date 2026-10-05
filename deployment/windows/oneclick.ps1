@@ -127,6 +127,7 @@ $TranscriptStarted = $false
 $Mutex = $null
 $MutexAcquired = $false
 $ExitCode = 0
+$SessionStarted = $false
 
 # ============================================================
 # Console helpers
@@ -1914,6 +1915,69 @@ function Stop-ClassWatchdogs {
     return $stopped
 }
 
+# Tear the whole classroom down: the watchdog, the workshop page server,
+# and the OpenCode service. Called when the launcher exits, and by the
+# watchdog if it notices the launcher window has gone away.
+function Stop-ClassroomSession {
+    param(
+        [string]$OpenCode,
+        [int]$PagePort,
+        [string]$ProjectRoot
+    )
+
+    # 1. Watchdog first, so it cannot restart what we stop next.
+    [void](Stop-ClassWatchdogs)
+
+    # 2. Workshop page server (workshop_server.py runs in its own process).
+    try {
+        $servers = Get-CimInstance Win32_Process -ErrorAction Stop | Where-Object {
+            $_.CommandLine -and ($_.CommandLine -like "*workshop_server.py*")
+        }
+
+        foreach ($server in $servers) {
+            Stop-Process -Id $server.ProcessId -Force -ErrorAction SilentlyContinue
+        }
+    }
+    catch {}
+
+    if ($PagePort -gt 0) {
+        try {
+            $listeners = Get-NetTCPConnection -LocalPort $PagePort -State Listen -ErrorAction Stop
+
+            foreach ($listener in $listeners) {
+                Stop-Process -Id $listener.OwningProcess -Force -ErrorAction SilentlyContinue
+            }
+        }
+        catch {}
+    }
+
+    # 3. The OpenCode service, then any lingering opencode process.
+    if ($OpenCode -and (Test-Path -LiteralPath $OpenCode)) {
+        try {
+            $stop = Start-Process -FilePath $OpenCode -ArgumentList @("service", "stop") `
+                -WorkingDirectory $ProjectRoot -WindowStyle Hidden -PassThru
+
+            if (-not $stop.WaitForExit(20000)) {
+                Stop-Process -Id $stop.Id -Force -ErrorAction SilentlyContinue
+            }
+        }
+        catch {}
+    }
+
+    try {
+        $leftovers = Get-CimInstance Win32_Process -ErrorAction Stop | Where-Object {
+            $_.CommandLine -and
+            ($_.CommandLine -like "*opencode*") -and
+            ($_.ProcessId -ne $PID)
+        }
+
+        foreach ($leftover in $leftovers) {
+            Stop-Process -Id $leftover.ProcessId -Force -ErrorAction SilentlyContinue
+        }
+    }
+    catch {}
+}
+
 function Get-VibeSessionInfo {
     # Reads the previous launcher's state file. Returns $null when the file
     # is absent, unreadable, or points at a process that is already gone.
@@ -2056,9 +2120,9 @@ function Stop-VibeSession {
 }
 
 # A tiny detached watchdog: keeps polling the classroom web pages every 10
-# seconds for up to 8 hours, and cleanly restarts the classroom services if
-# they stop answering (e.g. students report "the page loads and loads" after
-# the launcher window closes). Restart writes a line into the watchdog log.
+# seconds and cleanly restarts the classroom services if they stop
+# answering. It also watches the launcher process: once the launcher window
+# is gone, it tears the whole classroom down so nothing keeps running.
 function Start-ClassWatchdog {
     param(
         [string]$OpenCode,
@@ -2066,7 +2130,8 @@ function Start-ClassWatchdog {
         [string]$WatchdogLog,
         [string]$Python,
         [int]$PagePort,
-        [string]$ProjectRoot
+        [string]$ProjectRoot,
+        [int]$LauncherPid
     )
 
     $watchdogScript = Join-Path $AppRoot "watchdog.ps1"
@@ -2081,7 +2146,8 @@ param(
     [string]$Log,
     [string]$ProjectRoot,
     [string]$Python,
-    [int]$PagePort
+    [int]$PagePort,
+    [int]$LauncherPid
 )
 
 $ErrorActionPreference = "Continue"
@@ -2093,6 +2159,27 @@ $pageUrl = "http://127.0.0.1:{0}" -f $PagePort
 
 while ((Get-Date) -lt $deadline) {
     Start-Sleep -Seconds 10
+
+    # --- launcher window: gone means the session is over ---
+    if ($LauncherPid -gt 0 -and -not (Get-Process -Id $LauncherPid -ErrorAction SilentlyContinue)) {
+        try { & $OpenCode service stop 2>&1 | Out-Null } catch {}
+
+        try {
+            Get-NetTCPConnection -LocalPort $PagePort -State Listen -ErrorAction Stop |
+                ForEach-Object { Stop-Process -Id $_.OwningProcess -Force -ErrorAction SilentlyContinue }
+        }
+        catch {}
+
+        try {
+            Get-CimInstance Win32_Process -ErrorAction Stop | Where-Object {
+                $_.CommandLine -and ($_.CommandLine -like "*workshop_server.py*")
+            } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
+        }
+        catch {}
+
+        Add-Content -LiteralPath $Log -Value ((Get-Date -Format o) + " launcher window closed; classroom torn down.")
+        exit
+    }
 
     # --- workshop page (OpenCode) ---
     $alive = $false
@@ -2169,7 +2256,8 @@ while ((Get-Date) -lt $deadline) {
             "-Log", ('"{0}"' -f $WatchdogLog),
             "-ProjectRoot", ('"{0}"' -f $ClassroomProjectRoot),
             "-Python", ('"{0}"' -f $Python),
-            "-PagePort", "$WorkshopPagePort"
+            "-PagePort", "$WorkshopPagePort",
+            "-LauncherPid", "$LauncherPid"
         )
 }
 
@@ -3037,6 +3125,8 @@ try {
         [void](Open-Browser ("http://127.0.0.1:{0}" -f $WorkshopPage.Port))
     }
 
+    $SessionStarted = $true
+
     # ========================================================
     # Success
     # ========================================================
@@ -3072,10 +3162,10 @@ try {
             Write-Host "     workshop page: http://127.0.0.1:$($WorkshopPage.Port)"
         }
         Write-Host "  2. Username: $($Credentials.username)   Password: $($Credentials.password)"
-        Write-Host "  3. A hidden watchdog restarts both servers automatically if they stop answering."
+        Write-Host "  3. A watchdog restarts either server if it crashes, while this window is open."
 
-        # A detached watchdog keeps both classroom services healthy even
-        # after this window closes (auto-restarts for up to 8 hours).
+        # A detached watchdog restarts either service if it crashes, and
+        # tears the whole classroom down once this window is gone.
         try {
             Start-ClassWatchdog `
                 -OpenCode $OpenCode `
@@ -3083,8 +3173,9 @@ try {
                 -WatchdogLog $LatestLog `
                 -Python $ClassPython `
                 -PagePort $WorkshopPagePort `
-                -ProjectRoot $ClassroomProjectRoot
-            Write-OK "Watchdog running (keeps both classroom pages alive for the next 8 hours)"
+                -ProjectRoot $ClassroomProjectRoot `
+                -LauncherPid $PID
+            Write-OK "Watchdog running (restarts either page while this window is open; tears down when it closes)"
         }
         catch {
             Write-Warn "Watchdog could not start: $($_.Exception.Message)"
@@ -3094,9 +3185,10 @@ try {
         Write-Host "Support log:" -ForegroundColor DarkGray
         Write-Host "  $LogFile" -ForegroundColor DarkGray
         Write-Host ""
-        Write-Host "It is safe to close this window." -ForegroundColor DarkGray
+        Write-Host "This classroom runs only while this window is open." -ForegroundColor DarkGray
+        Write-Host "Closing it (or pressing ENTER) shuts down OpenCode and the workshop page." -ForegroundColor DarkGray
         Write-Host ""
-        Write-Host "Press ENTER to close this window (read the notes above first)." -ForegroundColor Green
+        Write-Host "Press ENTER to stop the classroom and close this window." -ForegroundColor Green
         [void](Read-Host)
 }
 catch {
@@ -3120,6 +3212,15 @@ catch {
     Write-Host ""
 }
 finally {
+    if ($SessionStarted) {
+        Write-Host ""
+        Write-Host "Shutting the classroom down..." -ForegroundColor DarkGray
+        Stop-ClassroomSession `
+            -OpenCode $OpenCode `
+            -PagePort $WorkshopPagePort `
+            -ProjectRoot $ClassroomProjectRoot
+    }
+
     if ($TranscriptStarted) {
         try { Stop-Transcript | Out-Null } catch {}
     }

@@ -27,7 +27,7 @@ served by a small FastAPI process, in one classroom page.
 1. **Once**: the launcher serves the workshop page automatically
    (`deployment/windows/START VIBE CODING.bat` or
    `deployment/macos/START VIBE CODING.command` starts it on port 4097; a
-   watchdog restarts either service if it crashes, and the macOS launcher
+   watchdog restarts either service if it crashes, and either launcher
    tears both down when its window closes). To (re)start it by hand:
    `python serve_workshop.py`.
    Students see one page, three tabs; each tab shows its next checkpoint as a
