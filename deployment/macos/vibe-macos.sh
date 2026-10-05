@@ -116,6 +116,7 @@ info()    { printf '%s\n' "$1"; }
 section() { printf '\n%s== %s ==%s\n' "$C_CYAN" "$1" "$C_RESET"; }
 ok()      { printf '%s[OK] %s%s\n' "$C_GREEN" "$1" "$C_RESET"; }
 warn()    { printf '%s[WARN] %s%s\n' "$C_YELLOW" "$1" "$C_RESET"; }
+debug()   { printf '%s[debug] %s%s\n' "$C_DIM" "$1" "$C_RESET" >&2; }
 
 die() {
     printf '\n%s==============================================%s\n' "$C_RED" "$C_RESET"
@@ -783,6 +784,9 @@ oc_api_base() {
                 "http://127.0.0.1:$probe_port$probe_prefix$probe_path" 2>/dev/null || true)"
             probe_code="${probe_out##*$'\n'}"
             probe_body="${probe_out%$'\n'*}"
+            if [ "${probe_code:-000}" != "000" ]; then
+                debug "probe 127.0.0.1:$probe_port$probe_prefix$probe_path -> $probe_code"
+            fi
             if [ "$probe_code" = "200" ] \
                 && { [ "${probe_body#\{}" != "$probe_body" ] \
                      || [ "${probe_body#\[}" != "$probe_body" ]; }; then
@@ -812,10 +816,16 @@ oc_probe_codes() {
 # plus a fresh one), so callers should try each and keep the one that
 # answers.
 oc_listen_ports() {
-    lsof -nP -iTCP -sTCP:LISTEN 2>/dev/null \
-        | grep -i 'opencode' \
-        | sed -n 's/.*:\([0-9][0-9]*\) (LISTEN).*/\1/p' \
-        | sort -u
+    _op_listeners="$(lsof -nP -iTCP -sTCP:LISTEN 2>/dev/null | grep -i 'opencode' || true)"
+    if [ -n "$_op_listeners" ]; then
+        printf '%s\n' "$_op_listeners" | while IFS= read -r _op_line; do
+            debug "listener: $_op_line"
+        done
+    else
+        debug "no opencode listener found"
+    fi
+    printf '%s\n' "$_op_listeners" \
+        | sed -n 's/.*:\([0-9][0-9]*\) (LISTEN).*/\1/p' | sort -u
 }
 
 oc_listen_port() {
@@ -937,8 +947,10 @@ start_service() {
     # `service set port`. Ask lsof which port an opencode process is
     # listening on, then confirm the API answers with the classroom
     # password. (Fallback: scan the preferred range for older builds.)
+    debug "checking for an already-running classroom server..."
     existing_port=""
     for candidate in $(oc_listen_ports); do
+        debug "checking listener port $candidate"
         if [ -n "$(oc_api_base "$candidate" || true)" ]; then
             existing_port="$candidate"
             break
@@ -946,6 +958,7 @@ start_service() {
     done
 
     if [ -z "$existing_port" ]; then
+        debug "no listener authenticated; scanning range $PREFERRED_OPENCODE_PORT-$LAST_OPENCODE_PORT"
         for candidate in $(seq "$PREFERRED_OPENCODE_PORT" "$LAST_OPENCODE_PORT"); do
             if [ -n "$(oc_api_base "$candidate" || true)" ]; then
                 existing_port="$candidate"
@@ -967,14 +980,23 @@ start_service() {
 
     info "Configuring the OpenCode service..."
 
+    debug "chosen port: $port (from find_free_port), password length: ${#password}"
+    debug "service binary: $OPENCODE_BIN"
+    debug "service output file: $DOWNLOAD_ROOT/opencode-service.out"
+
+    debug "running: service stop"
     run_limited 20 "$OPENCODE_BIN" service stop >/dev/null 2>&1 || true
     kill_opencode_servers
+    debug "running: service unset disabled"
     run_limited 20 "$OPENCODE_BIN" service unset disabled >/dev/null 2>&1 || true
 
+    debug "running: service set hostname 127.0.0.1"
     "$OPENCODE_BIN" service set hostname 127.0.0.1 >/dev/null 2>&1 \
         || die "Could not configure the OpenCode hostname."
+    debug "running: service set port $port"
     "$OPENCODE_BIN" service set port "$port" >/dev/null 2>&1 \
         || die "Could not configure the OpenCode port."
+    debug "running: service set password (<hidden>)"
     "$OPENCODE_BIN" service set password "$password" >/dev/null 2>&1 \
         || die "Could not configure the OpenCode Web UI password."
 
@@ -997,9 +1019,10 @@ start_service() {
     # stays in the foreground this background job *is* the classroom
     # server. Either way we then discover whichever port it listens on.
     SERVICE_OUT="$DOWNLOAD_ROOT/opencode-service.out"
+    : > "$SERVICE_OUT"
 
     discover_api() {
-        for discovery_port in $(oc_listen_ports); do
+        for discovery_port in $(oc_listen_ports 2>/dev/null); do
             if [ -n "$(oc_api_base "$discovery_port" || true)" ]; then
                 OPENCODE_PORT="$discovery_port"
                 return 0
@@ -1014,12 +1037,28 @@ start_service() {
            OPENCODE_SERVER_USERNAME="$OPENCODE_USERNAME" \
            nohup "$OPENCODE_BIN" service start </dev/null ) \
         > "$SERVICE_OUT" 2>&1 &
+    service_start_pid=$!
+    debug "service start launched (pid $service_start_pid)"
+
+    sleep 2
+    debug "service status after start: $(run_limited 15 "$OPENCODE_BIN" service status 2>&1 | tr '\n' '|')"
 
     healthy=0
+    _ticks=0
     for _ in $(seq 1 120); do
         if discover_api; then
             healthy=1
             break
+        fi
+        _ticks=$((_ticks + 1))
+        if [ $((_ticks % 8)) -eq 0 ]; then
+            _loop_listeners="$(oc_listen_ports 2>/dev/null | tr '\n' ' ')"
+            if kill -0 "$service_start_pid" 2>/dev/null; then
+                _alive="yes"
+            else
+                _alive="no"
+            fi
+            debug "waiting ${_ticks}/120; listeners: ${_loop_listeners:-none}; start-cmd alive: $_alive; output: $(tr '\n' '|' < "$SERVICE_OUT" 2>/dev/null)"
         fi
         sleep 0.5
     done
@@ -1035,11 +1074,19 @@ start_service() {
                OPENCODE_SERVER_USERNAME="$OPENCODE_USERNAME" \
                nohup "$OPENCODE_BIN" service start </dev/null ) \
             > "$SERVICE_OUT" 2>&1 &
+        service_start_pid=$!
+        debug "restart launched (pid $service_start_pid)"
 
+        _ticks=0
         for _ in $(seq 1 120); do
             if discover_api; then
                 healthy=1
                 break
+            fi
+            _ticks=$((_ticks + 1))
+            if [ $((_ticks % 8)) -eq 0 ]; then
+                _loop_listeners="$(oc_listen_ports 2>/dev/null | tr '\n' ' ')"
+                debug "waiting (restart) ${_ticks}/120; listeners: ${_loop_listeners:-none}; output: $(tr '\n' '|' < "$SERVICE_OUT" 2>/dev/null)"
             fi
             sleep 0.5
         done
