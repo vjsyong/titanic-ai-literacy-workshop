@@ -830,6 +830,26 @@ start_service() {
     port="$1"
     password="$2"
 
+    # A previous classroom server is often still running (the launcher
+    # window was closed without stopping it, or a second launch). Some
+    # OpenCode builds refuse to start a second instance -- the start
+    # command then just waits forever. Look for an already-answering
+    # classroom API first and reuse it instead.
+    existing_port=""
+    for candidate in $(seq "$PREFERRED_OPENCODE_PORT" "$LAST_OPENCODE_PORT"); do
+        if curl -sf -m 1 -u "$OPENCODE_USERNAME:$password" \
+                "http://127.0.0.1:$candidate/api/session" >/dev/null 2>&1; then
+            existing_port="$candidate"
+            break
+        fi
+    done
+
+    if [ -n "$existing_port" ]; then
+        OPENCODE_PORT="$existing_port"
+        ok "OpenCode Web UI is already running on port $existing_port -- reusing it"
+        return 0
+    fi
+
     info "Configuring the OpenCode service..."
 
     "$OPENCODE_BIN" service stop >/dev/null 2>&1 || true

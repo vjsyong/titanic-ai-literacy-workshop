@@ -81,8 +81,8 @@
   },
   {
     "file": "macos/vibe-macos.sh",
-    "sha256": "f80da99eec17566eae625b55a45455ee2137f8122de730ebcb775738ee3ca70d",
-    "bytes": 39489
+    "sha256": "a23b361aea711f6ffa989419cc6d68bc8e0a361d6fd2d44563292bd9a0812bff",
+    "bytes": 40324
   },
   {
     "file": "baseline/01_eda.py",
