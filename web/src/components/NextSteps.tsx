@@ -5,6 +5,7 @@ const DATASETS = [
   {
     id: "iris",
     name: "Iris Flowers",
+    meta: ["150 rows", "3 species", "classification"],
     image: "/next/iris.jpg",
     imageHint: "web/public/next/iris.jpg",
     url: "https://archive.ics.uci.edu/dataset/53/iris",
@@ -18,6 +19,7 @@ const DATASETS = [
   {
     id: "wine",
     name: "Wine Quality",
+    meta: ["6,497 rows", "0-10 score", "regression"],
     image: "/next/wine.jpg",
     imageHint: "web/public/next/wine.jpg",
     url: "https://archive.ics.uci.edu/dataset/186/wine-quality",
@@ -31,6 +33,7 @@ const DATASETS = [
   {
     id: "boston",
     name: "Boston Housing",
+    meta: ["506 rows", "home value", "regression"],
     image: "/next/boston.jpg",
     imageHint: "web/public/next/boston.jpg",
     url: "https://archive.ics.uci.edu/dataset/2/boston-housing",
@@ -56,7 +59,7 @@ function DatasetImage({
 
   if (missing) {
     return (
-      <div className="flex aspect-square w-full flex-col items-center justify-center gap-1.5 border border-dashed border-line2 bg-[#fafafa] p-4 text-center">
+      <div className="flex aspect-square w-full flex-col items-center justify-center gap-1.5 border-b border-dashed border-line2 bg-[#fafafa] p-4 text-center">
         <ImageOff className="h-6 w-6 text-faint" />
         <div className="text-sm font-semibold text-dim">Image placeholder</div>
         <p className="max-w-[14rem] text-xs leading-relaxed text-faint">
@@ -74,7 +77,7 @@ function DatasetImage({
     <img
       src={src}
       alt={`${name} dataset illustration`}
-      className="aspect-square w-full border border-line object-cover"
+      className="aspect-square w-full border-b border-line object-cover"
       onError={() => setMissing(true)}
     />
   );
@@ -115,38 +118,61 @@ export function NextSteps() {
         </div>
       </div>
 
+      <div className="pt-2">
+        <div className="micro-label text-faint">Choose your next project</div>
+        <h3 className="mt-1 text-xl font-bold tracking-tight text-ink">
+          Three classics to run the same loop on
+        </h3>
+      </div>
+
       <div className="grid gap-4 md:grid-cols-3">
         {DATASETS.map((dataset) => (
           <article
             key={dataset.id}
-            className="flex flex-col border border-line bg-white p-5"
+            className="flex flex-col border border-line bg-white transition hover:border-line2"
           >
             <DatasetImage
               src={dataset.image}
               hint={dataset.imageHint}
               name={dataset.name}
             />
-            <h3 className="mt-4 text-lg font-bold tracking-tight text-ink">
-              {dataset.name}
-            </h3>
-            <p className="mt-1.5 text-sm leading-relaxed text-dim">
-              {dataset.what}
-            </p>
-            <div className="micro-label mt-3 text-faint">What you can do</div>
-            <ul className="mt-1 list-disc space-y-1 pl-5 text-sm leading-relaxed text-[#3f3f46]">
-              {dataset.ideas.map((idea) => (
-                <li key={idea}>{idea}</li>
-              ))}
-            </ul>
-            <a
-              href={dataset.url}
-              target="_blank"
-              rel="noreferrer"
-              className="mt-4 inline-flex h-9 w-fit items-center gap-2 border border-line bg-white px-4 text-sm font-semibold text-ink transition hover:border-black"
-            >
-              <ExternalLink className="h-4 w-4 text-acc" />
-              Open the dataset
-            </a>
+            <div className="flex flex-1 flex-col p-5">
+              <div className="flex flex-wrap gap-1.5">
+                {dataset.meta.map((tag) => (
+                  <span
+                    key={tag}
+                    className="border border-line bg-card2 px-2 py-0.5 font-mono text-[0.63rem] uppercase tracking-wide text-dim"
+                  >
+                    {tag}
+                  </span>
+                ))}
+              </div>
+              <h3 className="mt-2.5 text-xl font-bold tracking-tight text-ink">
+                {dataset.name}
+              </h3>
+              <p className="mt-1.5 text-sm leading-relaxed text-dim">
+                {dataset.what}
+              </p>
+              <div className="mt-4 border-t border-line pt-3">
+                <div className="micro-label text-acc">What you can do</div>
+                <ul className="mt-1.5 list-disc space-y-1 pl-5 text-sm leading-relaxed text-ink">
+                  {dataset.ideas.map((idea) => (
+                    <li key={idea}>{idea}</li>
+                  ))}
+                </ul>
+              </div>
+              <div className="mt-auto pt-5">
+                <a
+                  href={dataset.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex h-9 w-full items-center justify-center gap-2 border border-line bg-white px-4 text-sm font-semibold text-ink transition hover:border-black"
+                >
+                  <ExternalLink className="h-4 w-4 text-acc" />
+                  Open the dataset
+                </a>
+              </div>
+            </div>
           </article>
         ))}
       </div>
