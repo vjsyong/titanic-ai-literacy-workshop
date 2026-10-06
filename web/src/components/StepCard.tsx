@@ -3,12 +3,13 @@ import {
   AlertTriangle,
   Check,
   CheckCircle2,
+  ChevronRight,
   ClipboardPaste,
   Compass,
   Copy,
+  FileCode2,
   Lightbulb,
   Lock,
-  PenLine,
   Repeat,
   Unlock,
 } from "lucide-react";
@@ -17,16 +18,11 @@ import { ResultBlocks, Markdown } from "./ResultBlocks";
 import { BehindTheScenes } from "./BehindTheScenes";
 
 // ---------------------------------------------------------------------------
-// Attempt-to-unlock: the reference prompt stays hidden until the student has
-// written their own request. The unlock persists per step in localStorage,
-// and so does the student's draft -- it becomes the reflection material on
-// the completed card ("your words vs the reference").
+// Click-to-unlock: the reference prompt opens with one click. The unlock
+// persists per step in localStorage.
 // ---------------------------------------------------------------------------
 
 const UNLOCK_KEY = "titanic-unlocked-references";
-const DRAFT_KEY = "titanic-prompt-drafts";
-const MIN_WORDS = 6;
-const MIN_CHARS = 30;
 
 function readUnlocks(): Record<string, boolean> {
   try {
@@ -45,39 +41,8 @@ function persistUnlock(key: string) {
     all[key] = true;
     localStorage.setItem(UNLOCK_KEY, JSON.stringify(all));
   } catch {
-    // private mode etc. — the unlock just won't survive a reload
+    // private mode etc.: the unlock just won't survive a reload
   }
-}
-
-function readDrafts(): Record<string, string> {
-  try {
-    return JSON.parse(localStorage.getItem(DRAFT_KEY) ?? "{}") as Record<
-      string,
-      string
-    >;
-  } catch {
-    return {};
-  }
-}
-
-function persistDraft(key: string, draft: string) {
-  try {
-    const all = readDrafts();
-    if (draft.trim()) {
-      all[key] = draft;
-    } else {
-      delete all[key];
-    }
-    localStorage.setItem(DRAFT_KEY, JSON.stringify(all));
-  } catch {
-    // private mode etc. — the draft just won't survive a reload
-  }
-}
-
-function isMeaningful(draft: string): boolean {
-  const trimmed = draft.trim();
-  const words = trimmed.split(/\s+/).filter(Boolean).length;
-  return trimmed.length >= MIN_CHARS && words >= MIN_WORDS;
 }
 
 function ReferencePanel({
@@ -128,7 +93,7 @@ function ReferencePanel({
       )}
       <p className="mt-2 text-xs text-dim">
         Copy this prompt and paste it straight into the OpenCode chat window
-        (the other side of your screen) — don't retype it. The page updates
+        (the other side of your screen). Don't retype it. The page updates
         itself when the checkpoint is done.
       </p>
     </div>
@@ -143,28 +108,18 @@ function PromptWorkshop({
   scriptId: string;
 }) {
   const storageKey = `${scriptId}:${step.number}`;
-  const [draft, setDraft] = useState("");
   const [unlocked, setUnlocked] = useState(
     () => readUnlocks()[storageKey] === true,
   );
 
-  const meaningful = isMeaningful(draft);
-  const attempted = draft.trim().length > 0;
-
-  const updateDraft = (value: string) => {
-    setDraft(value);
-    persistDraft(storageKey, value);
-  };
-
   const unlock = () => {
-    if (!meaningful) return;
     persistUnlock(storageKey);
     setUnlocked(true);
   };
 
   return (
     <div className="mt-4">
-      {/* Directional mission — never the verbatim prompt. */}
+      {/* Directional mission: never the verbatim prompt. */}
       <div className="border border-acc bg-tint-acc p-4">
         <div className="micro-label flex items-center gap-1.5 text-acc">
           <Lightbulb className="h-3.5 w-3.5" />
@@ -191,8 +146,8 @@ function PromptWorkshop({
           Read the mission, then{" "}
           <strong className="font-semibold text-ink">
             copy the prompt and paste it into the OpenCode chat
-          </strong>{" "}
-          — don't type it out by hand. Your assistant does the work; you
+          </strong>
+          . Don't type it out by hand. Your assistant does the work; you
           supply the intent.
         </span>
       </div>
@@ -203,72 +158,38 @@ function PromptWorkshop({
         </div>
       ) : (
         <div className="mt-3">
-          <div className="micro-label flex items-center gap-1.5 text-dim">
-            <PenLine className="h-3.5 w-3.5" />
-            Try it yourself first — write your own request
-          </div>
-          <textarea
-            className="draft mt-2 min-h-[76px] w-full border border-line bg-white p-3 outline-none focus:border-black focus:shadow-[0_0_0_3px_rgba(0,112,243,0.35)]"
-            placeholder={
-              step.placeholder ||
-              "What would YOU ask the assistant? e.g. “Look at the passenger list and …”"
-            }
-            value={draft}
-            onChange={(event) => updateDraft(event.target.value)}
-          />
-          <div className="mt-2 flex flex-wrap items-center gap-3">
-            <button
-              onClick={unlock}
-              disabled={!meaningful}
-              className="h-9 bg-black px-4 text-sm font-semibold text-white transition hover:bg-[#333] disabled:cursor-not-allowed disabled:opacity-45"
-            >
-              <span className="inline-flex items-center gap-1.5">
-                <Unlock className="h-3.5 w-3.5" />
-                Unlock the reference prompt
-              </span>
-            </button>
-            <span className="text-xs text-faint">
-              {meaningful
-                ? "Nice — that's a real request. Compare it with the reference."
-                : attempted
-                  ? "Almost — say what the assistant should do, with what, and how to show it (6+ words)."
-                  : "Write at least a sentence — the assistant needs direction, not magic."}
+          <button
+            onClick={unlock}
+            className="h-9 bg-black px-4 text-sm font-semibold text-white transition hover:bg-[#333]"
+          >
+            <span className="inline-flex items-center gap-1.5">
+              <Unlock className="h-3.5 w-3.5" />
+              Unlock the reference prompt
             </span>
-          </div>
+          </button>
         </div>
       )}
     </div>
   );
 }
 
-function PromptReflection({
-  step,
-  scriptId,
-}: {
-  step: StepState;
-  scriptId: string;
-}) {
-  const draft = readDrafts()[`${scriptId}:${step.number}`]?.trim();
-  if (!draft || draft.length < MIN_CHARS) return null;
-  if (draft === step.reference.trim()) return null;
+function CodeReveal({ code }: { code: string | null }) {
+  if (!code) return null;
 
   return (
-    <div className="mt-4 border border-line bg-[#fcfcfc] p-4">
-      <div className="micro-label flex items-center gap-1.5 text-dim">
-        <PenLine className="h-3.5 w-3.5" />
-        Your words vs the reference
-      </div>
-      <p className="mt-2 text-sm italic leading-relaxed text-ink">
-        You asked: “{draft}”
-      </p>
-      <p className="mt-1.5 text-sm italic leading-relaxed text-dim">
-        The reference asked: “{step.reference}”
-      </p>
-      <p className="mt-2 text-xs text-dim">
-        Same checkpoint, two phrasings — what would you change in yours
-        next time? More specific? A clearer output? A sharper goal?
-      </p>
-    </div>
+    <details className="group mt-3 border border-line bg-[#fcfcfc]">
+      <summary className="flex cursor-pointer list-none select-none items-center gap-1.5 px-3 py-2 text-xs font-semibold text-dim transition hover:text-ink">
+        <ChevronRight className="h-3.5 w-3.5 transition-transform group-open:rotate-90" />
+        <FileCode2 className="h-3.5 w-3.5 text-acc" />
+        See the code
+        <span className="ml-auto font-normal text-faint">
+          written by the AI assistant
+        </span>
+      </summary>
+      <pre className="max-h-96 overflow-auto border-t border-line bg-white p-3 font-mono text-[0.72rem] leading-relaxed text-ink">
+        <code>{code}</code>
+      </pre>
+    </details>
   );
 }
 
@@ -301,7 +222,7 @@ export function StepCard({
       <div className="flex items-center gap-3 border border-dashed border-line2 bg-white/60 px-4 py-3 text-faint">
         <Lock className="h-4 w-4" />
         <span className="text-sm font-medium">
-          Step {step.number} of {total} — {step.title}
+          Step {step.number} of {total}: {step.title}
         </span>
         <span className="micro-label ml-auto text-faint">locked</span>
       </div>
@@ -313,7 +234,7 @@ export function StepCard({
       <div className="animate-soft-pulse border-2 border-acc bg-white p-5">
         <div className="micro-label mb-1 flex items-center gap-2 text-acc">
           <Unlock className="h-4 w-4" />
-          Checkpoint {step.number} of {total} — your turn
+          Checkpoint {step.number} of {total}: your turn
         </div>
         <h3 className="text-lg font-bold tracking-tight text-ink">
           {step.title}
@@ -330,6 +251,7 @@ export function StepCard({
         <div className="mt-3">
           <BehindTheScenes scriptId={scriptId} number={step.number} />
         </div>
+        <CodeReveal code={step.code} />
         <PromptWorkshop step={step} scriptId={scriptId} />
       </div>
     );
@@ -340,7 +262,7 @@ export function StepCard({
       <div className="mb-2 flex items-center gap-2">
         <CheckCircle2 className="h-5 w-5 text-ok" />
         <h3 className="font-semibold tracking-tight text-ink">
-          Step {step.number} of {total} — {step.title}
+          Step {step.number} of {total}: {step.title}
         </h3>
       </div>
       <div className="mb-3">
@@ -350,6 +272,7 @@ export function StepCard({
           dimmed
         />
       </div>
+      <CodeReveal code={step.code} />
       {step.error ? (
         <ErrorNote text={step.error} />
       ) : step.result ? (
@@ -357,12 +280,11 @@ export function StepCard({
       ) : (
         <p className="text-sm text-faint">No output for this step.</p>
       )}
-      {!step.error && <PromptReflection step={step} scriptId={scriptId} />}
       {step.guide && !step.error && (
         <div className="mt-4 border border-ok bg-tint-ok p-4">
           <div className="micro-label flex items-center gap-1.5 text-ok">
             <Compass className="h-3.5 w-3.5" />
-            What to notice — teacher's debrief
+            What to notice: teacher's debrief
           </div>
           <div className="mt-1.5">
             <Markdown text={step.guide} />

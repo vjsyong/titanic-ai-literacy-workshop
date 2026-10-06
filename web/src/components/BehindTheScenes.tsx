@@ -42,7 +42,11 @@ type Kind =
   | "gauge"
   | "save"
   | "form"
-  | "people";
+  | "people"
+  | "question"
+  | "preview"
+  | "target"
+  | "bands";
 
 interface Node {
   kind: Kind;
@@ -64,14 +68,18 @@ const FLOWS: Record<string, { title: string; nodes: Node[] }> = {
     title: "A file becomes a table",
     nodes: [
       { kind: "file", label: "titanic.csv", caption: "the raw file" },
+      { kind: "code", label: "read_csv( )", caption: "load the rows" },
       { kind: "table", label: "DataFrame", caption: "891 rows × 12" },
+      { kind: "preview", label: "First look", caption: "head() preview" },
       { kind: "holes", label: "Missing values", caption: "Age 177 · Cabin 687" },
     ],
   },
   "eda:2": {
     title: "Counting who lived",
     nodes: [
+      { kind: "question", label: "Your guess", caption: "more or fewer?" },
       { kind: "table", label: "Every passenger", caption: "all 891" },
+      { kind: "code", label: "value_counts( )", caption: "count the outcomes" },
       { kind: "chart", label: "Split by outcome", caption: "died vs lived" },
       { kind: "donut", label: "38% survived", caption: "342 people" },
       { kind: "people", label: "By sex", caption: "women 74% · men 19%" },
@@ -81,32 +89,40 @@ const FLOWS: Record<string, { title: string; nodes: Node[] }> = {
     title: "Wealth and age as patterns",
     nodes: [
       { kind: "table", label: "Every passenger" },
+      { kind: "code", label: "groupby( )", caption: "one class at a time" },
       { kind: "chart", label: "By ticket class", caption: "1st 63% · 3rd 24%" },
       { kind: "scatter", label: "Age vs survival", caption: "a design choice" },
+      { kind: "question", label: "Is it readable?", caption: "judge the chart" },
     ],
   },
   "train:1": {
     title: "Words become numbers",
     nodes: [
       { kind: "words", label: "female / male", caption: "words" },
+      { kind: "question", label: "Which digit?", caption: "your mapping" },
+      { kind: "code", label: "map( )", caption: "translate the column" },
       { kind: "numbers", label: "0 / 1", caption: "digits" },
       { kind: "checklist", label: "Pick the clues", caption: "drop Name, ID" },
-      { kind: "table", label: "X and y", caption: "features + target" },
+      { kind: "target", label: "X and y", caption: "features + target" },
     ],
   },
   "train:2": {
     title: "A fair exam, then one scale",
     nodes: [
       { kind: "table", label: "All passengers" },
+      { kind: "question", label: "Exam size?", caption: "your ratio" },
       { kind: "split", label: "80 / 20", caption: "study vs exam" },
-      { kind: "scale", label: "StandardScaler", caption: "fit on train only" },
+      { kind: "scale", label: "fit( ) the scaler", caption: "train group only" },
+      { kind: "numbers", label: "Mean 0", caption: "same scale" },
     ],
   },
   "train:3": {
     title: "Learning the pattern",
     nodes: [
       { kind: "table", label: "Scaled training set" },
+      { kind: "code", label: "fit( )", caption: "learn from examples" },
       { kind: "brain", label: "LogisticRegression", caption: "learns the pattern" },
+      { kind: "target", label: "The test set", caption: "never seen" },
       { kind: "gauge", label: "Test accuracy", caption: "~80%" },
     ],
   },
@@ -115,14 +131,18 @@ const FLOWS: Record<string, { title: string; nodes: Node[] }> = {
     nodes: [
       { kind: "brain", label: "Trained model" },
       { kind: "chart", label: "Coefficients", caption: "what it leaned on" },
+      { kind: "code", label: "pickle.dump( )", caption: "freeze the brain" },
       { kind: "save", label: "titanic_model.pkl", caption: "brains on disk" },
+      { kind: "target", label: "Sample passenger", caption: "prove it works" },
     ],
   },
   "dashboard:1": {
     title: "Waking the saved brain",
     nodes: [
       { kind: "save", label: "titanic_model.pkl", caption: "from Step 2" },
+      { kind: "code", label: "pickle.load( )", caption: "wake it up" },
       { kind: "brain", label: "Awake model", caption: "predicts on demand" },
+      { kind: "question", label: "Which controls?", caption: "your form design" },
       { kind: "form", label: "Passenger form", caption: "radios + sliders" },
     ],
   },
@@ -132,6 +152,8 @@ const FLOWS: Record<string, { title: string; nodes: Node[] }> = {
       { kind: "form", label: "female", caption: "form words" },
       { kind: "numbers", label: "0", caption: "encode" },
       { kind: "scale", label: "Scaled", caption: "same scaler" },
+      { kind: "code", label: "predict_proba( )", caption: "live guess" },
+      { kind: "bands", label: "Three bands", caption: "unlikely → likely" },
       { kind: "gauge", label: "Verdict", caption: "chance + kind words" },
     ],
   },
@@ -140,7 +162,9 @@ const FLOWS: Record<string, { title: string; nodes: Node[] }> = {
     nodes: [
       { kind: "people", label: "Imaginary passengers", caption: "vary one thing" },
       { kind: "brain", label: "The model", caption: "1912 patterns" },
-      { kind: "chart", label: "Verdicts", caption: "table + probabilities" },
+      { kind: "table", label: "Verdicts", caption: "one row each" },
+      { kind: "chart", label: "Probabilities", caption: "side by side" },
+      { kind: "question", label: "Is it fair?", caption: "class discussion" },
     ],
   },
 };
@@ -150,7 +174,7 @@ const FLOWS: Record<string, { title: string; nodes: Node[] }> = {
 // ---------------------------------------------------------------------------
 
 function MiniVisual({ kind }: { kind: Kind }) {
-  const svg = "h-7 w-7 text-acc";
+  const svg = "h-9 w-9 text-acc";
 
   switch (kind) {
     case "table":
@@ -165,7 +189,7 @@ function MiniVisual({ kind }: { kind: Kind }) {
       );
     case "holes":
       return (
-        <svg viewBox="0 0 32 32" className="h-7 w-7 text-err">
+        <svg viewBox="0 0 32 32" className="h-9 w-9 text-err">
           <rect x="3" y="5" width="26" height="22" fill="none" stroke="currentColor" strokeWidth="1.5" />
           <line x1="3" y1="12" x2="29" y2="12" stroke="currentColor" strokeWidth="1.2" />
           <line x1="3" y1="19" x2="29" y2="19" stroke="currentColor" strokeWidth="1.2" />
@@ -173,6 +197,16 @@ function MiniVisual({ kind }: { kind: Kind }) {
           <line x1="22" y1="5" x2="22" y2="27" stroke="currentColor" strokeWidth="1.2" />
           <rect x="13" y="20" width="8" height="6" fill="currentColor" />
           <rect x="23" y="6" width="5" height="5" fill="currentColor" opacity="0.7" />
+        </svg>
+      );
+    case "preview":
+      return (
+        <svg viewBox="0 0 32 32" className={svg}>
+          <rect x="3" y="4" width="26" height="20" fill="none" stroke="currentColor" strokeWidth="1.5" />
+          <line x1="3" y1="10" x2="29" y2="10" stroke="currentColor" strokeWidth="1.1" />
+          <line x1="3" y1="16" x2="29" y2="16" stroke="currentColor" strokeWidth="1.1" />
+          <circle cx="20" cy="21" r="6" fill="none" stroke="currentColor" strokeWidth="1.8" />
+          <line x1="24.5" y1="25.5" x2="29" y2="30" stroke="currentColor" strokeWidth="1.8" />
         </svg>
       );
     case "chart":
@@ -222,10 +256,38 @@ function MiniVisual({ kind }: { kind: Kind }) {
           <text x="12" y="25" fontSize="7" fill="currentColor" fontFamily="monospace">20%</text>
         </svg>
       );
+    case "question":
+      return (
+        <svg viewBox="0 0 32 32" className={svg}>
+          <circle cx="16" cy="16" r="12" fill="none" stroke="currentColor" strokeWidth="1.5" />
+          <text
+            x="16" y="21" fontSize="14" textAnchor="middle" fill="currentColor"
+            fontWeight="bold" fontFamily="serif"
+          >
+            ?
+          </text>
+        </svg>
+      );
+    case "target":
+      return (
+        <svg viewBox="0 0 32 32" className={svg}>
+          <circle cx="16" cy="16" r="12" fill="none" stroke="currentColor" strokeWidth="1.5" />
+          <circle cx="16" cy="16" r="6.5" fill="none" stroke="currentColor" strokeWidth="1.5" />
+          <circle cx="16" cy="16" r="2.4" fill="currentColor" />
+        </svg>
+      );
+    case "bands":
+      return (
+        <svg viewBox="0 0 32 32" className={svg}>
+          <rect x="4" y="7" width="24" height="4" fill="currentColor" opacity="0.35" />
+          <rect x="4" y="14" width="24" height="4" fill="currentColor" opacity="0.65" />
+          <rect x="4" y="21" width="24" height="4" fill="currentColor" />
+        </svg>
+      );
     case "words":
-      return <span className="font-serif text-lg italic leading-none text-acc">abc</span>;
+      return <span className="font-serif text-2xl italic leading-none text-acc">abc</span>;
     case "numbers":
-      return <span className="font-mono text-base font-bold leading-none text-acc">0 1</span>;
+      return <span className="font-mono text-xl font-bold leading-none text-acc">0 1</span>;
     default:
       return null;
   }
@@ -235,7 +297,7 @@ function NodeIcon({ kind }: { kind: Kind }) {
   const custom = MiniVisual({ kind });
   if (custom) return custom;
 
-  const iconProps = { className: "h-6 w-6 text-acc" };
+  const iconProps = { className: "h-8 w-8 text-acc" };
   switch (kind) {
     case "chat":
       return <MessageSquare {...iconProps} />;
@@ -297,21 +359,21 @@ export function BehindTheScenes({
     >
       <div className="micro-label mb-2 flex items-center gap-1.5 text-dim">
         <Cog className="h-3.5 w-3.5" />
-        What's happening under the hood — {flow.title}
+        What's happening under the hood: {flow.title}
       </div>
-      <div className="behind-flow flex items-center overflow-x-auto pb-1">
+      <div className="behind-flow flex items-start overflow-x-auto pb-1">
         {flow.nodes.map((node, index) => (
           <Fragment key={`${node.label}-${index}`}>
             {index > 0 && <Connector index={index} />}
-            <div className="behind-node flex w-[6.4rem] shrink-0 flex-col items-center px-1 text-center">
-              <div className="flex h-12 w-12 items-center justify-center border border-line bg-white">
+            <div className="behind-node flex w-[7rem] shrink-0 flex-col items-center px-1 text-center">
+              <div className="flex h-16 w-16 items-center justify-center border border-line bg-white">
                 <NodeIcon kind={node.kind} />
               </div>
-              <div className="mt-1 text-[0.72rem] font-semibold leading-tight text-ink">
+              <div className="mt-1 text-[0.75rem] font-semibold leading-tight text-ink">
                 {node.label}
               </div>
               {node.caption && (
-                <div className="text-[0.63rem] leading-tight text-faint">
+                <div className="text-[0.66rem] leading-tight text-faint">
                   {node.caption}
                 </div>
               )}

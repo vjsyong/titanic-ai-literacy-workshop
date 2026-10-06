@@ -77,6 +77,7 @@ export interface StepState {
   status: StepStatus;
   result: Result | null;
   error: string | null;
+  code: string | null;
 }
 
 export interface ScriptState {

@@ -34,9 +34,11 @@ HOW TO RUN
 from __future__ import annotations
 
 import argparse
+import ast
 import hashlib
 import importlib
 import importlib.util
+import inspect
 import json
 import math
 import threading
@@ -238,6 +240,51 @@ def _empty_script_state(script):
     }
 
 
+# Cap for the gate source shown in the "See the code" panel.
+MAX_CODE_CHARS = 8000
+
+
+def _without_docstring(source):
+    """Drop a leading function docstring so students see only real code."""
+    try:
+        tree = ast.parse(source)
+    except SyntaxError:
+        return source
+    if not tree.body or not isinstance(
+        tree.body[0], (ast.FunctionDef, ast.AsyncFunctionDef)
+    ):
+        return source
+    body = getattr(tree.body[0], "body", [])
+    first = body[0] if body else None
+    if not (
+        isinstance(first, ast.Expr)
+        and isinstance(first.value, ast.Constant)
+        and isinstance(first.value.value, str)
+    ):
+        return source
+    lines = source.splitlines(keepends=True)
+    start = first.lineno - 1
+    end = first.end_lineno or first.lineno
+    return "".join(lines[:start] + lines[end:])
+
+
+def _step_code(module, step):
+    """Source of a gate function, or None while it is still a stub."""
+    fn = getattr(module, str(step.get("fn", "")), None)
+    if fn is None or not callable(fn):
+        return None
+    try:
+        source = inspect.getsource(fn).rstrip()
+    except (OSError, TypeError):
+        return None
+    if not source or "raise NotImplementedError" in source:
+        return None
+    source = _without_docstring(source)
+    if len(source) > MAX_CODE_CHARS:
+        source = source[:MAX_CODE_CHARS] + "\n# ... (trimmed for the classroom page)"
+    return source
+
+
 def _describe_script(script, module):
     page = getattr(module, "PAGE", None) or {}
     steps = list(getattr(module, "STEPS", None) or [])
@@ -277,6 +324,7 @@ def _describe_script(script, module):
                     else None
                 ),
                 "error": None,
+                "code": None,
             }
         )
 
@@ -297,6 +345,7 @@ def _describe_script(script, module):
             "status": "locked",
             "result": None,
             "error": None,
+            "code": _step_code(module, step),
         }
         if connect_spec is not None and not connected:
             entry["status"] = "locked"

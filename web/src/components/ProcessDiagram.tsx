@@ -10,7 +10,7 @@ const STEPS = [
   {
     icon: MessageSquare,
     title: "You ask",
-    body: "You type a plain-English request in the OpenCode chat — no code, no syntax.",
+    body: "You type a plain-English request in the OpenCode chat. No code, no syntax.",
   },
   {
     icon: FileCode2,
@@ -35,7 +35,7 @@ export function ProcessDiagram() {
     <div className="border border-line bg-white p-5">
       <div className="micro-label text-dim">What happens under the hood</div>
       <p className="mt-1 text-sm leading-relaxed text-dim">
-        Every checkpoint follows the same four moves. Nothing is magic — and
+        Every checkpoint follows the same four moves. Nothing is magic, and
         you never type code yourself.
       </p>
       <ol className="mt-4 grid gap-3 md:grid-cols-4">

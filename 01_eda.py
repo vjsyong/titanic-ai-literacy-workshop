@@ -174,11 +174,10 @@ STEPS = [
             "judge the data, meet it -- and check it for holes."
         ),
         "prompt": (
-            "First write down a guess: how many people do you expect on a 1912 "
-            "passenger list? Now ask the AI to open data/titanic.csv, show you "
-            "a small preview of the first rows, and count the holes (missing "
-            "values) in every column. Was your guess close -- and which column "
-            "is hiding the most holes?"
+            "Guess first: how many people are on this 1912 passenger list? "
+            "Then ask the AI to open data/titanic.csv, show the first few "
+            "rows, and count the missing values in each column. Was your guess "
+            "close, and which column has the most holes?"
         ),
         "hints": [
             "All 891 rows is too many to read at once -- ask for a peek at "
@@ -250,11 +249,10 @@ STEPS = [
             "than half of the passengers survive?"
         ),
         "prompt": (
-            "First finish this sentence out loud: 'I think about ___ % of the "
-            "passengers made it.' Then ask the AI to check your guess with the "
-            "real survival count -- in people AND percentages -- and to draw "
-            "the survival comparison between women and men. Which group does "
-            "your guess belong to?"
+            "Finish this sentence: 'I think about ___ % of passengers "
+            "survived.' Then ask the AI to show the real counts and "
+            "percentages, and to draw the survival comparison between women "
+            "and men. Was your guess close?"
         ),
         "hints": [
             "First guess: did MORE or FEWER than half survive? No peeking!",
@@ -308,13 +306,12 @@ STEPS = [
             "whether the pictures are actually easy to read."
         ),
         "prompt": (
-            "Rank the three ticket classes yourself first: which did you think "
-            "survived best, and which worst? Then ask the AI to show survival "
-            "by class (1, 2, 3) AND to build exactly ONE chart connecting age "
-            "to survival. Compare the class picture with your ranking, then "
-            "judge the age chart together: is it easy to read for 891 people? "
-            "If it feels crowded, ask for an easier-to-read alternative and "
-            "end with the takeaway in YOUR words."
+            "Rank the three ticket classes first: which one survived best, and "
+            "which worst? Then ask the AI to show survival by class and to "
+            "build ONE chart linking age to survival. Compare both with your "
+            "ranking, and judge the age chart: is it easy to read for 891 "
+            "people? If not, ask for a clearer chart and give the takeaway in "
+            "your own words."
         ),
         "hints": [
             "A stacked or grouped bar chart makes the three classes easy to "

@@ -155,12 +155,11 @@ STEPS = [
             "which identify people rather than predict survival."
         ),
         "prompt": (
-            "The mapping is YOUR call: pick which digit stands for female "
-            "and which for male. Then tell the AI your decision, have it "
-            "translate the Sex column (showing the old words next to your new "
-            "numbers so you can check), and ask it to name the columns the "
-            "model may look at and the one column it must predict. Does "
-            "anything you expected to be useful get left out?"
+            "Choose the mapping yourself: which digit means female, and which "
+            "means male? Tell the AI your choice, have it translate the Sex "
+            "column next to the original words, and ask which columns the "
+            "model may use and which column it must predict. Is anything "
+            "useful left out?"
         ),
         "hints": [
             "Any consistent numbering scheme is fine -- 0/1, 1/2, whatever "
@@ -240,12 +239,11 @@ STEPS = [
             "material -- then fix the wildly different scales of the features."
         ),
         "prompt": (
-            "First design the exam: how big should the hidden test group be? "
-            "Tell the AI your chosen ratio and have it split the passengers "
-            "your way. Then guess which single feature would SHOUT the loudest "
-            "if left unscaled, and ask the AI to put every numeric feature on "
-            "the same scale -- learned from the training group only -- and "
-            "show one column before and after."
+            "Design the exam first: how big should the hidden test group be? "
+            "Tell the AI your ratio and have it split the passengers your way. "
+            "Then guess which feature would look loudest unscaled, and ask the "
+            "AI to scale every numeric feature using the training group only, "
+            "showing one column before and after."
         ),
         "hints": [
             "Roughly 80% to learn from, 20% kept secret for the final exam.",
@@ -326,10 +324,9 @@ STEPS = [
             "secret test passengers it was never shown."
         ),
         "prompt": (
-            "Commit to a forecast before training: what accuracy do you expect "
-            "on the hidden exam? Then have the AI train the model (logistic "
-            "regression is a fine first pick) and show its test accuracy as "
-            "the big animated score the whole class can cheer."
+            "Guess first: what accuracy do you expect on the hidden exam? Then "
+            "ask the AI to train the model (logistic regression is a fine "
+            "first pick) and show its test accuracy as a big animated score."
         ),
         "hints": [
             "Logistic regression = a simple, explainable pattern-spotter. "
@@ -387,13 +384,11 @@ STEPS = [
             "form can load it whenever a new passenger walks in."
         ),
         "prompt": (
-            "Write down your ranking first: which clue do you think the model "
-            "leaned on most, and which least? Then ask the AI to draw the "
-            "feature-importance chart -- positive and negative pulling in "
-            "opposite directions, explained with zero jargon. Finish by asking "
-            "it to freeze the model into titanic_model.pkl and prove it is "
-            "alive by predicting your own imaginary passenger (invent one "
-            "first: age, class, sex)."
+            "Rank the clues first: which one did the model lean on most, and "
+            "which least? Then ask the AI to draw the feature-importance chart "
+            "with plain-English labels. Finish by saving the model to "
+            "titanic_model.pkl and predicting an imaginary passenger you "
+            "invent (age, class, sex)."
         ),
         "hints": [
             "Each feature gets a coefficient: size = how much the model used "

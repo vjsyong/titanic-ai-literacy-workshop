@@ -122,8 +122,7 @@ CONNECT_STEP = {
     ),
     "prompt": (
         "Say hello to your AI Teaching Assistant and ask it to connect to "
-        "the workshop. It confirms the handshake in its own words -- and "
-        "Checkpoint 1 unlocks right here."
+        "the workshop. Checkpoint 1 unlocks here after it does."
     ),
     "hints": [
         "Your assistant does this once, the first time you say hello.",

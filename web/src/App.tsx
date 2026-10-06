@@ -26,7 +26,7 @@ function StageCompleteBanner({
     <div className="animate-rise flex flex-col gap-3 border border-ok bg-tint-ok p-5 sm:flex-row sm:items-center sm:justify-between">
       <div>
         <div className="text-lg font-bold tracking-tight text-ink">
-          Stage complete — nice work!
+          Stage complete. Nice work!
         </div>
         <div className="text-sm text-dim">
           All {script.total} checkpoints are done. Ready for “{nextTitle}”?
@@ -191,7 +191,7 @@ export default function App() {
           />
         )}
         <footer className="pt-6 text-center text-xs text-faint">
-          Titanic AI Literacy Workshop — the page refreshes by itself whenever
+          Titanic AI Literacy Workshop. The page refreshes by itself whenever
           a checkpoint is saved
         </footer>
       </main>

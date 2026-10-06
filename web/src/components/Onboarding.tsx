@@ -23,7 +23,7 @@ const STAGES = [
     icon: BrainCircuit,
     tag: "Stage 2",
     title: "Train the model",
-    body: "Turn those patterns into a simple model that guesses survival — then open the box and see what it learned.",
+    body: "Turn those patterns into a simple model that guesses survival, then open the box and see what it learned.",
   },
   {
     icon: Compass,
@@ -69,7 +69,7 @@ export function Onboarding({
         <p className="mt-3 max-w-3xl text-base leading-relaxed text-dim">
           You will meet 891 real passengers from 1912, train an AI model on
           their lives, and ship a web app that predicts any passenger you
-          invent. No prior coding — you direct the AI, it does the typing.
+          invent. No prior coding needed. You direct the AI, it does the typing.
         </p>
         <div className="mt-5 flex flex-wrap items-center gap-3">
           <button
@@ -132,8 +132,8 @@ export function Onboarding({
             Ready? The AI is waiting at the other window.
           </div>
           <p className="mt-1 text-sm text-dim">
-            Copy each prompt from this page straight into the OpenCode chat —
-            never retype it.
+            Copy each prompt from this page straight into the OpenCode chat.
+            Never retype it.
           </p>
         </div>
         <button

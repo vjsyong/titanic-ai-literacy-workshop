@@ -1,7 +1,7 @@
 @import "tailwindcss";
 
 /* ---------------------------------------------------------------------------
-   Titanic Workshop UI — restyled on the Mail Triage Design System
+   Titanic Workshop UI, restyled on the Mail Triage Design System
    (Geist self-hosted, hairline borders, sharp corners, black primary,
    blue accent). Tokens mirror the kit's css/base.css :root block.
 --------------------------------------------------------------------------- */
@@ -145,14 +145,17 @@ textarea.draft {
 
 .behind-arrow {
   position: relative;
-  height: 2px;
-  width: 2.4rem;
-  min-width: 2.4rem;
+  /* Same height as the 64px icon boxes, so the line lands on their center. */
+  height: 4rem;
+  width: 3rem;
+  min-width: 3rem;
 }
 
 .behind-line {
   position: absolute;
-  inset: 0;
+  inset: 50% 0 auto 0;
+  height: 2px;
+  transform: translateY(-50%);
   background-image: repeating-linear-gradient(
     90deg,
     var(--color-line2) 0 5px,
@@ -163,10 +166,11 @@ textarea.draft {
 
 .behind-dot {
   position: absolute;
-  top: -2px;
+  top: 50%;
   left: 0;
-  height: 6px;
-  width: 6px;
+  height: 8px;
+  width: 8px;
+  transform: translateY(-50%);
   background: var(--color-acc);
   animation: behind-travel 1.6s cubic-bezier(0.45, 0, 0.55, 1) infinite;
 }
@@ -192,7 +196,7 @@ textarea.draft {
     opacity: 1;
   }
   100% {
-    left: calc(100% - 6px);
+    left: calc(100% - 8px);
     opacity: 0;
   }
 }
@@ -203,7 +207,7 @@ textarea.draft {
     animation: none;
   }
   .behind-dot {
-    left: calc(50% - 3px);
+    left: calc(50% - 4px);
     opacity: 0.7;
   }
 }

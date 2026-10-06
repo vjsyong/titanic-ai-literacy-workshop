@@ -24,7 +24,7 @@ export function Header({
             Titanic AI Literacy Workshop
           </h1>
           <p className="hidden text-xs text-dim sm:block">
-            Explore · Train · Predict — one checkpoint at a time
+            Explore · Train · Predict, one checkpoint at a time
           </p>
         </div>
 

@@ -19,10 +19,10 @@ export function SetupGuide() {
       </div>
       <p className="mt-1 text-sm leading-relaxed text-dim">
         Copy a prompt from here, paste it into the chat on the other side, and
-        this page refreshes itself — no window-switching.
+        this page refreshes itself. No window switching.
       </p>
       <div className="mt-3 border border-acc bg-tint-acc px-3 py-2 text-sm font-semibold text-ink">
-        OpenCode on one side — the workshop page on the other.
+        OpenCode on one side, the workshop page on the other.
       </div>
 
       {missing ? (

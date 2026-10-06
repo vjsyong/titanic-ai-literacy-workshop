@@ -132,8 +132,8 @@ export function PredictPanel({ dashboard }: { dashboard: DashboardState }) {
         <Lock className="h-4 w-4 shrink-0" />
         <span className="text-sm font-medium">
           {spec.length > 0
-            ? "The form is designed — the prediction wiring comes with checkpoint 2."
-            : "The live passenger form appears after checkpoint 1 — keep going!"}
+            ? "The form is designed. The prediction wiring comes with checkpoint 2."
+            : "The live passenger form appears after checkpoint 1. Keep going!"}
         </span>
       </div>
     );
@@ -148,7 +148,7 @@ export function PredictPanel({ dashboard }: { dashboard: DashboardState }) {
         </h3>
       </div>
       <p className="mb-4 text-sm text-dim">
-        Drag the controls — the model re-guesses in real time.
+        Drag the controls. The model re-guesses in real time.
       </p>
 
       <div className="grid gap-4 sm:grid-cols-2">

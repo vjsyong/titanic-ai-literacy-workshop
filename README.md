@@ -16,7 +16,7 @@ served by a small FastAPI process, in one classroom page.
 | `serve_workshop.py` | Instructor-managed launcher: free port, background server, browser, reuse of a running page |
 | `workshop_steps.py` | Instructor-managed shared machinery: result serialization + `chart()` / `metric()` / `verdict()` helpers |
 | `web/` | The React + TypeScript + Tailwind UI (ECharts charts); `web/dist` is committed so students never need Node. Styled on the mail-triage design system (self-hosted Geist fonts in `web/public/fonts`) |
-| `data/titanic.csv` | The original 1912 passenger list (holes and all — that's the point) |
+| `data/titanic.csv` | The original 1912 passenger list (holes and all, which is the point) |
 | `personas.json` / `personas/` | The 10-persona survival-quiz roster and its Edwardian portrait images, served to the front page |
 | `AGENTS.md` | Persistent system prompt for the students' AI Teaching Assistant |
 | `deployment/windows/` | Windows one-click OpenCode classroom environment (PowerShell + `.bat` launchers) |
@@ -25,7 +25,7 @@ served by a small FastAPI process, in one classroom page.
 
 ## How the class works (checkpoint flow)
 
-0. **Front page**: the page opens on a short guide — what students will
+0. **Front page**: the page opens on a short guide: what students will
    build and why, a side-by-side setup screenshot
    (`web/public/onboarding/setup.png`, drop-in), a "what happens under the
    hood" diagram, and an interactive **survival challenge** (10 real
@@ -42,9 +42,8 @@ served by a small FastAPI process, in one classroom page.
    the AI Teaching Assistant has to prove it can reach the project (it sets
    `PAIRED = True` in `01_eda.py`) before Checkpoint 1 unlocks.
 2. **Loop (the magic)**: each checkpoint card shows a *mission* (direction and
-   goal, not a ready-made prompt) plus a box for the student's own request.
-   Once they write a meaningful attempt (6+ words), the reference prompt
-   unlocks so they can compare it with theirs or copy it. The AI Teaching
+   goal, not a ready-made prompt) plus a button that opens the reference
+   prompt with one click so students can copy it. The AI Teaching
    Assistant implements **exactly one gate**, verifies it in the terminal,
    bumps the script's `STEPS_COMPLETED`, saves the file. The server notices
    within a second: the open page refreshes itself, the finished checkpoint
@@ -90,7 +89,7 @@ implemented with the fancy payloads) matching the student scaffolds.
    ```
 
 If Vibe Coding is already running and a student starts the launcher again,
-it politely says so and offers to stop the other session and start fresh —
+it politely says so and offers to stop the other session and start fresh,
 or they can simply keep the existing one.
 
 If the Web UI ever shows no project, use File -> Open Project and pick the
@@ -99,14 +98,14 @@ extracted workshop folder once.
 Other launchers (Windows in `deployment/windows/`, macOS in
 `deployment/macos/`):
 
-- `START WORKSHOP PAGE.bat` — (re)starts the workshop web page and opens it
+- `START WORKSHOP PAGE.bat`: (re)starts the workshop web page and opens it
   in the browser. Safe to run any time; it reuses a page that is already up.
-- `REPAIR VIBE CODING.bat` — revalidates/rebuilds the classroom runtimes
+- `REPAIR VIBE CODING.bat`: revalidates/rebuilds the classroom runtimes
   without touching student project files.
-- `RESET WORKSHOP.bat` — restores the three workshop scripts and
+- `RESET WORKSHOP.bat`: restores the three workshop scripts and
   `data/titanic.csv` to their originals and deletes generated artifacts, so
   the 10 checkpoints lock again. The classroom runtime and API key stay.
-- `RESET VIBE CODING.bat` — removes only `%LOCALAPPDATA%\VibeCoding`
+- `RESET VIBE CODING.bat`: removes only `%LOCALAPPDATA%\VibeCoding`
   and `%USERPROFILE%\.vibecoding`; system installs and student projects stay.
 
 The macOS folder has `.command` equivalents of everything above.
@@ -150,8 +149,8 @@ instructions:
   request bodies.
 - `RESET WORKSHOP` (Windows `.bat` / macOS `.command`) restores the three
   scripts **and** `data/titanic.csv` from `deployment/baseline/`.
-- `AGENTS.md` carries the assistant's manipulation-resistance rules
-  (secrets, reference prompts, file/terminal scope, off-topic requests).
+- `AGENTS.md` carries the assistant's workshop instructions, with secrets
+  kept off-limits.
 
 ## Instructor checklist before class
 
@@ -161,7 +160,7 @@ instructions:
    "Bearer "; OpenRouter keys start with "sk-or-").
    - `key.txt` is gitignored so a real key can never be committed.
    - The launcher refuses to run with the placeholder still in place.
-   - When distributing a ZIP, include `key.txt` — it is inside the zip,
+   - When distributing a ZIP, include `key.txt`. It is inside the zip,
      never in the git history.
 2. Build the UI once (`cd web && npm run build`) so `web/dist` is current.
 3. Put the 10 quiz portraits in `personas/` (named `M1.jpg` … `F5.jpg`) and,
@@ -170,7 +169,7 @@ instructions:
    until they exist).
 4. Optional: pre-bake big downloads into `deployment/windows/payload/`
    (python-3.12.10 installer, node-v24.21.0 zip, SHASUMS256.txt) to reduce
-   classroom Wi-Fi traffic — see `deployment/windows/README-FIRST.txt`.
+   classroom Wi-Fi traffic. See `deployment/windows/README-FIRST.txt`.
 5. Keep the whole `deployment/` folder (both platform folders and the
    shared `baseline/`) next to the workshop files when zipping.
 

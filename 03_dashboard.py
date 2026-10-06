@@ -148,14 +148,13 @@ STEPS = [
             "sliders for the numbers, all with human-friendly ranges."
         ),
         "prompt": (
-            "Bring one passenger to life in your head (their age, class, sex) "
-            "and describe them to the AI. Ask it to wake the frozen brain from "
-            "titanic_model.pkl, predict YOUR passenger, and show the chance as "
-            "a gauge -- and if the file is missing, have it explain kindly "
-            "which Step 2 checkpoint must come first instead of crashing. Then "
-            "sketch the form like a designer: which control suits each "
-            "attribute, and what sensible range? Ask the AI to build the form "
-            "to your design and store the plan where the page can find it."
+            "Invent one passenger (age, class, sex) and describe them to the "
+            "AI. Ask it to wake the model from titanic_model.pkl, predict your "
+            "passenger, and show the chance as a gauge; if the file is "
+            "missing, ask for a kind note about which Step 2 checkpoint comes "
+            "first. Then design the form: which control suits each attribute, "
+            "and what range? Ask the AI to store the plan where the page can "
+            "find it."
         ),
         "hints": [
             "The file only exists once Stage 2's last checkpoint is done -- "
@@ -227,14 +226,11 @@ STEPS = [
             "the verdict."
         ),
         "prompt": (
-            "First say what could go WRONG if the form hands 'female' straight "
-            "to a model that expects Stage 2's digits. Then ask the AI to wire "
-            "the form to the brain -- encode exactly like Stage 2, apply the "
-            "stored scaler -- so Predict produces a live survival gauge, and "
-            "have it prove the pipeline with one live example. Finally, choose "
-            "three friendly bands (what should they be called, and where does "
-            "'close call' begin and end?) and have it reword the verdicts to "
-            "your bands."
+            "First say what could go wrong if the form sends 'female' "
+            "straight to a model that expects numbers. Then ask the AI to wire "
+            "the form: encode sex exactly like Stage 2, apply the saved "
+            "scaler, and show a live survival gauge with one example. Finally, "
+            "choose three friendly bands and have the AI reword the verdicts."
         ),
         "hints": [
             "The form's words (female/male) must become numbers EXACTLY the "
@@ -307,12 +303,11 @@ STEPS = [
             "data, nothing more."
         ),
         "prompt": (
-            "Pick the unfairness you most want the class to SEE (a 1912 "
-            "pattern that rings wrong today). Design six imaginary passengers "
-            "around it -- which attributes to vary, which to hold still -- "
-            "then ask the AI to run them through the live model as a table "
-            "plus a bar chart of survival chances, ending with fairness "
-            "questions to argue about."
+            "Pick a 1912 pattern that feels unfair today. Design six imaginary "
+            "passengers around it: decide which attributes change and which "
+            "stay the same. Then ask the AI to run them through the live model "
+            "as a table and a bar chart, and finish with fairness questions "
+            "for the class."
         ),
         "hints": [
             "Make them differ sharply: young/old, women/men, 1st/3rd class.",

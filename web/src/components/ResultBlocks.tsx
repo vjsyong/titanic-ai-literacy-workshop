@@ -73,7 +73,7 @@ export { Markdown };
 // ---------------------------------------------------------------------------
 
 function formatCell(value: unknown): string {
-  if (value === null || value === undefined) return "—";
+  if (value === null || value === undefined) return "-";
   if (typeof value === "number") {
     return Number.isInteger(value)
       ? value.toLocaleString()

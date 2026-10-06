@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Check,
+  ChevronLeft,
+  ChevronRight,
   Clock,
   Play,
   RotateCcw,
@@ -10,6 +12,7 @@ import {
   X,
 } from "lucide-react";
 import type { Persona, PersonasFile } from "../types";
+import { fireConfetti } from "./Celebration";
 
 const TIMER_SECONDS = 15;
 const STORAGE_KEY = "titanic-quiz-v1";
@@ -33,7 +36,7 @@ function persist(answers: Answer[]) {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(answers));
   } catch {
-    // private mode — the quiz just won't survive a reload
+    // private mode: the quiz just won't survive a reload
   }
 }
 
@@ -76,6 +79,178 @@ function Attribute({ label, value }: { label: string; value: string }) {
 
 function outcomeLabel(value: 0 | 1): string {
   return value === 1 ? "Survived" : "Perished";
+}
+
+const TOP_SCORE_RATIO = 0.8;
+
+type ScoreBand = "high" | "middle" | "low";
+
+function scoreBand(correct: number, total: number): ScoreBand {
+  if (total > 0 && correct / total >= TOP_SCORE_RATIO) return "high";
+  if (total > 0 && correct / total >= 0.5) return "middle";
+  return "low";
+}
+
+const SCORE_COPY: Record<ScoreBand, { headline: string; note: string }> = {
+  high: {
+    headline: "Outstanding. Your gut read the 1912 patterns well.",
+    note:
+      "You caught the same signals the model learns: women and children first, and first class first. The fairness question is why survival depended on them.",
+  },
+  middle: {
+    headline: "Solid effort. You caught some of the patterns.",
+    note:
+      "Your gut found some signals, like women and children first, and missed others. The model learns the same signals from 891 records. The fairness question is why survival depended on them.",
+  },
+  low: {
+    headline: "Tricky, right? The Titanic did not follow simple rules.",
+    note:
+      "Even the model misses some passengers. The strongest signal in the data was women and children first. The fairness question is why survival depended on sex and class at all.",
+  },
+};
+
+function modelComparison(
+  score: number,
+  modelHits: number,
+  total: number,
+): string {
+  if (score > modelHits) {
+    return `The workshop model got ${modelHits} / ${total} on these same passengers. You beat the model.`;
+  }
+  if (score === modelHits) {
+    return `The workshop model also got ${modelHits} / ${total} on these same passengers. You matched the model.`;
+  }
+  return `The workshop model got ${modelHits} / ${total} on these same passengers. It had 891 records to learn from, so it had a head start.`;
+}
+
+/**
+ * End-of-run carousel: one card per passenger, marking each call right or
+ * wrong and comparing it with the model's guess.
+ */
+function ResultCarousel({
+  personas,
+  answers,
+}: {
+  personas: Persona[];
+  answers: Answer[];
+}) {
+  const [slide, setSlide] = useState(0);
+  const total = personas.length;
+  const clamp = (n: number) => Math.min(Math.max(n, 0), total - 1);
+  const answerFor = (id: string) => answers.find((answer) => answer.id === id);
+
+  return (
+    <div className="mt-5">
+      <div className="mb-2 flex items-center justify-between">
+        <div className="micro-label text-dim">Your run, card by card</div>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setSlide((s) => clamp(s - 1))}
+            disabled={slide === 0}
+            aria-label="Previous passenger"
+            className="inline-flex h-8 w-8 items-center justify-center border border-line bg-white text-ink transition hover:border-black disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </button>
+          <span className="font-mono text-sm text-dim">
+            {slide + 1} / {total}
+          </span>
+          <button
+            onClick={() => setSlide((s) => clamp(s + 1))}
+            disabled={slide === total - 1}
+            aria-label="Next passenger"
+            className="inline-flex h-8 w-8 items-center justify-center border border-line bg-white text-ink transition hover:border-black disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            <ChevronRight className="h-4 w-4" />
+          </button>
+        </div>
+      </div>
+
+      <div className="overflow-hidden border border-line bg-white">
+        <div
+          className="flex transition-transform duration-300 ease-out"
+          style={{ transform: `translateX(-${slide * 100}%)` }}
+        >
+          {personas.map((p) => {
+            const answer = answerFor(p.id);
+            const correct = answer?.correct ?? false;
+            const timedOut = answer ? answer.guess === null : false;
+            return (
+              <div key={p.id} className="min-w-full">
+                <div className="flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:gap-6 sm:p-5">
+                  <div className="w-full border border-line sm:w-40 sm:shrink-0">
+                    <Portrait persona={p} />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span
+                        className={`inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold text-white ${
+                          correct ? "bg-ok" : "bg-err"
+                        }`}
+                      >
+                        {correct ? (
+                          <Check className="h-3.5 w-3.5" />
+                        ) : (
+                          <X className="h-3.5 w-3.5" />
+                        )}
+                        {timedOut ? "Timed out" : correct ? "Correct" : "Missed"}
+                      </span>
+                      <span className="micro-label text-faint">{p.title}</span>
+                    </div>
+                    <div className="mt-3 grid gap-2 text-sm sm:grid-cols-2">
+                      <div className="border border-line bg-[#fcfcfc] px-3 py-2">
+                        <div className="micro-label text-faint">Your call</div>
+                        <div className="mt-0.5 font-semibold text-ink">
+                          {answer && answer.guess !== null
+                            ? outcomeLabel(answer.guess)
+                            : "No guess"}
+                        </div>
+                      </div>
+                      <div className="border border-line bg-[#fcfcfc] px-3 py-2">
+                        <div className="micro-label text-faint">Actually</div>
+                        <div className="mt-0.5 font-semibold text-ink">
+                          {outcomeLabel(p.actual_survived)}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="mt-2 text-sm text-dim">
+                      The model gave {Math.round(p.model_probability * 100)}% (
+                      {outcomeLabel(p.model_prediction)}).{" "}
+                      {p.match
+                        ? "It read this one correctly."
+                        : "It missed this one too."}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      <div className="mt-2 flex flex-wrap justify-center gap-1.5">
+        {personas.map((p, i) => {
+          const answer = answerFor(p.id);
+          const correct = answer?.correct ?? false;
+          const active = i === slide;
+          return (
+            <button
+              key={p.id}
+              onClick={() => setSlide(i)}
+              aria-label={`Go to ${p.title}`}
+              className={`h-2.5 w-6 transition ${
+                correct ? "bg-ok" : "bg-err"
+              } ${
+                active
+                  ? "ring-2 ring-black ring-offset-1"
+                  : "opacity-60 hover:opacity-100"
+              }`}
+            />
+          );
+        })}
+      </div>
+    </div>
+  );
 }
 
 export function SurvivalQuiz({ data }: { data: PersonasFile }) {
@@ -151,6 +326,12 @@ export function SurvivalQuiz({ data }: { data: PersonasFile }) {
       setPhase("guess");
     } else {
       setPhase("done");
+      if (
+        personas.length > 0 &&
+        correctCount / personas.length >= TOP_SCORE_RATIO
+      ) {
+        fireConfetti();
+      }
     }
   };
 
@@ -175,6 +356,7 @@ export function SurvivalQuiz({ data }: { data: PersonasFile }) {
   if (phase === "done") {
     const total = personas.length;
     const modelHits = data.classifier.persona_hits;
+    const copy = SCORE_COPY[scoreBand(correctCount, total)];
     return (
       <div className="border border-acc bg-tint-acc p-6 sm:p-8">
         <div className="flex items-center gap-4">
@@ -184,16 +366,13 @@ export function SurvivalQuiz({ data }: { data: PersonasFile }) {
               Your guess score: {correctCount} / {total}
             </div>
             <div className="text-base text-dim">
-              The workshop model got {modelHits} / {total} on these same
-              passengers — you were both working from the same 1912 patterns.
+              {modelComparison(correctCount, modelHits, total)}
             </div>
           </div>
         </div>
-        <p className="mt-4 text-base leading-relaxed text-ink">
-          Notice how often “women and children first” steered your gut. That is
-          the exact signal the model learns — and the fairness question the
-          workshop ends on.
-        </p>
+        <p className="mt-4 text-base font-semibold text-ink">{copy.headline}</p>
+        <p className="mt-1 text-base leading-relaxed text-ink">{copy.note}</p>
+        <ResultCarousel personas={personas} answers={answers} />
         <button
           onClick={restart}
           className="mt-5 inline-flex h-11 items-center gap-2 border border-line bg-white px-5 text-base font-semibold text-ink transition hover:border-black"
@@ -298,7 +477,7 @@ export function SurvivalQuiz({ data }: { data: PersonasFile }) {
                   Ready? The clock starts when you do.
                 </div>
                 <p className="mt-1 text-sm leading-relaxed text-dim">
-                  You get {TIMER_SECONDS} seconds for each passenger — call it
+                  You get {TIMER_SECONDS} seconds for each passenger. Call it
                   before the timer runs out.
                 </p>
                 <button
@@ -326,10 +505,10 @@ export function SurvivalQuiz({ data }: { data: PersonasFile }) {
                 )}
                 <span className="text-base font-semibold text-ink">
                   {lastAnswer?.guess === null
-                    ? "Time’s up — "
+                    ? "Time’s up, "
                     : lastAnswer?.correct
-                      ? "You nailed it — "
-                      : "Not this time — "}
+                      ? "You nailed it, "
+                      : "Not this time, "}
                   this passenger <strong>{outcomeLabel(persona.actual_survived)}</strong>
                   .
                 </span>
