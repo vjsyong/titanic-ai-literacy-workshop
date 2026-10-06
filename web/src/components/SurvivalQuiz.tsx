@@ -101,6 +101,14 @@ const SCORE_COPY: Record<ScoreBand, { headline: string; note: string }> = {
   },
 };
 
+// Easter egg: a clean 0/10 with every answer given is not bad luck.
+const EASTER_EGG_COLORS = ["#0070f3", "#f59e0b", "#ef4444", "#10b981", "#8b5cf6"];
+const EASTER_EGG_COPY = {
+  headline: "0 / 10. Every single call backwards. Show-off.",
+  note:
+    "Only someone who knew the 1912 pattern could miss it ten times in a row. You saw the rules, then voted against every one of them. The model is not sure whether to be impressed or worried.",
+};
+
 function modelComparison(
   score: number,
   modelHits: number,
@@ -322,11 +330,15 @@ export function SurvivalQuiz({ data }: { data: PersonasFile }) {
       setPhase("guess");
     } else {
       setPhase("done");
-      if (
-        personas.length > 0 &&
-        correctCount / personas.length >= TOP_SCORE_RATIO
-      ) {
-        fireConfetti();
+      if (personas.length > 0) {
+        const allAnswered = answers.every((answer) => answer.guess !== null);
+        if (correctCount === 0 && allAnswered) {
+          // A reverse clean sweep: confetti for the commitment.
+          fireConfetti(EASTER_EGG_COLORS);
+          window.setTimeout(() => fireConfetti(EASTER_EGG_COLORS), 500);
+        } else if (correctCount / personas.length >= TOP_SCORE_RATIO) {
+          fireConfetti();
+        }
       }
     }
   };
@@ -352,7 +364,14 @@ export function SurvivalQuiz({ data }: { data: PersonasFile }) {
   if (phase === "done") {
     const total = personas.length;
     const modelHits = data.classifier.persona_hits;
-    const copy = SCORE_COPY[scoreBand(correctCount, total)];
+    const perfectZero =
+      total > 0 &&
+      answers.length === total &&
+      answers.every((answer) => answer.guess !== null) &&
+      correctCount === 0;
+    const copy = perfectZero
+      ? EASTER_EGG_COPY
+      : SCORE_COPY[scoreBand(correctCount, total)];
     return (
       <div className="border border-acc bg-tint-acc p-6 sm:p-8">
         <div className="flex items-center gap-4">
@@ -362,7 +381,9 @@ export function SurvivalQuiz({ data }: { data: PersonasFile }) {
               Your guess score: {correctCount} / {total}
             </div>
             <div className="text-base text-dim">
-              {modelComparison(correctCount, modelHits, total)}
+              {perfectZero
+                ? `The model got ${modelHits} / ${total}. It played it straight; you zigged on every single call.`
+                : modelComparison(correctCount, modelHits, total)}
             </div>
           </div>
         </div>
