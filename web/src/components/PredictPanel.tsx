@@ -8,7 +8,7 @@ import type {
 import { predict } from "../api";
 import { ChartBlock } from "./ChartBlock";
 
-function Control({
+export function Control({
   item,
   value,
   onChange,
@@ -57,7 +57,7 @@ function Control({
   );
 }
 
-function VerdictCard({ response }: { response: PredictResponse }) {
+export function VerdictCard({ response }: { response: PredictResponse }) {
   const probability =
     typeof response.probability === "number" ? response.probability : null;
 

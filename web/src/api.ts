@@ -1,5 +1,10 @@
 import { useEffect, useState } from "react";
-import type { PersonasFile, PredictResponse, WorkshopState } from "./types";
+import type {
+  PersonasFile,
+  PredictResponse,
+  RandomPassengerResponse,
+  WorkshopState,
+} from "./types";
 
 /**
  * Live workshop state: an initial fetch plus a Server-Sent Events stream
@@ -50,6 +55,32 @@ export async function predict(
       body: JSON.stringify({ values }),
     });
     return (await response.json()) as PredictResponse;
+  } catch {
+    return { ok: false, error: "The workshop server is not answering." };
+  }
+}
+
+/** Live playground prediction from the built-in model (front page). */
+export async function demoPredict(
+  values: Record<string, string | number>,
+): Promise<PredictResponse> {
+  try {
+    const response = await fetch("/api/demo-predict", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ values }),
+    });
+    return (await response.json()) as PredictResponse;
+  } catch {
+    return { ok: false, error: "The workshop server is not answering." };
+  }
+}
+
+/** A random real passenger row, with the outcome, for a model test drive. */
+export async function loadRandomPassenger(): Promise<RandomPassengerResponse> {
+  try {
+    const response = await fetch("/api/random-passenger");
+    return (await response.json()) as RandomPassengerResponse;
   } catch {
     return { ok: false, error: "The workshop server is not answering." };
   }

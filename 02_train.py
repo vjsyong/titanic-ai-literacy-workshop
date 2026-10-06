@@ -151,33 +151,38 @@ STEPS = [
         "number": 1,
         "title": "Make words into numbers, choose the clues",
         "story": (
-            "A model is a giant pattern-spotter for numbers. Our data "
-            "contains words like 'female' -- translate them into digits. "
-            "Then decide which clues the model may look at: ticket class, "
-            "sex, age, family aboard, fare -- but NOT Name or PassengerId, "
-            "which identify people rather than predict survival."
+            "Your model knows nothing about the Titanic except what you "
+            "hand it. It cannot read words and it cannot ask its own "
+            "questions. This checkpoint builds its whole world: the facts "
+            "it may study, the answer it must produce, and the language it "
+            "thinks in. Choose badly and it learns the wrong lesson; leave "
+            "out a clue and it can never use it."
         ),
         "prompt": (
-            "Choose the mapping yourself: which digit means female, and which "
-            "means male? Tell the AI your choice, have it translate the Sex "
-            "column next to the original words, and ask which columns the "
-            "model may use and which column it must predict. Is anything "
-            "useful left out?"
+            "Choose the model's language first: which digit means female, and "
+            "which means male? Ask the AI to translate the Sex column and "
+            "show the old words beside the new numbers so you can check its "
+            "work. Then choose the model's world: name the columns it may "
+            "study and the one column it must predict. Explain why Name and "
+            "PassengerId stay out, and say if anything useful is missing."
         ),
         "hints": [
-            "Any consistent numbering scheme is fine -- 0/1, 1/2, whatever "
-            "you can explain.",
-            "Ask to see the old words and new numbers together so you can "
-            "check the translation.",
-            "The prediction target is always Survived (1 = made it).",
-            "Why are Name and PassengerId useless? Ask the AI to explain.",
+            "Ask why a model cannot read words: it can only do arithmetic "
+            "on numbers.",
+            "Any consistent mapping works (0/1, 1/2, ...), but the model "
+            "will trust it for every future passenger. Write it down.",
+            "Name and PassengerId are unique labels. Keep them and the "
+            "model memorizes people instead of learning patterns.",
+            "The target is always Survived (1 = made it). Everything else "
+            "the model may study is a feature.",
         ],
         "context": {
             "text": (
-                "This is the pattern your digits will have to carry -- you "
-                "know it by heart from Stage 1. A model can do arithmetic on "
-                "numbers, never on words; translating female/male is the "
-                "first half of this checkpoint."
+                "Here is the clue your digits must carry, straight from "
+                "Stage 1: women were much likelier to survive than men. "
+                "Whatever mapping you choose, the model will read this "
+                "pattern through your numbers -- and these features become "
+                "the controls on the Stage 3 form."
             ),
             "dataframe": pd.DataFrame(
                 {"Sex": ["female", "male"], "Passengers": [314, 577]}
@@ -196,9 +201,11 @@ STEPS = [
         "guide": (
             "**Models only do arithmetic, so words must become numbers.** "
             "Which number means which is arbitrary -- 0 = female and 1 = male "
-            "works just as well as the reverse, as long as it's consistent. "
-            "And garbage in, garbage out: Name and PassengerId are labels, "
-            "not clues, so they stay out.\n\n"
+            "works as well as the reverse, as long as you keep it consistent. "
+            "The columns you choose are the model's entire view of a "
+            "passenger: it can never use a fact you left out, and it cannot "
+            "unsee a fact you included. Names and IDs are labels, not clues, "
+            "so they stay out.\n\n"
             "*Discuss:* what could go wrong if you translated female/male "
             "differently on different days? Is there any column you're UNSURE "
             "about keeping?\n\n"
@@ -211,15 +218,15 @@ STEPS = [
             "side by side with the original words. Then choose which columns "
             "the model may look at (features) and which column it must "
             "predict, and explain why we ignore things like Name and "
-            "PassengerId. Store the results so the next checkpoints can use "
-            "them."
+            "PassengerId (they are unique labels, not survival clues). Store "
+            "the results so the next checkpoints can use them."
         ),
         "reference_alt": (
             "Create a numeric version of the Sex column in data/titanic.csv "
             "(0 and 1), explain your mapping, and preview it next to the "
             "original words. Then list the features the model should use and "
-            "the target it predicts, and say why Name and PassengerId are "
-            "left out."
+            "the target it predicts, and say why Name and PassengerId are left "
+            "out (unique labels teach memorizing, not patterns)."
         ),
         "experiment": (
             "Ask the AI what would happen if you flipped the mapping "

@@ -410,6 +410,100 @@ def _describe_dashboard(module):
     return info
 
 
+# ---------------------------------------------------------------------------
+# Front-page playground: a built-in model so students can play with live
+# predictions before they build their own model in Stage 2 and Stage 3.
+# ---------------------------------------------------------------------------
+
+_DEMO_ASSETS = {}
+_DEMO_LOCK = threading.Lock()
+
+
+def _demo_assets():
+    """Train the built-in playground model once, on first use.
+
+    Mirrors the workshop pipeline documented in personas.json: median
+    imputation, one-hot boarding ports, an 80/20 split, and a scaler fit on
+    the training group only.
+    """
+    with _DEMO_LOCK:
+        if not _DEMO_ASSETS:
+            import pandas as pd
+            from sklearn.linear_model import LogisticRegression
+            from sklearn.model_selection import train_test_split
+            from sklearn.preprocessing import StandardScaler
+
+            df = pd.read_csv(HERE / "data" / "titanic.csv")
+            age_median = float(df["Age"].median())
+            fare_median = float(df["Fare"].median())
+            frame = pd.DataFrame(
+                {
+                    "Pclass": df["Pclass"].astype(float),
+                    "Sex": (df["Sex"] == "male").astype(float),
+                    "Age": df["Age"].fillna(age_median),
+                    "SibSp": df["SibSp"].astype(float),
+                    "Parch": df["Parch"].astype(float),
+                    "Fare": df["Fare"].fillna(fare_median),
+                    "Emb_C": (df["Embarked"] == "C").astype(float),
+                    "Emb_Q": (df["Embarked"] == "Q").astype(float),
+                    "Emb_S": (df["Embarked"].fillna("S") == "S").astype(float),
+                }
+            )
+            y = df["Survived"].astype(int)
+            x_train, _, y_train, _ = train_test_split(
+                frame, y, test_size=0.2, random_state=42, stratify=y
+            )
+            scaler = StandardScaler().fit(x_train)
+            model = LogisticRegression(max_iter=1000).fit(
+                scaler.transform(x_train), y_train
+            )
+            _DEMO_ASSETS.update(
+                model=model,
+                scaler=scaler,
+                age_median=age_median,
+                fare_median=fare_median,
+            )
+        return _DEMO_ASSETS
+
+
+def _demo_frame(values, age_default, fare_default):
+    """Turn the playground form's values into the model's feature table."""
+    import pandas as pd
+
+    def number(key, fallback):
+        try:
+            return float(values.get(key, fallback))
+        except (TypeError, ValueError):
+            return float(fallback)
+
+    port = str(values.get("Boarded at", "Southampton")).strip().lower()
+    embarked = "C" if port.startswith("c") else "Q" if port.startswith("q") else "S"
+    return pd.DataFrame(
+        [
+            {
+                "Pclass": number("Passenger class", 3),
+                "Sex": (
+                    1.0
+                    if str(values.get("Sex", "female")).strip().lower() == "male"
+                    else 0.0
+                ),
+                "Age": number("Age", age_default),
+                "SibSp": number("Siblings / spouses", 0),
+                "Parch": number("Parents / children", 0),
+                "Fare": number("Fare", fare_default),
+                "Emb_C": 1.0 if embarked == "C" else 0.0,
+                "Emb_Q": 1.0 if embarked == "Q" else 0.0,
+                "Emb_S": 1.0 if embarked == "S" else 0.0,
+            }
+        ]
+    )
+
+
+def _demo_probability(assets, frame):
+    scaled = assets["scaler"].transform(frame)
+    return float(assets["model"].predict_proba(scaled)[0, 1])
+
+
 def _compute_signature():
     parts = []
     for path in WATCHED_FILES:
@@ -606,6 +700,86 @@ def predict(payload: dict):
             "band": workshop_steps.json_ready(raw.get("band")),
         }
     return {"ok": True, "text": str(raw)[:2000], "probability": None, "band": None}
+
+
+@app.post("/api/demo-predict")
+def demo_predict(payload: dict):
+    """Live playground prediction from the built-in model (front page)."""
+    values = _sanitize_values((payload or {}).get("values"))
+    if values is None:
+        return {"ok": False, "error": "Those values did not look right."}
+    try:
+        assets = _demo_assets()
+        frame = _demo_frame(values, assets["age_median"], assets["fare_median"])
+        probability = _demo_probability(assets, frame)
+    except Exception as exc:
+        return {
+            "ok": False,
+            "error": f"The playground model is not available: {exc}",
+        }
+    band = (
+        "unlikely"
+        if probability < 0.35
+        else "close call"
+        if probability < 0.65
+        else "likely"
+    )
+    return {
+        "ok": True,
+        "text": (
+            f"This passenger would have about a {round(probability * 100)}% "
+            "chance of surviving, based on the 1912 patterns."
+        ),
+        "probability": probability,
+        "band": band,
+    }
+
+
+@app.get("/api/random-passenger")
+def random_passenger():
+    """A random real row, with its actual outcome, for a model test drive."""
+    import pandas as pd
+
+    try:
+        assets = _demo_assets()
+        df = pd.read_csv(HERE / "data" / "titanic.csv")
+        row = df.sample(n=1).iloc[0]
+        age = assets["age_median"] if pd.isna(row["Age"]) else float(row["Age"])
+        values = {
+            "Name": str(row["Name"]),
+            "Passenger ID": int(row["PassengerId"]),
+            "Passenger class": int(row["Pclass"]),
+            "Sex": str(row["Sex"]),
+            "Age": round(age),
+            "Siblings / spouses": int(row["SibSp"]),
+            "Parents / children": int(row["Parch"]),
+            "Ticket": str(row["Ticket"]),
+            "Fare": round(float(row["Fare"]), 2),
+            "Cabin": "" if pd.isna(row["Cabin"]) else str(row["Cabin"]),
+            "Boarded at": {
+                "S": "Southampton",
+                "C": "Cherbourg",
+                "Q": "Queenstown",
+            }.get(str(row["Embarked"]), "Southampton"),
+        }
+        frame = _demo_frame(values, assets["age_median"], assets["fare_median"])
+        probability = _demo_probability(assets, frame)
+    except Exception as exc:
+        return {
+            "ok": False,
+            "error": f"The playground model is not available: {exc}",
+        }
+    prediction = 1 if probability >= 0.5 else 0
+    actual = int(row["Survived"])
+    return {
+        "ok": True,
+        "values": values,
+        "name": str(row["Name"]),
+        "actual_survived": actual,
+        "model_probability": probability,
+        "model_prediction": prediction,
+        "match": prediction == actual,
+    }
 
 
 @app.get("/api/personas")

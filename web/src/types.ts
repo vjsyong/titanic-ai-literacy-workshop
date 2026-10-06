@@ -121,6 +121,17 @@ export interface PredictResponse {
   error?: string;
 }
 
+export interface RandomPassengerResponse {
+  ok: boolean;
+  values?: Record<string, string | number>;
+  name?: string;
+  actual_survived?: 0 | 1;
+  model_probability?: number;
+  model_prediction?: 0 | 1;
+  match?: boolean;
+  error?: string;
+}
+
 export interface Persona {
   id: string;
   title: string;

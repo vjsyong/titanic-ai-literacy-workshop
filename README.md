@@ -29,8 +29,11 @@ served by a small FastAPI process, in one classroom page.
    build and why, a side-by-side setup screenshot
    (`web/public/onboarding/setup.png`, drop-in), a "what happens under the
    hood" diagram, and an interactive **survival challenge** (10 real
-   passenger personas with portraits and a countdown timer). A "Start the
-   workshop" button enters the three tabs.
+   passenger personas with portraits and a countdown timer), plus a live
+   **playground predictor**: every dataset field, instant feedback as the
+   controls move, and a "load a random real passenger" button that tests the
+   built-in model against the real outcome. A "Start the workshop" button
+   enters the three tabs.
 1. **Once**: the launcher serves the workshop page automatically
    (`deployment/windows/START VIBE CODING.bat` or
    `deployment/macos/START VIBE CODING.command` starts it on port 4097; a

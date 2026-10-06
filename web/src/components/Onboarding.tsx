@@ -8,6 +8,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import type { PersonasFile } from "../types";
+import { FrontPredictor } from "./FrontPredictor";
 import { ProcessDiagram } from "./ProcessDiagram";
 import { SetupGuide } from "./SetupGuide";
 import { SurvivalQuiz } from "./SurvivalQuiz";
@@ -100,6 +101,8 @@ export function Onboarding({
           </div>
         )}
       </div>
+
+      <FrontPredictor />
 
       <section className="grid gap-3 md:grid-cols-3">
         {STAGES.map((stage) => {
