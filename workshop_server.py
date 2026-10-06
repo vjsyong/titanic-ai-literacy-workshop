@@ -411,64 +411,31 @@ def _describe_dashboard(module):
 
 
 # ---------------------------------------------------------------------------
-# Front-page playground: a built-in model so students can play with live
-# predictions before they build their own model in Stage 2 and Stage 3.
+# Front-page playground: the pre-bundled workshop model so students can play
+# with live predictions before they build their own in Stage 2 and Stage 3.
+# demo_model.json was exported once from the same pipeline personas.json
+# documents (identical coefficients, 80.4% test accuracy). Scoring is pure
+# Python, so the server never needs sklearn for this.
 # ---------------------------------------------------------------------------
 
-_DEMO_ASSETS = {}
+DEMO_MODEL_PATH = HERE / "demo_model.json"
+_DEMO_ASSETS = None
 _DEMO_LOCK = threading.Lock()
 
 
 def _demo_assets():
-    """Train the built-in playground model once, on first use.
-
-    Mirrors the workshop pipeline documented in personas.json: median
-    imputation, one-hot boarding ports, an 80/20 split, and a scaler fit on
-    the training group only.
-    """
+    """Load the bundled playground model once, on first use."""
+    global _DEMO_ASSETS
     with _DEMO_LOCK:
-        if not _DEMO_ASSETS:
-            import pandas as pd
-            from sklearn.linear_model import LogisticRegression
-            from sklearn.model_selection import train_test_split
-            from sklearn.preprocessing import StandardScaler
-
-            df = pd.read_csv(HERE / "data" / "titanic.csv")
-            age_median = float(df["Age"].median())
-            fare_median = float(df["Fare"].median())
-            frame = pd.DataFrame(
-                {
-                    "Pclass": df["Pclass"].astype(float),
-                    "Sex": (df["Sex"] == "male").astype(float),
-                    "Age": df["Age"].fillna(age_median),
-                    "SibSp": df["SibSp"].astype(float),
-                    "Parch": df["Parch"].astype(float),
-                    "Fare": df["Fare"].fillna(fare_median),
-                    "Emb_C": (df["Embarked"] == "C").astype(float),
-                    "Emb_Q": (df["Embarked"] == "Q").astype(float),
-                    "Emb_S": (df["Embarked"].fillna("S") == "S").astype(float),
-                }
-            )
-            y = df["Survived"].astype(int)
-            x_train, _, y_train, _ = train_test_split(
-                frame, y, test_size=0.2, random_state=42, stratify=y
-            )
-            scaler = StandardScaler().fit(x_train)
-            model = LogisticRegression(max_iter=1000).fit(
-                scaler.transform(x_train), y_train
-            )
-            _DEMO_ASSETS.update(
-                model=model,
-                scaler=scaler,
-                age_median=age_median,
-                fare_median=fare_median,
+        if _DEMO_ASSETS is None:
+            _DEMO_ASSETS = json.loads(
+                DEMO_MODEL_PATH.read_text(encoding="utf-8")
             )
         return _DEMO_ASSETS
 
 
-def _demo_frame(values, age_default, fare_default):
-    """Turn the playground form's values into the model's feature table."""
-    import pandas as pd
+def _demo_vector(values, age_default, fare_default):
+    """Turn the playground form's values into the model's feature vector."""
 
     def number(key, fallback):
         try:
@@ -478,30 +445,30 @@ def _demo_frame(values, age_default, fare_default):
 
     port = str(values.get("Boarded at", "Southampton")).strip().lower()
     embarked = "C" if port.startswith("c") else "Q" if port.startswith("q") else "S"
-    return pd.DataFrame(
-        [
-            {
-                "Pclass": number("Passenger class", 3),
-                "Sex": (
-                    1.0
-                    if str(values.get("Sex", "female")).strip().lower() == "male"
-                    else 0.0
-                ),
-                "Age": number("Age", age_default),
-                "SibSp": number("Siblings / spouses", 0),
-                "Parch": number("Parents / children", 0),
-                "Fare": number("Fare", fare_default),
-                "Emb_C": 1.0 if embarked == "C" else 0.0,
-                "Emb_Q": 1.0 if embarked == "Q" else 0.0,
-                "Emb_S": 1.0 if embarked == "S" else 0.0,
-            }
-        ]
-    )
+    return [
+        number("Passenger class", 3),
+        1.0 if str(values.get("Sex", "female")).strip().lower() == "male" else 0.0,
+        number("Age", age_default),
+        number("Siblings / spouses", 0),
+        number("Parents / children", 0),
+        number("Fare", fare_default),
+        1.0 if embarked == "C" else 0.0,
+        1.0 if embarked == "Q" else 0.0,
+        1.0 if embarked == "S" else 0.0,
+    ]
 
 
-def _demo_probability(assets, frame):
-    scaled = assets["scaler"].transform(frame)
-    return float(assets["model"].predict_proba(scaled)[0, 1])
+def _demo_probability(assets, vector):
+    """Standardize the vector, then run the bundled logistic regression."""
+    z = float(assets["intercept"])
+    for value, mean, scale, coefficient in zip(
+        vector,
+        assets["scaler_mean"],
+        assets["scaler_scale"],
+        assets["coefficients"],
+    ):
+        z += coefficient * ((value - mean) / scale)
+    return 1.0 / (1.0 + math.exp(-z))
 
 
 def _compute_signature():
@@ -710,8 +677,8 @@ def demo_predict(payload: dict):
         return {"ok": False, "error": "Those values did not look right."}
     try:
         assets = _demo_assets()
-        frame = _demo_frame(values, assets["age_median"], assets["fare_median"])
-        probability = _demo_probability(assets, frame)
+        vector = _demo_vector(values, assets["age_median"], assets["fare_median"])
+        probability = _demo_probability(assets, vector)
     except Exception as exc:
         return {
             "ok": False,
@@ -762,8 +729,8 @@ def random_passenger():
                 "Q": "Queenstown",
             }.get(str(row["Embarked"]), "Southampton"),
         }
-        frame = _demo_frame(values, assets["age_median"], assets["fare_median"])
-        probability = _demo_probability(assets, frame)
+        vector = _demo_vector(values, assets["age_median"], assets["fare_median"])
+        probability = _demo_probability(assets, vector)
     except Exception as exc:
         return {
             "ok": False,

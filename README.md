@@ -18,6 +18,7 @@ served by a small FastAPI process, in one classroom page.
 | `web/` | The React + TypeScript + Tailwind UI (ECharts charts); `web/dist` is committed so students never need Node. Styled on the mail-triage design system (self-hosted Geist fonts in `web/public/fonts`) |
 | `data/titanic.csv` | The original 1912 passenger list (holes and all, which is the point) |
 | `personas.json` / `personas/` | The 10-persona survival-quiz roster and its Edwardian portrait images, served to the front page |
+| `demo_model.json` | Pre-bundled logistic-regression model (same pipeline as `personas.json`) that powers the front-page predictor; scored in pure Python, no live training |
 | `AGENTS.md` | Persistent system prompt for the students' AI Teaching Assistant |
 | `deployment/windows/` | Windows one-click OpenCode classroom environment (PowerShell + `.bat` launchers) |
 | `deployment/macos/` | macOS one-click classroom environment (`.command` launchers + shell launcher) |

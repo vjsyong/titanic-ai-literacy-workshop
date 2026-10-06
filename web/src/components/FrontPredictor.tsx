@@ -139,7 +139,7 @@ export function FrontPredictor() {
         <div className="flex items-center gap-2">
           <Sparkles className="h-5 w-5 text-acc" />
           <h3 className="text-lg font-bold tracking-tight text-ink">
-            The model is live: try a passenger now
+            Did this person survive on the Titanic?
           </h3>
         </div>
         <div className="flex items-center gap-3">
