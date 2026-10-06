@@ -57,6 +57,9 @@ STEPS_COMPLETED = 0
 #     donut, histogram, gauge, heatmap.
 #   * At most ONE "dataframe" and ONE "chart" per result -- if a checkpoint
 #     needs two visuals, make the less interactive one a table.
+#   * Write clear comments that break the code into small steps and explain
+#     each one in plain English: students read this code in the page's
+#     "See the code" panel.
 #   * When python 01_eda.py runs cleanly, bump STEPS_COMPLETED to n.
 #   * NEVER touch a future gate. If the student asks, apply the workshop
 #     STOP-FIRST RULE instead of implementing.
@@ -180,8 +183,8 @@ STEPS = [
             "close, and which column has the most holes?"
         ),
         "hints": [
-            "All 891 rows is too many to read at once -- ask for a peek at "
-            "just the first few.",
+            "The whole list is too many rows to read at once -- ask for a "
+            "peek at just the first few.",
             "A missing value is an empty cell. Ask the AI to count them per "
             "column.",
             "One column is almost entirely empty. Guess which before you "

@@ -12,6 +12,7 @@
     "canvas-confetti": "^1.9.4",
     "echarts": "^6.1.0",
     "lucide-react": "^1.49.0",
+    "prism-react-renderer": "^2.4.1",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
     "react-markdown": "^10.1.0",

@@ -370,6 +370,10 @@ def _describe_script(script, module):
                     entry["error"] = f"{type(exc).__name__}: {exc}"
         elif number == completed + 1:
             entry["status"] = "current"
+        if entry["status"] != "done":
+            # Debrief answers stay off the wire until the gate is finished.
+            entry["guide"] = ""
+            entry["experiment"] = ""
         described.append(entry)
 
     if connect_spec is None:

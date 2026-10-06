@@ -59,6 +59,9 @@ STEPS_COMPLETED = 0
 #     Headline numbers: workshop_steps.metric(value, "Test accuracy").
 #   * At most ONE "dataframe" and ONE "chart" per result.
 #   * Store anything later gates need in ARTIFACTS (e.g. ARTIFACTS["model"]).
+#   * Write clear comments that break the code into small steps and explain
+#     each one in plain English: students read this code in the page's
+#     "See the code" panel.
 #   * When python 02_train.py runs cleanly, bump STEPS_COMPLETED to n.
 #   * NEVER touch a future gate (STOP-FIRST RULE applies).
 #   * The LOOK LIKE notes are the MINIMUM, not a blueprint. Compose each

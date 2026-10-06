@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Highlight, themes } from "prism-react-renderer";
 import {
   AlertTriangle,
   Check,
@@ -186,9 +187,25 @@ function CodeReveal({ code }: { code: string | null }) {
           written by the AI assistant
         </span>
       </summary>
-      <pre className="max-h-96 overflow-auto border-t border-line bg-white p-3 font-mono text-[0.72rem] leading-relaxed text-ink">
-        <code>{code}</code>
-      </pre>
+      <Highlight theme={themes.github} code={code} language="python">
+        {({ style, tokens, getLineProps, getTokenProps }) => (
+          <pre
+            className="max-h-96 overflow-auto border-t border-line p-3 font-mono text-[0.72rem] leading-relaxed"
+            style={{ ...style, background: "transparent" }}
+          >
+            {tokens.map((line, index) => (
+              <div key={index} {...getLineProps({ line })}>
+                <span className="mr-3 inline-block w-6 select-none text-right text-faint">
+                  {index + 1}
+                </span>
+                {line.map((token, key) => (
+                  <span key={key} {...getTokenProps({ token })} />
+                ))}
+              </div>
+            ))}
+          </pre>
+        )}
+      </Highlight>
     </details>
   );
 }
@@ -249,7 +266,7 @@ export function StepCard({
           </div>
         )}
         <div className="mt-3">
-          <BehindTheScenes scriptId={scriptId} number={step.number} />
+          <BehindTheScenes scriptId={scriptId} number={step.number} censored />
         </div>
         <CodeReveal code={step.code} />
         <PromptWorkshop step={step} scriptId={scriptId} />

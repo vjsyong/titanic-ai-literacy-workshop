@@ -5,6 +5,7 @@ import {
   FileCode2,
   FileText,
   ListChecks,
+  Lock,
   MessageSquare,
   MonitorPlay,
   Ruler,
@@ -52,6 +53,10 @@ interface Node {
   kind: Kind;
   label: string;
   caption?: string;
+  /** Hide this whole node until the checkpoint is finished. */
+  secret?: boolean;
+  /** Hide just the caption (it holds the answer) until finished. */
+  secretCaption?: boolean;
 }
 
 const FLOWS: Record<string, { title: string; nodes: Node[] }> = {
@@ -69,9 +74,19 @@ const FLOWS: Record<string, { title: string; nodes: Node[] }> = {
     nodes: [
       { kind: "file", label: "titanic.csv", caption: "the raw file" },
       { kind: "code", label: "read_csv( )", caption: "load the rows" },
-      { kind: "table", label: "DataFrame", caption: "891 rows × 12" },
+      {
+        kind: "table",
+        label: "DataFrame",
+        caption: "891 rows × 12",
+        secretCaption: true,
+      },
       { kind: "preview", label: "First look", caption: "head() preview" },
-      { kind: "holes", label: "Missing values", caption: "Age 177 · Cabin 687" },
+      {
+        kind: "holes",
+        label: "Missing values",
+        caption: "Age 177 · Cabin 687",
+        secretCaption: true,
+      },
     ],
   },
   "eda:2": {
@@ -81,8 +96,13 @@ const FLOWS: Record<string, { title: string; nodes: Node[] }> = {
       { kind: "table", label: "Every passenger", caption: "all 891" },
       { kind: "code", label: "value_counts( )", caption: "count the outcomes" },
       { kind: "chart", label: "Split by outcome", caption: "died vs lived" },
-      { kind: "donut", label: "38% survived", caption: "342 people" },
-      { kind: "people", label: "By sex", caption: "women 74% · men 19%" },
+      { kind: "donut", label: "38% survived", caption: "342 people", secret: true },
+      {
+        kind: "people",
+        label: "By sex",
+        caption: "women 74% · men 19%",
+        secretCaption: true,
+      },
     ],
   },
   "eda:3": {
@@ -90,7 +110,12 @@ const FLOWS: Record<string, { title: string; nodes: Node[] }> = {
     nodes: [
       { kind: "table", label: "Every passenger" },
       { kind: "code", label: "groupby( )", caption: "one class at a time" },
-      { kind: "chart", label: "By ticket class", caption: "1st 63% · 3rd 24%" },
+      {
+        kind: "chart",
+        label: "By ticket class",
+        caption: "1st 63% · 3rd 24%",
+        secretCaption: true,
+      },
       { kind: "scatter", label: "Age vs survival", caption: "a design choice" },
       { kind: "question", label: "Is it readable?", caption: "judge the chart" },
     ],
@@ -113,7 +138,7 @@ const FLOWS: Record<string, { title: string; nodes: Node[] }> = {
       { kind: "question", label: "Exam size?", caption: "your ratio" },
       { kind: "split", label: "80 / 20", caption: "study vs exam" },
       { kind: "scale", label: "fit( ) the scaler", caption: "train group only" },
-      { kind: "numbers", label: "Mean 0", caption: "same scale" },
+      { kind: "numbers", label: "Mean 0", caption: "same scale", secret: true },
     ],
   },
   "train:3": {
@@ -123,7 +148,12 @@ const FLOWS: Record<string, { title: string; nodes: Node[] }> = {
       { kind: "code", label: "fit( )", caption: "learn from examples" },
       { kind: "brain", label: "LogisticRegression", caption: "learns the pattern" },
       { kind: "target", label: "The test set", caption: "never seen" },
-      { kind: "gauge", label: "Test accuracy", caption: "~80%" },
+      {
+        kind: "gauge",
+        label: "Test accuracy",
+        caption: "~80%",
+        secretCaption: true,
+      },
     ],
   },
   "train:4": {
@@ -343,13 +373,19 @@ export function BehindTheScenes({
   scriptId,
   number,
   dimmed = false,
+  censored = false,
 }: {
   scriptId: string;
   number: number;
   dimmed?: boolean;
+  censored?: boolean;
 }) {
   const flow = FLOWS[`${scriptId}:${number}`];
   if (!flow) return null;
+
+  const hasSecrets = flow.nodes.some(
+    (node) => node.secret || node.secretCaption,
+  );
 
   return (
     <div
@@ -362,25 +398,63 @@ export function BehindTheScenes({
         What's happening under the hood: {flow.title}
       </div>
       <div className="behind-flow flex items-start overflow-x-auto pb-1">
-        {flow.nodes.map((node, index) => (
-          <Fragment key={`${node.label}-${index}`}>
-            {index > 0 && <Connector index={index} />}
-            <div className="behind-node flex w-[7rem] shrink-0 flex-col items-center px-1 text-center">
-              <div className="flex h-16 w-16 items-center justify-center border border-line bg-white">
-                <NodeIcon kind={node.kind} />
+        {flow.nodes.map((node, index) => {
+          const hidden = censored && node.secret;
+          const captionHidden = censored && node.secretCaption;
+
+          return (
+            <Fragment key={`${node.label}-${index}`}>
+              {index > 0 && <Connector index={index} />}
+              <div className="behind-node flex w-[7rem] shrink-0 flex-col items-center px-1 text-center">
+                {hidden ? (
+                  <>
+                    <div className="flex h-16 w-16 items-center justify-center border border-dashed border-line2 bg-card2">
+                      <Lock className="h-7 w-7 text-faint" />
+                      <span className="sr-only">
+                        Hidden until this checkpoint is finished
+                      </span>
+                    </div>
+                    <span
+                      className="mt-1.5 h-3.5 w-20 bg-black/80"
+                      aria-hidden="true"
+                    />
+                    <span
+                      className="mt-1 h-2.5 w-24 bg-black/15"
+                      aria-hidden="true"
+                    />
+                  </>
+                ) : (
+                  <>
+                    <div className="flex h-16 w-16 items-center justify-center border border-line bg-white">
+                      <NodeIcon kind={node.kind} />
+                    </div>
+                    <div className="mt-1 text-[0.75rem] font-semibold leading-tight text-ink">
+                      {node.label}
+                    </div>
+                    {node.caption &&
+                      (captionHidden ? (
+                        <span
+                          className="mt-0.5 h-2.5 w-16 bg-black/15"
+                          aria-hidden="true"
+                        />
+                      ) : (
+                        <div className="text-[0.66rem] leading-tight text-faint">
+                          {node.caption}
+                        </div>
+                      ))}
+                  </>
+                )}
               </div>
-              <div className="mt-1 text-[0.75rem] font-semibold leading-tight text-ink">
-                {node.label}
-              </div>
-              {node.caption && (
-                <div className="text-[0.66rem] leading-tight text-faint">
-                  {node.caption}
-                </div>
-              )}
-            </div>
-          </Fragment>
-        ))}
+            </Fragment>
+          );
+        })}
       </div>
+      {censored && hasSecrets && (
+        <div className="mt-2 flex items-center gap-1.5 text-[0.63rem] text-faint">
+          <Lock className="h-3 w-3" />
+          Answers stay hidden until this checkpoint is finished.
+        </div>
+      )}
     </div>
   );
 }

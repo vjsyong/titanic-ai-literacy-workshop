@@ -73,6 +73,9 @@ DEFAULT_INPUT_SPEC = [
 #     its function may return a friendly text card telling the student
 #     which earlier step to finish -- do NOT raise on missing files.
 #   * At most ONE "dataframe" and ONE "chart" per result.
+#   * Write clear comments that break the code into small steps and explain
+#     each one in plain English: students read this code in the page's
+#     "See the code" panel.
 #   * Bump STEPS_COMPLETED (one at a time) after the web page shows the
 #     gate working.
 #   * The LOOK LIKE notes are the MINIMUM, not a blueprint. Compose each
