@@ -15,7 +15,6 @@ import type { Persona, PersonasFile } from "../types";
 import { fireConfetti } from "./Celebration";
 
 const TIMER_SECONDS = 15;
-const STORAGE_KEY = "titanic-quiz-v1";
 
 interface Answer {
   id: string;
@@ -23,21 +22,14 @@ interface Answer {
   correct: boolean;
 }
 
-function readSaved(): Answer[] {
-  try {
-    const raw = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "[]");
-    return Array.isArray(raw) ? (raw as Answer[]) : [];
-  } catch {
-    return [];
+/** Fisher-Yates shuffle, so every run sees a new passenger order. */
+function shuffled<T>(items: T[]): T[] {
+  const copy = [...items];
+  for (let i = copy.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [copy[i], copy[j]] = [copy[j], copy[i]];
   }
-}
-
-function persist(answers: Answer[]) {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(answers));
-  } catch {
-    // private mode: the quiz just won't survive a reload
-  }
+  return copy;
 }
 
 function Portrait({ persona }: { persona: Persona }) {
@@ -254,19 +246,27 @@ function ResultCarousel({
 }
 
 export function SurvivalQuiz({ data }: { data: PersonasFile }) {
-  const personas = useMemo(() => data.personas ?? [], [data]);
+  const [round, setRound] = useState(0);
+  const personas = useMemo(
+    () => shuffled(data.personas ?? []),
+    [data, round],
+  );
 
-  const saved = useMemo(() => readSaved(), []);
-  const [answers, setAnswers] = useState<Answer[]>(saved);
-  const [index, setIndex] = useState(() =>
-    Math.min(saved.length, personas.length),
-  );
-  const [phase, setPhase] = useState<"guess" | "reveal" | "done">(() =>
-    saved.length >= personas.length && personas.length > 0 ? "done" : "guess",
-  );
+  // Every page load starts a fresh run with a new order; wipe any run
+  // saved by an older build.
+  useEffect(() => {
+    try {
+      localStorage.removeItem("titanic-quiz-v1");
+    } catch {
+      // private mode: nothing to clear
+    }
+  }, []);
+
+  const [answers, setAnswers] = useState<Answer[]>([]);
+  const [index, setIndex] = useState(0);
+  const [phase, setPhase] = useState<"guess" | "reveal" | "done">("guess");
   const [seconds, setSeconds] = useState(TIMER_SECONDS);
-  // The clock never runs until the student presses Start, including after a
-  // reload that resumes a saved run.
+  // The clock never runs until the student presses Start.
   const [started, setStarted] = useState(false);
 
   const persona = personas[index];
@@ -310,10 +310,6 @@ export function SurvivalQuiz({ data }: { data: PersonasFile }) {
     if (started && phase === "guess" && seconds === 0) reveal(null);
   }, [started, seconds, phase, reveal]);
 
-  useEffect(() => {
-    if (answers.length > 0) persist(answers);
-  }, [answers]);
-
   const begin = () => {
     setSeconds(TIMER_SECONDS);
     setStarted(true);
@@ -336,7 +332,7 @@ export function SurvivalQuiz({ data }: { data: PersonasFile }) {
   };
 
   const restart = () => {
-    persist([]);
+    setRound((value) => value + 1);
     setAnswers([]);
     setIndex(0);
     phaseRef.current = "guess";
