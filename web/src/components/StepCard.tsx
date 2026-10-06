@@ -144,7 +144,11 @@ function PromptWorkshop({
       <div className="mt-3 flex items-start gap-2 border border-line bg-card2 px-3 py-2 text-xs leading-relaxed text-dim">
         <ClipboardPaste className="mt-0.5 h-3.5 w-3.5 shrink-0 text-acc" />
         <span>
-          Write the prompt in the OpenCode chat. All you need to do is{" "}
+          Write the prompt in the{" "}
+          <strong className="font-semibold text-ink">
+            OpenCode chat window
+          </strong>
+          . All you need to do is{" "}
           <strong className="font-semibold text-ink">supply the intent</strong>
           , and the AI assistant writes the code for you.
         </span>

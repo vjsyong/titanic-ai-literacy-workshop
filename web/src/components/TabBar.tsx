@@ -32,9 +32,11 @@ export function TabBar({
               />
             )}
             <span>{script.title}</span>
-            <span className="font-mono text-xs opacity-75">
-              {script.completed}/{script.total}
-            </span>
+            {script.total > 0 && (
+              <span className="font-mono text-xs opacity-75">
+                {script.completed}/{script.total}
+              </span>
+            )}
           </button>
         );
       })}

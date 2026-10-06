@@ -34,14 +34,14 @@ served by a small FastAPI process, in one classroom page.
    **playground predictor**: every dataset field, instant feedback as the
    controls move, and a "load a random real passenger" button that tests the
    built-in model against the real outcome. A "Start the workshop" button
-   enters the three tabs.
+   enters the workshop tabs.
 1. **Once**: the launcher serves the workshop page automatically
    (`deployment/windows/START VIBE CODING.bat` or
    `deployment/macos/START VIBE CODING.command` starts it on port 4097; a
    watchdog restarts either service if it crashes, and either launcher
    tears both down when its window closes). To (re)start it by hand:
    `python serve_workshop.py`.
-   Students see one page, three tabs; each tab shows its next checkpoint as a
+   Students see one page, four tabs; each tab shows its next checkpoint as a
    prompt-hint card, locked steps stay greyed out. Tab 1 opens with **Step 0**:
    the AI Teaching Assistant has to prove it can reach the project (it sets
    `PAIRED = True` in `01_eda.py`) before Checkpoint 1 unlocks.
@@ -53,6 +53,10 @@ served by a small FastAPI process, in one classroom page.
    within a second: the open page refreshes itself, the finished checkpoint
    becomes an animated result card (tables, interactive charts, gauges), and
    the NEXT mission appears. Repeat until all 10 checkpoints are done.
+3. **Stage 4 - Next Steps**: a static fourth tab sends students off with the
+   loop they now own, plus introductions and links to the Iris Flower, Wine
+   Quality and Boston Housing datasets. Each card has a square drop-in image
+   slot (`web/public/next/iris.jpg`, `wine.jpg`, `boston.jpg`).
 
 ## Instructor development
 

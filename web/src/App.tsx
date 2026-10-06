@@ -7,8 +7,19 @@ import { TabBar } from "./components/TabBar";
 import { StepCard } from "./components/StepCard";
 import { PredictPanel } from "./components/PredictPanel";
 import { ErrorBanner } from "./components/ErrorBanner";
+import { NextSteps } from "./components/NextSteps";
 import { Onboarding } from "./components/Onboarding";
 import { useCompletionCelebration } from "./components/Celebration";
+
+// A static fourth tab: no checkpoints, just a send-off with next datasets.
+const NEXT_TAB: ScriptState = {
+  id: "next",
+  title: "4 - Next Steps",
+  intro: "",
+  completed: 0,
+  total: 0,
+  steps: [],
+};
 
 function StageCompleteBanner({
   script,
@@ -142,8 +153,9 @@ export default function App() {
 
   const done = state.scripts.reduce((sum, script) => sum + script.completed, 0);
   const total = state.scripts.reduce((sum, script) => sum + script.total, 0);
-  const activeIndex = Math.min(active, Math.max(state.scripts.length - 1, 0));
-  const activeScript = state.scripts[activeIndex];
+  const tabs = [...state.scripts, NEXT_TAB];
+  const activeIndex = Math.min(active, Math.max(tabs.length - 1, 0));
+  const activeScript = tabs[activeIndex];
 
   if (view === "intro") {
     return (
@@ -169,19 +181,17 @@ export default function App() {
       />
       <main className="mx-auto max-w-6xl space-y-4 px-4 pb-24 pt-6">
         <ErrorBanner errors={state.import_errors} />
-        <TabBar
-          scripts={state.scripts}
-          active={activeIndex}
-          onChange={setActive}
-        />
-        {activeScript && (
+        <TabBar scripts={tabs} active={activeIndex} onChange={setActive} />
+        {activeScript.id === "next" ? (
+          <NextSteps />
+        ) : (
           <ScriptPanel
             script={activeScript}
             dashboard={state.dashboard}
             allComplete={state.all_complete}
-            nextTitle={state.scripts[activeIndex + 1]?.title}
+            nextTitle={tabs[activeIndex + 1]?.title}
             onNextStage={
-              activeIndex + 1 < state.scripts.length
+              activeIndex + 1 < tabs.length
                 ? () => {
                     setActive(activeIndex + 1);
                     window.scrollTo({ top: 0 });
